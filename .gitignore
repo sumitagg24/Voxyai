@@ -1,0 +1,81 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+voxylis.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.bak
+
+# Configuration (local)
+config/settings.json.local
+.env
+.env.local
+
+# Build artifacts
+dist/
+build/
+*.spec
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Audio files (temporary)
+*.wav
+*.mp3
+*.flac
+
+# Compiled files
+*.pyc
+*.pyo
+
+# IDE specific
+.vscode/settings.json
+.idea/workspace.xml

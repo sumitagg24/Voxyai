@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation Guide - Voxylis</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                <span class="logo-icon">🎤</span>
+                <span class="logo-text">Voxylis</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../index.html#docs">Docs</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="docs-container">
+        <aside class="docs-sidebar">
+            <h3>Documentation</h3>
+            <ul>
+                <li><a href="installation.html" class="active">Installation</a></li>
+                <li><a href="configuration.html">Configuration</a></li>
+                <li><a href="voice-commands.html">Voice Commands</a></li>
+                <li><a href="qa-feature.html">Q&A Feature</a></li>
+                <li><a href="troubleshooting.html">Troubleshooting</a></li>
+                <li><a href="tips-tricks.html">Tips & Tricks</a></li>
+            </ul>
+        </aside>
+
+        <main class="docs-content">
+            <h1>Installation Guide</h1>
+
+            <section>
+                <h2>System Requirements</h2>
+                <ul>
+                    <li><strong>Windows:</strong> Windows 10 or later (64-bit)</li>
+                    <li><strong>macOS:</strong> macOS 10.14 or later</li>
+                    <li><strong>RAM:</strong> Minimum 4GB (8GB recommended)</li>
+                    <li><strong>Disk Space:</strong> 500MB free space</li>
+                    <li><strong>Microphone:</strong> Built-in, USB, or Bluetooth</li>
+                    <li><strong>Internet:</strong> Required for cloud transcription</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Windows Installation</h2>
+                <ol>
+                    <li>Download the Windows installer from the <a href="../index.html#download">download page</a></li>
+                    <li>Run <code>VoxylisSetup.exe</code></li>
+                    <li>Follow the installation wizard</li>
+                    <li>Choose installation location (default: C:\Program Files\Voxylis)</li>
+                    <li>Select whether to add desktop shortcut</li>
+                    <li>Click "Install" and wait for completion</li>
+                    <li>Launch Voxylis from Start Menu or desktop shortcut</li>
+                </ol>
+
+                <h3>Portable Version (No Installation)</h3>
+                <ol>
+                    <li>Download <code>Voxylis-portable.zip</code></li>
+                    <li>Extract to desired location</li>
+                    <li>Run <code>Voxylis.exe</code> directly</li>
+                    <li>No admin rights required</li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>macOS Installation</h2>
+                <ol>
+                    <li>Download <code>Voxylis.dmg</code> from the download page</li>
+                    <li>Double-click to mount the disk image</li>
+                    <li>Drag Voxylis icon to Applications folder</li>
+                    <li>Open Applications folder and double-click Voxylis</li>
+                    <li>Grant microphone permissions when prompted</li>
+                    <li>Grant accessibility permissions for hotkey detection</li>
+                </ol>
+
+                <h3>First Launch</h3>
+                <p>On first launch, macOS may show a security warning. Click "Open" to proceed.</p>
+            </section>
+
+            <section>
+                <h2>Initial Setup</h2>
+                <ol>
+                    <li><strong>API Key:</strong> Enter your Groq or OpenAI API key</li>
+                    <li><strong>Microphone:</strong> Select your microphone from the list</li>
+                    <li><strong>Language:</strong> Choose your default language</li>
+                    <li><strong>Hotkey:</strong> Set your preferred hotkey (default: Win+Shift)</li>
+                    <li><strong>Wake Word:</strong> Set custom wake word (default: "Voxy")</li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Getting an API Key</h2>
+                <h3>Groq (Recommended - Free)</h3>
+                <ol>
+                    <li>Visit <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></li>
+                    <li>Sign up for a free account</li>
+                    <li>Create an API key</li>
+                    <li>Copy the key and paste in Voxylis settings</li>
+                </ol>
+
+                <h3>OpenAI (Paid)</h3>
+                <ol>
+                    <li>Visit <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com/api-keys</a></li>
+                    <li>Sign in or create account</li>
+                    <li>Create new API key</li>
+                    <li>Copy and paste in Voxylis settings</li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Troubleshooting Installation</h2>
+                <h3>Windows: "Cannot find Python"</h3>
+                <p>Voxylis includes Python. If you see this error, try reinstalling.</p>
+
+                <h3>macOS: "Cannot open Voxylis"</h3>
+                <p>Right-click Voxylis and select "Open" to bypass security warning.</p>
+
+                <h3>Microphone Not Detected</h3>
+                <p>Check Windows/macOS audio settings and ensure microphone is enabled.</p>
+            </section>
+
+            <section>
+                <h2>Uninstallation</h2>
+                <h3>Windows</h3>
+                <ol>
+                    <li>Go to Settings → Apps → Apps & features</li>
+                    <li>Find "Voxylis" in the list</li>
+                    <li>Click and select "Uninstall"</li>
+                    <li>Follow the uninstall wizard</li>
+                </ol>
+
+                <h3>macOS</h3>
+                <ol>
+                    <li>Open Applications folder</li>
+                    <li>Right-click Voxylis</li>
+                    <li>Select "Move to Trash"</li>
+                </ol>
+            </section>
+
+            <div class="doc-nav">
+                <a href="configuration.html" class="btn btn-primary">Next: Configuration →</a>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/main.js"></script>
+</body>
+</html>
