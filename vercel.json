@@ -6,7 +6,7 @@
   "cleanUrls": false,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/static/:dir/:file", "destination": "/:dir/:file" },    { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/pricing", "destination": "/pricing.html" },
     { "source": "/blog", "destination": "/blog.html" },
     { "source": "/about", "destination": "/about.html" },
