@@ -4,8 +4,26 @@ Helper utilities for Voxylis
 
 import json
 import os
+import sys
 from typing import Any, Dict
 from config.constants import CONFIG_DIR
+
+
+def get_base_dir() -> str:
+    """Return the base directory for data files.
+
+    When frozen by PyInstaller, sys.executable points to the exe and
+    bundled source lives in a _internal/ subdir.  We want config/, logs/,
+    temp/ to live next to the exe so they persist across runs, but for
+    reading bundled assets we look inside _internal/.
+    """
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        internal_dir = os.path.join(exe_dir, "_internal")
+        if os.path.isdir(internal_dir):
+            return internal_dir
+        return exe_dir
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def load_json(filepath: str) -> Dict[str, Any]:
@@ -32,8 +50,9 @@ def save_json(filepath: str, data: Dict[str, Any]) -> bool:
 
 
 def ensure_directories():
-    """Ensure all required directories exist"""
-    directories = [CONFIG_DIR, "temp", "logs"]
+    """Ensure all required directories exist next to the exe / project root."""
+    base = get_base_dir()
+    directories = [os.path.join(base, CONFIG_DIR), os.path.join(base, "temp"), os.path.join(base, "logs")]
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
 

@@ -4,7 +4,6 @@ System-wide text injection engine for Voxylis
 
 import time
 import keyboard
-from typing import Optional
 from system.clipboard_manager import ClipboardManager
 from utils.logger import log_info, log_error, log_debug, log_warning
 
@@ -17,16 +16,19 @@ class TextInjector:
         self.injection_delay = 0.1
         self._last_injected_text = None
         self._last_inject_time = 0.0
-        self._inject_cooldown = 1.0   # 1 second cooldown to prevent duplicate injection
+        self._inject_cooldown = 1.0  # 1 second cooldown to prevent duplicate injection
 
     def inject_text(self, text: str, restore_clipboard: bool = True) -> bool:
         try:
             import time as _time
+
             now = _time.time()
 
             # Guard: skip if same text injected within cooldown window
-            if (text == self._last_injected_text and
-                    now - self._last_inject_time < self._inject_cooldown):
+            if (
+                text == self._last_injected_text
+                and now - self._last_inject_time < self._inject_cooldown
+            ):
                 log_warning(f"Duplicate injection blocked: {repr(text[:40])}")
                 return True
 
@@ -59,12 +61,12 @@ class TextInjector:
     ) -> bool:
         """
         Inject text with initial delay
-        
+
         Args:
             text: Text to inject
             delay: Delay before injection in seconds
             restore_clipboard: Whether to restore original clipboard content
-        
+
         Returns:
             True if successful
         """
@@ -80,11 +82,11 @@ class TextInjector:
     def type_text(self, text: str, speed: float = 0.05) -> bool:
         """
         Type text character by character (slower but more compatible)
-        
+
         Args:
             text: Text to type
             speed: Delay between characters in seconds
-        
+
         Returns:
             True if successful
         """
@@ -105,10 +107,10 @@ class TextInjector:
     def inject_with_fallback(self, text: str) -> bool:
         """
         Inject text with fallback to character-by-character typing
-        
+
         Args:
             text: Text to inject
-        
+
         Returns:
             True if successful
         """

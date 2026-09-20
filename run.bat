@@ -59,7 +59,7 @@ echo.
 echo Press Ctrl+C to stop the application
 echo.
 
-python start_voxylis.py
+python main.py
 
 if errorlevel 1 (
     echo.

@@ -4,8 +4,16 @@ Logging utility for Voxylis
 
 import logging
 import os
-from datetime import datetime
 from config.constants import LOG_LEVEL, LOG_FILE, LOGS_DIR
+
+
+def _get_logs_dir() -> str:
+    """Return the logs directory, resolving relative to the exe when frozen."""
+    try:
+        from utils.helpers import get_base_dir
+        return os.path.join(get_base_dir(), LOGS_DIR)
+    except Exception:
+        return LOGS_DIR
 
 
 class VoxylisLogger:
@@ -22,13 +30,14 @@ class VoxylisLogger:
 
     def _initialize_logger(self):
         """Initialize the logger with file and console handlers"""
-        os.makedirs(LOGS_DIR, exist_ok=True)
+        logs_dir = _get_logs_dir()
+        os.makedirs(logs_dir, exist_ok=True)
 
         self._logger = logging.getLogger("voxylis")
         self._logger.setLevel(getattr(logging, LOG_LEVEL))
 
         # File handler
-        log_path = os.path.join(LOGS_DIR, LOG_FILE)
+        log_path = os.path.join(logs_dir, LOG_FILE)
         file_handler = logging.FileHandler(log_path)
         file_handler.setLevel(getattr(logging, LOG_LEVEL))
 

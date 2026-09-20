@@ -4,20 +4,29 @@ Word count & usage stats tracker for Voxylis.
 
 import json
 import os
-from datetime import datetime, date
+from datetime import date
 from utils.logger import log_error, log_debug
 
 STATS_FILE = "logs/stats.json"
 
 
+def _resolve_stats_path() -> str:
+    try:
+        from utils.helpers import get_base_dir
+        return os.path.join(get_base_dir(), STATS_FILE)
+    except Exception:
+        return STATS_FILE
+
+
 class StatsTracker:
     def __init__(self):
+        self._stats_file = _resolve_stats_path()
         self._data = self._load()
 
     def _load(self) -> dict:
         try:
-            if os.path.exists(STATS_FILE):
-                with open(STATS_FILE, "r") as f:
+            if os.path.exists(self._stats_file):
+                with open(self._stats_file, "r") as f:
                     return json.load(f)
         except Exception as e:
             log_error(f"Stats load error: {e}")
@@ -25,8 +34,8 @@ class StatsTracker:
 
     def _save(self):
         try:
-            os.makedirs(os.path.dirname(STATS_FILE), exist_ok=True)
-            with open(STATS_FILE, "w") as f:
+            os.makedirs(os.path.dirname(self._stats_file), exist_ok=True)
+            with open(self._stats_file, "w") as f:
                 json.dump(self._data, f, indent=2)
         except Exception as e:
             log_error(f"Stats save error: {e}")

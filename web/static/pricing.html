@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing — Voxylis</title>
+<meta name="description" content="Simple, transparent pricing for Voxylis. Start free, upgrade when you're ready.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff;--bg2:#fafafa;--ink:#1e1e1e;--ink2:#3a3a3a;--muted:#858585;
+  --line:#1e1e1e;--line2:#e5e5e5;--pink:#f386a1;--pink-d:#e06080;
+  --teal:#9db8bd;--teal-d:#7d9aa0;--green:#03aa5c;--dark:#1e1e1e;--dark2:#2a2a2a;
+  --host:'Host Grotesk','Inter','Helvetica Neue',Arial,sans-serif;
+  --mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  --space:'Space Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--host);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
+a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
+.wrap{width:100%;max-width:1400px;margin:0 auto;padding:0 48px}
+@media(max-width:900px){.wrap{padding:0 20px}}
+::selection{background:var(--pink);color:var(--ink)}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:50}
+@media(max-width:900px){.nav{padding:16px 20px}}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-0.02em}
+.nav-brand .glyph{width:28px;height:28px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:14px}
+.nav-links{display:flex;align-items:center;gap:32px;font-size:15px;font-weight:500}
+.nav-links a{position:relative;opacity:.85;transition:opacity .15s}.nav-links a:hover{opacity:1}
+.nav-right{display:flex;align-items:center;gap:24px;font-size:15px;font-weight:500}
+.nav-right a.signin{opacity:.85}.nav-right a.signin:hover{opacity:1}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:14px;font-weight:600;transition:all .15s;line-height:1}
+.btn:hover{background:#000;border-color:#000}.btn.ghost{background:transparent;color:var(--ink)}.btn.ghost:hover{background:#f0f0f0}
+@media(max-width:900px){.nav-links,.nav-right{display:none}}
+.footer{background:#000;color:#fff;padding:64px 0 40px}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;flex-wrap:wrap;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.12)}
+@media(max-width:700px){.footer-top{flex-direction:column;gap:32px}}
+.footer-brand{font-size:48px;font-weight:700;letter-spacing:-0.03em}
+.footer-nav{display:flex;gap:48px;flex-wrap:wrap}
+.footer-nav .col h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:16px}
+.footer-nav .col a{display:block;padding:6px 0;font-size:14px;opacity:.8;transition:opacity .15s}.footer-nav .col a:hover{opacity:1}
+.footer-bot{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-top:32px;font-family:var(--mono);font-size:12px;opacity:.5;flex-wrap:wrap}
+.page-hero{padding:100px 0 64px;text-align:center;border-bottom:1px solid var(--line2)}
+.page-hero .eyebrow{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:24px}
+.page-hero h1{font-size:clamp(40px,7vw,80px);font-weight:700;line-height:1;letter-spacing:-0.03em}
+.page-hero p{margin-top:24px;font-size:18px;color:var(--ink2);max-width:560px;margin-left:auto;margin-right:auto;line-height:1.6}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:80px 0}
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:480px;margin:0 auto}}
+.pricing-card{border:1px solid var(--line2);border-radius:10px;padding:40px 32px;display:flex;flex-direction:column;position:relative;transition:transform .15s,box-shadow .15s}
+.pricing-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.08)}
+.pricing-card.popular{border-color:var(--ink);box-shadow:0 8px 30px rgba(0,0,0,.1)}
+.pricing-card .badge{position:absolute;top:-12px;left:32px;background:var(--ink);color:#fff;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border-radius:4px}
+.pricing-card .tier{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+.pricing-card .price{font-size:48px;font-weight:800;letter-spacing:-0.03em;line-height:1}
+.pricing-card .price span{font-size:16px;font-weight:500;color:var(--muted);letter-spacing:0}
+.pricing-card .desc{font-size:14px;color:var(--ink2);margin-top:8px;line-height:1.5}
+.pricing-card .features{list-style:none;margin-top:32px;display:flex;flex-direction:column;gap:14px;flex:1}
+.pricing-card .features li{font-size:14px;color:var(--ink2);padding-left:20px;position:relative;line-height:1.4}
+.pricing-card .features li::before{content:'\2713';position:absolute;left:0;color:var(--green);font-weight:700}
+.pricing-card .card-btn{margin-top:32px;display:block;text-align:center;padding:12px;border:1px solid var(--ink);border-radius:6px;font-size:14px;font-weight:600;background:var(--ink);color:#fff;transition:all .15s;text-decoration:none}
+.pricing-card .card-btn:hover{background:#000;border-color:#000}
+.pricing-card .card-btn.outline{background:transparent;color:var(--ink)}.pricing-card .card-btn.outline:hover{background:var(--bg2)}
+.faq{background:var(--dark);color:#e8e8e8;padding:120px 0}
+.faq .label{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;opacity:.6;margin-bottom:16px}
+.faq h2{font-size:clamp(36px,5vw,64px);font-weight:700;letter-spacing:-0.03em;margin-bottom:64px;max-width:700px}
+.faq-list{border-top:1px solid rgba(255,255,255,.15)}
+.faq-item{border-bottom:1px solid rgba(255,255,255,.15)}
+.faq-q{display:flex;justify-content:space-between;align-items:center;width:100%;padding:28px 0;background:none;border:none;color:inherit;text-align:left;font-size:18px;font-weight:600;cursor:pointer;font-family:inherit;gap:24px}
+.faq-q .plus{font-family:var(--mono);font-size:22px;font-weight:400;opacity:.6;transition:transform .2s;flex-shrink:0;width:32px;text-align:center}
+.faq-item.open .plus{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;padding:0;color:rgba(255,255,255,.7);font-size:15px;line-height:1.7;max-width:760px}
+.faq-item.open .faq-a{max-height:400px;padding-bottom:28px}
+.cta-section{padding:120px 0;text-align:center}
+.cta-section h2{font-size:clamp(36px,5vw,64px);font-weight:700;letter-spacing:-0.03em;line-height:1.05}
+.cta-section p{margin-top:20px;font-size:18px;color:var(--ink2);max-width:500px;margin-left:auto;margin-right:auto;line-height:1.6}
+.cta-section .cta-row{margin-top:40px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
+  <div class="nav-links"><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a></div>
+  <div class="nav-right"><a href="/auth" class="signin">Sign In</a><a href="/download" class="btn">Download App</a></div>
+</nav>
+
+<header class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Voxylis / Pricing</div>
+    <h1>Simple, transparent pricing</h1>
+    <p>Start free and upgrade when you need more. No hidden fees, no surprises.</p>
+  </div>
+</header>
+
+<section class="wrap">
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="tier">Free</div>
+      <div class="price">$0<span>/mo</span></div>
+      <div class="desc">Perfect for trying Voxylis and personal use.</div>
+      <ul class="features">
+        <li>100 transcriptions per month</li>
+        <li>5 languages</li>
+        <li>Basic text enhancement</li>
+        <li>Hotkey and click activation</li>
+        <li>Community support</li>
+      </ul>
+      <a href="/auth" class="card-btn outline">Get Started Free</a>
+    </div>
+    <div class="pricing-card popular">
+      <div class="badge">Popular</div>
+      <div class="tier">Pro</div>
+      <div class="price">$9.99<span>/mo</span></div>
+      <div class="desc">For power users who live in their voice.</div>
+      <ul class="features">
+        <li>Unlimited transcriptions</li>
+        <li>99+ languages</li>
+        <li>All 5 AI enhancement modes</li>
+        <li>Live Q&amp;A built in</li>
+        <li>Wake word activation</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="/auth" class="card-btn">Start Pro Trial</a>
+    </div>
+    <div class="pricing-card">
+      <div class="tier">Business</div>
+      <div class="price">$29.99<span>/mo</span></div>
+      <div class="desc">For teams and organizations.</div>
+      <ul class="features">
+        <li>Everything in Pro</li>
+        <li>Team collaboration</li>
+        <li>API access</li>
+        <li>Custom integrations</li>
+        <li>Admin dashboard</li>
+        <li>Dedicated support</li>
+      </ul>
+      <a href="/contact" class="card-btn outline">Contact Sales</a>
+    </div>
+  </div>
+</section>
+
+<section class="faq" id="faq">
+  <div class="wrap">
+    <div class="label">Pricing FAQ</div>
+    <h2>Questions about pricing</h2>
+    <div class="faq-list">
+      <div class="faq-item open"><button class="faq-q" type="button"><span>Can I try Pro for free?</span><span class="plus">+</span></button><div class="faq-a">Yes. Every Pro plan starts with a 14-day free trial. No credit card required.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>What happens when I hit the Free limit?</span><span class="plus">+</span></button><div class="faq-a">Your transcriptions pause until the next billing cycle. Upgrade to Pro for unlimited usage.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Can I switch plans anytime?</span><span class="plus">+</span></button><div class="faq-a">Yes. Upgrade or downgrade from your dashboard. Changes take effect on your next billing date.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Do you offer annual billing?</span><span class="plus">+</span></button><div class="faq-a">Yes. Annual plans save 20% compared to monthly billing.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>What payment methods do you accept?</span><span class="plus">+</span></button><div class="faq-a">We accept all major credit cards, debit cards, and PayPal.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="wrap">
+    <h2>Ready to start?</h2>
+    <p>Join thousands of users who think faster than they type.</p>
+    <div class="cta-row">
+      <a href="/auth" class="btn">Get Started Free</a>
+      <a href="/contact" class="btn ghost">Talk to Sales</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">Voxylis</div>
+      <div class="footer-nav">
+        <div class="col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
+        <div class="col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
+        <div class="col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
+      </div>
+    </div>
+    <div class="footer-bot"><span>Voxylis &copy; 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.faq-item').forEach(item=>{
+  const q=item.querySelector('.faq-q');
+  q.addEventListener('click',()=>{
+    const isOpen=item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+    if(!isOpen)item.classList.add('open');
+  });
+});
+</script>
+</body>
+</html>

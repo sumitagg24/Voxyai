@@ -3,7 +3,7 @@ Active Noise Cancellation for Voxylis
 ==========================================
 Implements a real-time, adaptive noise cancellation pipeline:
 
-  1. Ambient calibration  — learns the noise floor from the first
+  1. Ambient calibration — learns the noise floor from the first
      N_CALIB_FRAMES frames of every recording (before you speak).
   2. Spectral subtraction — subtracts the learned noise spectrum
      from each frame in the frequency domain.
@@ -16,16 +16,20 @@ No external libraries required — pure numpy FFT.
 """
 
 import numpy as np
-from utils.logger import log_debug, log_info
+from utils.logger import log_debug
 
 # ── tuneable constants ─────────────────────────────────────────────────────
-FRAME_SIZE      = 512          # FFT frame size (samples)
-HOP_SIZE        = 256          # overlap-add hop (50 % overlap)
-N_CALIB_FRAMES  = 20           # frames used to estimate noise floor (~0.3 s)
-OVER_SUBTRACT   = 2.0          # how aggressively to subtract noise (1–3)
-SPECTRAL_FLOOR  = 0.001        # minimum gain after subtraction (avoids silence)
-WIENER_ALPHA    = 0.98         # smoothing factor for noise estimate update
-POST_GATE_RMS   = 0.005        # frames below this RMS after processing → zero
+FRAME_SIZE = 512  # FFT frame size (samples)
+HOP_SIZE = 256  # overlap-add hop (50 % overlap)
+N_CALIB_FRAMES = 20  # frames used to estimate noise floor (~0.3 s)
+OVER_SUBTRACT = 1.8  # how aggressively to subtract noise
+SPECTRAL_FLOOR = (
+    0.005  # minimum gain after subtraction (balanced to avoid silence/artifacts)
+)
+WIENER_ALPHA = 0.96  # smoothing factor for noise estimate update
+POST_GATE_RMS = (
+    0.004  # frames below this RMS after processing → zero (balanced sensitivity)
+)
 
 
 class NoiseCanceller:
@@ -38,7 +42,7 @@ class NoiseCanceller:
     """
 
     def __init__(self):
-        self._noise_psd: np.ndarray | None = None   # estimated noise power spectrum
+        self._noise_psd = None  # estimated noise power spectrum (np.ndarray or None)
         self._calibrated = False
         self._frame_count = 0
 
@@ -67,14 +71,14 @@ class NoiseCanceller:
         clean = self._process_frames(float_audio)
 
         log_debug(
-            f"ANC: input_rms={self._rms(float_audio):.4f}  "
+            f"ANC: input_rms={self._rms(float_audio):.4f} "
             f"output_rms={self._rms(clean):.4f}"
         )
         return self._to_int16(clean)
 
     def reset(self):
         """Call before each new recording to reset calibration state."""
-        self._noise_psd  = None
+        self._noise_psd = None
         self._calibrated = False
         self._frame_count = 0
 
@@ -85,7 +89,7 @@ class NoiseCanceller:
         psds = []
         for i in range(N_CALIB_FRAMES):
             start = i * HOP_SIZE
-            end   = start + FRAME_SIZE
+            end = start + FRAME_SIZE
             if end > len(audio):
                 break
             frame = audio[start:end] * np.hanning(FRAME_SIZE)
@@ -93,51 +97,52 @@ class NoiseCanceller:
             psds.append(np.abs(spectrum) ** 2)
 
         if psds:
-            self._noise_psd  = np.mean(psds, axis=0)
+            self._noise_psd = np.mean(psds, axis=0)
             self._calibrated = True
-            log_debug(f"ANC calibrated from {len(psds)} frames, "
-                      f"noise_rms≈{np.sqrt(np.mean(self._noise_psd)):.5f}")
+            log_debug(
+                f"ANC calibrated from {len(psds)} frames, "
+                f"noise_rms≈{np.sqrt(np.mean(self._noise_psd)):.5f}"
+            )
 
     # ── frame processing ──────────────────────────────────────────────────
 
     def _process_frames(self, audio: np.ndarray) -> np.ndarray:
         """Overlap-add spectral subtraction + Wiener filter."""
-        n        = len(audio)
-        output   = np.zeros(n, dtype=np.float32)
-        window   = np.hanning(FRAME_SIZE).astype(np.float32)
+        n = len(audio)
+        output = np.zeros(n, dtype=np.float32)
+        window = np.hanning(FRAME_SIZE).astype(np.float32)
         noise_psd = self._noise_psd.copy()
 
         pos = 0
         while pos + FRAME_SIZE <= n:
-            frame    = audio[pos:pos + FRAME_SIZE] * window
+            frame = audio[pos : pos + FRAME_SIZE] * window
             spectrum = np.fft.rfft(frame)
-            mag      = np.abs(spectrum)
-            phase    = np.angle(spectrum)
-            psd      = mag ** 2
+            mag = np.abs(spectrum)
+            phase = np.angle(spectrum)
+            psd = mag**2
 
             # ── spectral subtraction ──────────────────────────────────────
             clean_psd = np.maximum(
-                psd - OVER_SUBTRACT * noise_psd,
-                SPECTRAL_FLOOR * psd
+                psd - OVER_SUBTRACT * noise_psd, SPECTRAL_FLOOR * psd
             )
             clean_mag = np.sqrt(clean_psd)
 
             # ── Wiener gain ───────────────────────────────────────────────
             # G(k) = clean_psd / (clean_psd + noise_psd)
             wiener_gain = clean_psd / (clean_psd + noise_psd + 1e-10)
-            clean_mag   = clean_mag * wiener_gain
+            clean_mag = clean_mag * wiener_gain
 
             # ── reconstruct ───────────────────────────────────────────────
             clean_spectrum = clean_mag * np.exp(1j * phase)
-            clean_frame    = np.fft.irfft(clean_spectrum).astype(np.float32)
-            clean_frame   *= window
+            clean_frame = np.fft.irfft(clean_spectrum).astype(np.float32)
+            clean_frame *= window
 
             # ── post-gate: silence frames that are still mostly noise ─────
             if self._rms(clean_frame) < POST_GATE_RMS:
                 clean_frame[:] = 0.0
 
             # ── overlap-add ───────────────────────────────────────────────
-            output[pos:pos + FRAME_SIZE] += clean_frame
+            output[pos : pos + FRAME_SIZE] += clean_frame
 
             # ── adaptive noise update (only on quiet frames) ──────────────
             if self._rms(frame) < 2.0 * np.sqrt(np.mean(noise_psd)):

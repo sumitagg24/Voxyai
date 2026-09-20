@@ -3,14 +3,14 @@ Per-app profiles — automatically switch enhancement mode based on focused wind
 Uses Win32 API (Windows only), gracefully skips on other platforms.
 """
 
-import threading
 from typing import Optional
-from utils.logger import log_info, log_debug, log_error
+from utils.logger import log_debug, log_error
 
 try:
     import win32gui
     import win32process
     import psutil
+
     WIN32_AVAILABLE = True
 except ImportError:
     WIN32_AVAILABLE = False
@@ -36,15 +36,15 @@ def get_active_window_info() -> dict:
 
 # Default profiles: exe/title keyword -> mode
 DEFAULT_PROFILES = {
-    "slack":    "casual",
-    "teams":    "casual",
-    "discord":  "casual",
-    "winword":  "formal",
-    "word":     "formal",
-    "outlook":  "formal",
-    "code":     "technical",
-    "pycharm":  "technical",
-    "notepad":  "concise",
+    "slack": "casual",
+    "teams": "casual",
+    "discord": "casual",
+    "winword": "formal",
+    "word": "formal",
+    "outlook": "formal",
+    "code": "technical",
+    "pycharm": "technical",
+    "notepad": "concise",
 }
 
 

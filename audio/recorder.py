@@ -25,7 +25,7 @@ class AudioRecorder:
     def __init__(self, device_id: Optional[int] = None):
         """
         Initialize audio recorder
-        
+
         Args:
             device_id: Audio device ID (None = default)
         """
@@ -39,6 +39,15 @@ class AudioRecorder:
         self.recording_thread = None
         self.start_time = None
         self.on_audio_chunk: Optional[Callable] = None
+        # Called from a separate thread when silence auto-stop ends the recording
+        self.on_auto_stop: Optional[Callable] = None
+        # Silence auto-stop is opt-in (used by wake-word hands-free mode).
+        # Hotkey recordings never auto-stop so the user stays in control.
+        self.auto_stop_on_silence = False
+        # Silence threshold in seconds before auto-stop triggers
+        self.silence_timeout = 3.0
+        # Serialises stop_recording so auto-stop and hotkey release can't race
+        self._stop_lock = threading.Lock()
         self._noise_canceller = NoiseCanceller()
 
     def list_devices(self) -> list:
@@ -53,7 +62,7 @@ class AudioRecorder:
     def start_recording(self) -> bool:
         """
         Start recording audio
-        
+
         Returns:
             True if recording started successfully
         """
@@ -75,7 +84,10 @@ class AudioRecorder:
             self.recording_thread.daemon = True
             self.recording_thread.start()
 
-            log_info("Audio recording started")
+            log_info(
+                f"Audio recording started "
+                f"(auto_stop_on_silence={self.auto_stop_on_silence})"
+            )
             return True
 
         except Exception as e:
@@ -84,22 +96,27 @@ class AudioRecorder:
             return False
 
     def stop_recording(self) -> Optional[np.ndarray]:
+        """Thread-safe wrapper around stop logic (auto-stop vs hotkey race)."""
+        with self._stop_lock:
+            return self._stop_recording_impl()
+
+    def _stop_recording_impl(self) -> Optional[np.ndarray]:
         """
-        Stop recording and return audio data
-        
-        Returns:
-            Audio data as numpy array or None if error
+        Stop recording and return audio data.
+        Works both for a normal hotkey release and for a silence auto-stop,
+        so audio recorded before the auto-stop is never discarded.
         """
         try:
-            if not self.is_recording:
+            if not self.is_recording and len(self.audio_buffer) == 0:
                 log_warning("No recording in progress")
                 return None
 
             self.is_recording = False
 
             # Wait for recording thread to finish
-            if self.recording_thread:
-                self.recording_thread.join(timeout=5)
+            if self.recording_thread and self.recording_thread.is_alive():
+                if threading.current_thread() is not self.recording_thread:
+                    self.recording_thread.join(timeout=5)
 
             if len(self.audio_buffer) == 0:
                 log_error("No audio data recorded")
@@ -107,6 +124,7 @@ class AudioRecorder:
 
             # Combine all chunks
             audio_data = np.concatenate(self.audio_buffer)
+            self.audio_buffer = []
 
             # ── Active Noise Cancellation ─────────────────────────────────
             audio_data = self._noise_canceller.process(audio_data)
@@ -116,8 +134,10 @@ class AudioRecorder:
             audio_data = apply_noise_gate(audio_data)
             audio_data = normalize_audio(audio_data)
 
-            duration = time.time() - self.start_time
-            log_info(f"Recording stopped. Duration: {duration:.2f}s, Samples: {len(audio_data)}")
+            duration = time.time() - self.start_time if self.start_time else 0.0
+            log_info(
+                f"Recording stopped. Duration: {duration:.2f}s, Samples: {len(audio_data)}"
+            )
 
             return audio_data
 
@@ -137,6 +157,15 @@ class AudioRecorder:
             ) as stream:
                 self.stream = stream
 
+                # Frames are chunk_size samples; convert seconds to frames
+                frame_seconds = self.chunk_size / float(self.sample_rate)
+                max_silent_frames = max(1, int(self.silence_timeout / frame_seconds))
+                min_speech_frames = 3  # ~0.2 s of sound before silence counts again
+
+                silent_frames = 0
+                speech_frames = 0
+                frame_count = 0
+
                 while self.is_recording:
                     # Check duration limit
                     if time.time() - self.start_time > MAX_RECORDING_DURATION:
@@ -146,18 +175,66 @@ class AudioRecorder:
 
                     # Read audio chunk
                     audio_chunk, _ = stream.read(self.chunk_size)
-                    self.audio_buffer.append(audio_chunk)
+                    frame_count += 1
 
                     # Calculate and report audio level
                     level = calculate_audio_level(audio_chunk)
                     if self.on_audio_chunk:
                         self.on_audio_chunk(level)
 
-                    log_debug(f"Audio chunk recorded. Level: {level:.1f}%")
+                    # Voice activity detection for silence auto-stop
+                    audio_float = audio_chunk.flatten().astype(np.float32)
+                    if audio_chunk.dtype == np.int16:
+                        audio_float = audio_float / 32767.0
+                    rms = float(np.sqrt(np.mean(audio_float**2)))
+
+                    if rms < 0.008:
+                        silent_frames += 1
+                    else:
+                        silent_frames = 0
+                        speech_frames += 1
+
+                    self.audio_buffer.append(audio_chunk)
+
+                    elapsed = frame_count * frame_seconds
+                    should_auto_stop = (
+                        self.auto_stop_on_silence
+                        and speech_frames >= min_speech_frames
+                        and silent_frames > max_silent_frames
+                    )
+                    # Nothing spoken shortly after activation (e.g. wake word
+                    # triggered but the user stayed quiet) — stop waiting.
+                    no_speech_give_up = (
+                        self.auto_stop_on_silence
+                        and speech_frames < min_speech_frames
+                        and elapsed > 5.0
+                    )
+                    if should_auto_stop or no_speech_give_up:
+                        if no_speech_give_up:
+                            log_info("Auto-stop: no speech detected after activation")
+                        else:
+                            log_info(
+                                f"Auto-stop: {silent_frames * frame_seconds:.1f}s of "
+                                f"silence after speech"
+                            )
+                        self.is_recording = False
+                        break
+
+                    log_debug(
+                        f"Chunk {frame_count}: level={level:.1f}% "
+                        f"rms={rms:.4f} silent={silent_frames}"
+                    )
+
+            # Notify listener (e.g. wake-word mode) that recording ended by itself.
+            # Run in a fresh thread: the handler calls stop_recording(), which
+            # must not join the current recording thread from inside itself.
+            if self.auto_stop_on_silence and self.on_auto_stop and self.audio_buffer:
+                threading.Thread(target=self.on_auto_stop, daemon=True).start()
 
         except Exception as e:
             log_error(f"Error in recording thread: {e}", exc_info=True)
             self.is_recording = False
+            self.audio_buffer = []
 
     def get_recording_duration(self) -> float:
         """Get current recording duration in seconds"""

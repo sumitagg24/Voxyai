@@ -3,12 +3,15 @@ Voxylis - Main application entry point
 """
 
 import sys
-import os
 from PyQt5.QtWidgets import (
-    QApplication, QSystemTrayIcon, QMenu, QMessageBox, QAction, QActionGroup
+    QApplication,
+    QSystemTrayIcon,
+    QMenu,
+    QMessageBox,
+    QAction,
+    QActionGroup,
 )
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QTimer
 
 from core.app_orchestrator import AppOrchestrator
 from core.event_manager import event_manager, Events
@@ -16,7 +19,7 @@ from ui.overlay import FloatingWidget
 from ui.settings_window import SettingsWindow
 from ui.history_window import HistoryWindow
 from ui.custom_modes_window import CustomModesWindow
-from utils.logger import log_info, log_error, log_debug
+from utils.logger import log_info, log_error
 from utils.helpers import ensure_directories
 
 BUILTIN_MODES = ["formal", "casual", "technical", "concise", "creative"]
@@ -32,7 +35,8 @@ class VoxylisApp:
         self.history_window = None
         self.custom_modes_window = None
         self.tray_icon = None
-        self._mode_actions = {}   # mode_name -> QAction
+        self._mode_actions = {}  # mode_name -> QAction
+        self._status_action = None  # Initialize to prevent AttributeError
 
         self._setup_floating_widget()
         self._setup_tray_icon()
@@ -44,11 +48,11 @@ class VoxylisApp:
 
     def _setup_floating_widget(self):
         try:
-            # Minion disabled
-            self.floating_widget = None
-            log_info("Floating widget disabled")
+            self.floating_widget = FloatingWidget()
+            log_info("Floating widget created")
         except Exception as e:
             log_error(f"Error creating floating widget: {e}", exc_info=True)
+            self.floating_widget = None
 
     # ── tray icon ─────────────────────────────────────────────────────────────
 
@@ -125,18 +129,34 @@ class VoxylisApp:
 
     def _setup_event_handlers(self):
         try:
-            event_manager.subscribe(Events.RECORDING_STARTED,       self._on_recording_started)
-            event_manager.subscribe(Events.RECORDING_STOPPED,       self._on_recording_stopped)
-            event_manager.subscribe(Events.TRANSCRIPTION_COMPLETED, self._on_transcription_completed)
-            event_manager.subscribe(Events.ENHANCEMENT_COMPLETED,   self._on_enhancement_completed)
-            event_manager.subscribe(Events.INJECTION_COMPLETED,     self._on_injection_completed)
-            event_manager.subscribe(Events.AUDIO_LEVEL_CHANGED,     self._on_audio_level_changed)
-            event_manager.subscribe(Events.ERROR_OCCURRED,          self._on_error_occurred)
-            event_manager.subscribe(Events.VOICE_COMMAND_EXECUTED,  self._on_voice_command)
-            event_manager.subscribe(Events.HISTORY_UPDATED,         self._on_history_updated)
-            event_manager.subscribe(Events.LIVE_TEXT_UPDATED,       self._on_live_text)
-            event_manager.subscribe(Events.STATS_UPDATED,           self._on_stats_updated)
-            event_manager.subscribe(Events.LANGUAGE_DETECTED,       self._on_language_detected)
+            event_manager.subscribe(
+                Events.RECORDING_STARTED, self._on_recording_started
+            )
+            event_manager.subscribe(
+                Events.RECORDING_STOPPED, self._on_recording_stopped
+            )
+            event_manager.subscribe(
+                Events.TRANSCRIPTION_COMPLETED, self._on_transcription_completed
+            )
+            event_manager.subscribe(
+                Events.ENHANCEMENT_COMPLETED, self._on_enhancement_completed
+            )
+            event_manager.subscribe(
+                Events.INJECTION_COMPLETED, self._on_injection_completed
+            )
+            event_manager.subscribe(
+                Events.AUDIO_LEVEL_CHANGED, self._on_audio_level_changed
+            )
+            event_manager.subscribe(Events.ERROR_OCCURRED, self._on_error_occurred)
+            event_manager.subscribe(
+                Events.VOICE_COMMAND_EXECUTED, self._on_voice_command
+            )
+            event_manager.subscribe(Events.HISTORY_UPDATED, self._on_history_updated)
+            event_manager.subscribe(Events.LIVE_TEXT_UPDATED, self._on_live_text)
+            event_manager.subscribe(Events.STATS_UPDATED, self._on_stats_updated)
+            event_manager.subscribe(
+                Events.LANGUAGE_DETECTED, self._on_language_detected
+            )
             log_info("Event handlers registered")
         except Exception as e:
             log_error(f"Error setting up event handlers: {e}", exc_info=True)
@@ -144,27 +164,59 @@ class VoxylisApp:
     # All UI updates go through QTimer.singleShot to stay on the Qt main thread
 
     def _on_recording_started(self):
-        QTimer.singleShot(0, lambda: (
-            self.floating_widget.set_recording(True) if self.floating_widget else None,
-            self._status_action.setText("Status: Recording...") if self._status_action else None
-        ))
+        QTimer.singleShot(
+            0,
+            lambda: (
+                (
+                    self.floating_widget.set_recording(True)
+                    if self.floating_widget
+                    else None
+                ),
+                (
+                    self._status_action.setText("Status: Recording...")
+                    if self._status_action
+                    else None
+                ),
+            ),
+        )
 
     def _on_recording_stopped(self):
         # Hide the minion the moment the hotkey is released
-        QTimer.singleShot(0, lambda: (
-            self.floating_widget.set_recording(False) if self.floating_widget else None,
-            self._status_action.setText("Status: Processing...") if self._status_action else None
-        ))
+        QTimer.singleShot(
+            0,
+            lambda: (
+                (
+                    self.floating_widget.set_recording(False)
+                    if self.floating_widget
+                    else None
+                ),
+                (
+                    self._status_action.setText("Status: Processing...")
+                    if self._status_action
+                    else None
+                ),
+            ),
+        )
 
     def _on_transcription_completed(self, text: str):
-        QTimer.singleShot(0, lambda: (
-            self.floating_widget.set_status("Transcribed") if self.floating_widget else None
-        ))
+        QTimer.singleShot(
+            0,
+            lambda: (
+                self.floating_widget.set_status("Transcribed")
+                if self.floating_widget
+                else None
+            ),
+        )
 
     def _on_enhancement_completed(self, text: str):
-        QTimer.singleShot(0, lambda: (
-            self.floating_widget.set_status("Enhanced") if self.floating_widget else None
-        ))
+        QTimer.singleShot(
+            0,
+            lambda: (
+                self.floating_widget.set_status("Enhanced")
+                if self.floating_widget
+                else None
+            ),
+        )
 
     def _on_injection_completed(self, text: str):
         QTimer.singleShot(0, self._ui_injection_done)
@@ -181,11 +233,26 @@ class VoxylisApp:
             self.floating_widget.set_audio_level(level)
 
     def _on_voice_command(self, action: str = ""):
-        QTimer.singleShot(0, lambda: (
-            self.floating_widget.set_processing(False) if self.floating_widget else None,
-            self.floating_widget.set_status(f"Cmd: {action}") if self.floating_widget else None,
-            self._status_action.setText("Status: Ready") if self._status_action else None
-        ))
+        QTimer.singleShot(
+            0,
+            lambda: (
+                (
+                    self.floating_widget.set_processing(False)
+                    if self.floating_widget
+                    else None
+                ),
+                (
+                    self.floating_widget.set_status(f"Cmd: {action}")
+                    if self.floating_widget
+                    else None
+                ),
+                (
+                    self._status_action.setText("Status: Ready")
+                    if self._status_action
+                    else None
+                ),
+            ),
+        )
 
     def _on_history_updated(self):
         if self.history_window and self.history_window.isVisible():
@@ -200,16 +267,17 @@ class VoxylisApp:
         """Update tray status with today's word count."""
         if today and self._status_action:
             words = today.get("words", 0)
-            QTimer.singleShot(0, lambda: self._status_action.setText(
-                f"Today: {words} words"
-            ))
+            QTimer.singleShot(
+                0, lambda: self._status_action.setText(f"Today: {words} words")
+            )
 
     def _on_language_detected(self, language_name: str = "", language_code: str = ""):
         """Update floating widget with detected language badge."""
         if self.floating_widget:
-            QTimer.singleShot(0, lambda: self.floating_widget.set_language(
-                language_name, language_code
-            ))
+            QTimer.singleShot(
+                0,
+                lambda: self.floating_widget.set_language(language_name, language_code),
+            )
 
     def _on_error_occurred(self, error_code: str = ""):
         QTimer.singleShot(0, lambda: self._ui_error(error_code))
@@ -217,7 +285,8 @@ class VoxylisApp:
     def _ui_error(self, error_code: str):
         if error_code == "no_api_key":
             QMessageBox.warning(
-                None, "API Key Missing",
+                None,
+                "API Key Missing",
                 "No API key is set.\n\n"
                 "Option 1 — Groq (FREE, recommended):\n"
                 "  1. Go to https://console.groq.com/keys\n"
@@ -240,7 +309,9 @@ class VoxylisApp:
             if self.settings_window is None:
                 self.settings_window = SettingsWindow(self.orchestrator.config)
                 self.settings_window.settings_changed.connect(self._on_settings_changed)
-                self.settings_window.closed.connect(lambda: setattr(self, "settings_window", None))
+                self.settings_window.closed.connect(
+                    lambda: setattr(self, "settings_window", None)
+                )
             self.settings_window.show()
             self.settings_window.raise_()
             self.settings_window.activateWindow()
@@ -252,7 +323,9 @@ class VoxylisApp:
             if self.history_window is None:
                 self.history_window = HistoryWindow(self.orchestrator.history)
                 self.history_window.inject_requested.connect(self._on_history_inject)
-                self.history_window.closed.connect(lambda: setattr(self, "history_window", None))
+                self.history_window.closed.connect(
+                    lambda: setattr(self, "history_window", None)
+                )
             self.history_window.show()
             self.history_window.raise_()
             self.history_window.activateWindow()
@@ -265,7 +338,9 @@ class VoxylisApp:
                 self.custom_modes_window = CustomModesWindow(
                     self.orchestrator.config.get("custom_modes", {})
                 )
-                self.custom_modes_window.modes_changed.connect(self._on_custom_modes_changed)
+                self.custom_modes_window.modes_changed.connect(
+                    self._on_custom_modes_changed
+                )
                 self.custom_modes_window.closed.connect(
                     lambda: setattr(self, "custom_modes_window", None)
                 )
@@ -303,7 +378,8 @@ class VoxylisApp:
     def show_about(self):
         stats = self.orchestrator.stats.get_summary()
         QMessageBox.information(
-            None, "About Voxylis",
+            None,
+            "About Voxylis",
             "Voxylis v2.0\n\n"
             "Hotkeys:\n"
             "  Win+Shift       → Record (default mode)\n"
@@ -329,8 +405,10 @@ class VoxylisApp:
 
             if self.tray_icon:
                 self.tray_icon.showMessage(
-                    "Voxylis", "Ready! Press Win+Shift to record.",
-                    QSystemTrayIcon.Information, 4000,
+                    "Voxylis",
+                    "Ready! Press Win+Shift to record.",
+                    QSystemTrayIcon.Information,
+                    4000,
                 )
             return self.app.exec_()
         except Exception as e:

@@ -19,10 +19,10 @@ class ClipboardManager:
     def copy_to_clipboard(self, text: str) -> bool:
         """
         Copy text to clipboard
-        
+
         Args:
             text: Text to copy
-        
+
         Returns:
             True if successful
         """
@@ -46,7 +46,7 @@ class ClipboardManager:
     def get_clipboard_content(self) -> Optional[str]:
         """
         Get current clipboard content
-        
+
         Returns:
             Clipboard content or None if error
         """
@@ -60,7 +60,7 @@ class ClipboardManager:
     def restore_clipboard(self) -> bool:
         """
         Restore original clipboard content
-        
+
         Returns:
             True if successful
         """
@@ -77,7 +77,7 @@ class ClipboardManager:
     def clear_clipboard(self) -> bool:
         """
         Clear clipboard
-        
+
         Returns:
             True if successful
         """

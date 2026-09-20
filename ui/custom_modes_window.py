@@ -3,9 +3,18 @@ Custom Enhancement Modes editor for Voxylis
 """
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QListWidgetItem, QLabel, QPushButton,
-    QLineEdit, QTextEdit, QMessageBox, QSplitter
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QLabel,
+    QPushButton,
+    QLineEdit,
+    QTextEdit,
+    QMessageBox,
+    QSplitter,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
 from utils.logger import log_info
@@ -17,12 +26,12 @@ BUILTIN_MODES = {"formal", "casual", "technical", "concise", "creative"}
 class CustomModesWindow(QMainWindow):
     """Editor for custom AI enhancement modes."""
 
-    modes_changed = pyqtSignal(dict)   # emits full custom_modes dict on save
+    modes_changed = pyqtSignal(dict)  # emits full custom_modes dict on save
     closed = pyqtSignal()
 
     def __init__(self, custom_modes: dict):
         super().__init__()
-        self.custom_modes = dict(custom_modes)   # name -> prompt
+        self.custom_modes = dict(custom_modes)  # name -> prompt
         self._init_ui()
         self._refresh_list()
 
@@ -104,7 +113,7 @@ class CustomModesWindow(QMainWindow):
         rv.addWidget(QLabel("Prompt (use {text} for the transcribed speech):"))
         self.prompt_input = QTextEdit()
         self.prompt_input.setPlaceholderText(
-            "e.g. Rewrite the following as a professional email reply.\n\n{text}\n\nReturn only the email."
+            "e.g. Rewrite the following as a professional email reply.\n\n{text}\n\nReturn only the email."  # noqa: E501
         )
         rv.addWidget(self.prompt_input)
 
@@ -115,10 +124,22 @@ class CustomModesWindow(QMainWindow):
 
         presets_row = QHBoxLayout()
         for label, prompt in [
-            ("Email Reply",     "Rewrite the following as a professional email reply.\n\n{text}\n\nReturn only the email."),
-            ("Bullet Points",   "Convert the following into a clear bullet point list.\n\n{text}\n\nReturn only the bullet points."),
-            ("Fix Grammar",     "Fix only the grammar and punctuation of the following text. Do not change any words or style.\n\n{text}\n\nReturn only the corrected text."),
-            ("Translate ES",    "Translate the following text to Spanish.\n\n{text}\n\nReturn only the translation."),
+            (
+                "Email Reply",
+                "Rewrite the following as a professional email reply.\n\n{text}\n\nReturn only the email.",  # noqa: E501
+            ),
+            (
+                "Bullet Points",
+                "Convert the following into a clear bullet point list.\n\n{text}\n\nReturn only the bullet points.",  # noqa: E501
+            ),
+            (
+                "Fix Grammar",
+                "Fix only the grammar and punctuation of the following text. Do not change any words or style.\n\n{text}\n\nReturn only the corrected text.",  # noqa: E501
+            ),
+            (
+                "Translate ES",
+                "Translate the following text to Spanish.\n\n{text}\n\nReturn only the translation.",  # noqa: E501
+            ),
         ]:
             btn = QPushButton(label)
             btn.setProperty("preset_prompt", prompt)
@@ -193,8 +214,11 @@ class CustomModesWindow(QMainWindow):
             QMessageBox.warning(self, "Missing Prompt", "Please enter a prompt.")
             return
         if "{text}" not in prompt:
-            QMessageBox.warning(self, "Missing {text}",
-                                "Your prompt must contain {text} as a placeholder.")
+            QMessageBox.warning(
+                self,
+                "Missing {text}",
+                "Your prompt must contain {text} as a placeholder.",
+            )
             return
 
         self.custom_modes[name] = prompt
@@ -211,10 +235,15 @@ class CustomModesWindow(QMainWindow):
         if not item:
             return
         name = item.text()
-        if QMessageBox.question(
-            self, "Delete Mode", f"Delete mode '{name}'?",
-            QMessageBox.Yes | QMessageBox.No
-        ) == QMessageBox.Yes:
+        if (
+            QMessageBox.question(
+                self,
+                "Delete Mode",
+                f"Delete mode '{name}'?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            == QMessageBox.Yes
+        ):
             self.custom_modes.pop(name, None)
             self._refresh_list()
 

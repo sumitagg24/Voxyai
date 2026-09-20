@@ -4,31 +4,29 @@ Supports all global languages with language preservation
 """
 
 ENHANCEMENT_PROMPTS = {
-    "formal": """You are a professional writing assistant. Take the following raw transcribed text and enhance it to be formal, professional, and polished. 
+    "formal": """You are a professional writing assistant. Take the following raw transcribed text and enhance it to be formal, professional, and polished.  # noqa: E501
     - Fix grammar and punctuation
     - Remove filler words (um, uh, like, you know)
     - Improve sentence structure
     - Use appropriate vocabulary for the language
     - Keep the original meaning intact
     - PRESERVE THE ORIGINAL LANGUAGE - DO NOT TRANSLATE
-    
+
     Raw text: {text}
-    
+
     Return ONLY the enhanced text in the same language, nothing else.""",
-    
-    "casual": """You are a friendly writing assistant. Take the following raw transcribed text and enhance it to be casual, friendly, and conversational.
+    "casual": """You are a friendly writing assistant. Take the following raw transcribed text and enhance it to be casual, friendly, and conversational.  # noqa: E501
     - Fix grammar and punctuation
     - Remove filler words (um, uh, like, you know)
     - Keep a friendly tone
     - Use natural language
     - Keep the original meaning intact
     - PRESERVE THE ORIGINAL LANGUAGE - DO NOT TRANSLATE
-    
+
     Raw text: {text}
-    
+
     Return ONLY the enhanced text in the same language, nothing else.""",
-    
-    "technical": """You are a technical writing specialist. Take the following raw transcribed text and enhance it to be precise, technical, and clear.
+    "technical": """You are a technical writing specialist. Take the following raw transcribed text and enhance it to be precise, technical, and clear.  # noqa: E501
     - Fix grammar and punctuation
     - Remove filler words (um, uh, like, you know)
     - Use appropriate technical terminology for the language
@@ -36,12 +34,11 @@ ENHANCEMENT_PROMPTS = {
     - Structure for technical audience
     - Keep the original meaning intact
     - PRESERVE THE ORIGINAL LANGUAGE - DO NOT TRANSLATE
-    
+
     Raw text: {text}
-    
+
     Return ONLY the enhanced text in the same language, nothing else.""",
-    
-    "concise": """You are a concise writing specialist. Take the following raw transcribed text and make it brief, clear, and to the point.
+    "concise": """You are a concise writing specialist. Take the following raw transcribed text and make it brief, clear, and to the point.  # noqa: E501
     - Fix grammar and punctuation
     - Remove filler words (um, uh, like, you know)
     - Eliminate redundancy
@@ -49,12 +46,11 @@ ENHANCEMENT_PROMPTS = {
     - Keep only essential information
     - Keep the original meaning intact
     - PRESERVE THE ORIGINAL LANGUAGE - DO NOT TRANSLATE
-    
+
     Raw text: {text}
-    
+
     Return ONLY the enhanced text in the same language, nothing else.""",
-    
-    "creative": """You are a creative writing assistant. Take the following raw transcribed text and enhance it to be engaging, creative, and interesting.
+    "creative": """You are a creative writing assistant. Take the following raw transcribed text and enhance it to be engaging, creative, and interesting.  # noqa: E501
     - Fix grammar and punctuation
     - Remove filler words (um, uh, like, you know)
     - Add engaging language appropriate for the culture
@@ -62,35 +58,32 @@ ENHANCEMENT_PROMPTS = {
     - Make it more interesting
     - Keep the original meaning intact
     - PRESERVE THE ORIGINAL LANGUAGE - DO NOT TRANSLATE
-    
+
     Raw text: {text}
-    
+
     Return ONLY the enhanced text in the same language, nothing else.""",
 }
 
 COMMAND_PROMPTS = {
-    "email": """Convert the following text into a professional email. Include appropriate greeting, body, and closing.
-    
+    "email": """Convert the following text into a professional email. Include appropriate greeting, body, and closing.  # noqa: E501
+
     Content: {text}
-    
+
     Return ONLY the formatted email, nothing else.""",
-    
     "bullet_points": """Convert the following text into a clear, concise bullet point list.
-    
+
     Content: {text}
-    
+
     Return ONLY the bullet points, nothing else.""",
-    
     "summary": """Create a brief summary of the following text in 2-3 sentences.
-    
+
     Content: {text}
-    
+
     Return ONLY the summary, nothing else.""",
-    
     "code_comment": """Convert the following text into a clear code comment.
-    
+
     Content: {text}
-    
+
     Return ONLY the code comment, nothing else.""",
 }
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Troubleshooting - Voxylis Docs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%99%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+<style>
+:root { --bg: #070a14; --panel: rgba(255,255,255,.04); --border: rgba(255,255,255,.09);
+--text: #eef1ff; --muted: #9aa3c7; --accent: #7c6cff; --accent2: #22d3ee; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--text);
+background: radial-gradient(900px 500px at 15% -5%, rgba(124,108,255,.22), transparent 60%),
+radial-gradient(800px 500px at 90% 10%, rgba(34,211,238,.14), transparent 60%), var(--bg);
+min-height: 100vh; }
+.layout { display: flex; min-height: 100vh; }
+.side { width: 250px; flex-shrink: 0; padding: 1.5rem 1rem; border-right: 1px solid var(--border);
+background: rgba(255,255,255,.025); position: sticky; top: 0; height: 100vh; }
+.side h3 { margin: 0 0 1rem; }
+.side a { display: block; padding: .55rem .8rem; border-radius: 10px; color: var(--muted);
+text-decoration: none; font-size: .93rem; }
+.side a:hover { background: var(--panel); color: var(--text); }
+.side a.on { background: linear-gradient(135deg, rgba(124,108,255,.25), rgba(34,211,238,.15));
+color: var(--text); border: 1px solid rgba(124,108,255,.35); }
+.main { flex: 1; padding: 2.5rem; max-width: 780px; }
+.main h1 { margin-top: 0; }
+.lead { color: var(--muted); font-size: 1.05rem; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1.4rem; }
+code { background: rgba(124,108,255,.16); border: 1px solid rgba(124,108,255,.3);
+padding: .1rem .45rem; border-radius: 7px; font-size: .88em; }
+li { margin-bottom: .5rem; line-height: 1.55; }
+.pager { display: flex; justify-content: space-between; margin-top: 2rem; }
+.pager a { color: var(--accent2); text-decoration: none; }
+.top { margin-bottom: 1.5rem; } .top a { color: var(--muted); text-decoration: none; font-size: .9rem; }
+@media (max-width: 760px) { .layout { flex-direction: column; } .side { width: 100%; height: auto; position: static; } }
+</style></head>
+<body><div class="layout">
+<nav class="side"><h3>Voxylis Docs</h3><a href="installation.html">Installation</a><a href="configuration.html">Configuration</a><a href="voice-commands.html">Voice Commands</a><a href="qa-feature.html">Q and A Feature</a><a href="troubleshooting.html" class="on">Troubleshooting</a><a href="tips-tricks.html">Tips and Tricks</a><br /><a href="../dashboard.html">Open dashboard</a></nav>
+<main class="main"><div class="top"><a href="../index.html">Voxylis</a> / Docs / Troubleshooting</div>
+<h1>Troubleshooting</h1><p class="lead">Fix the most common issues.</p><div class="card"><ul><li><b>No API key warning</b> - add <code>groq_api_key</code> to <code>config/settings.json</code>.</li><li><b>Hotkey does nothing</b> - run as administrator so the global listener can hook key events.</li><li><b>No microphone input</b> - set <code>audio_device</code> to your mic index.</li><li><b>Empty transcription</b> - recordings under 1 second or silence are skipped automatically.</li></ul></div>
+<div class="pager"><span><a href="qa-feature.html">&larr; Q and A Feature</a></span><span><a href="tips-tricks.html">Tips and Tricks &rarr;</a></span></div></main>
+</div></body></html>

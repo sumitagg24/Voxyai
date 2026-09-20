@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — Voxylis</title>
+<meta name="description" content="Sign in or create a Voxylis account to start voice typing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--bg2:#fafafa;--ink:#1e1e1e;--ink2:#3a3a3a;--muted:#858585;--line:#1e1e1e;--line2:#e5e5e5;--pink:#f386a1;--pink-d:#e06080;--teal:#9db8bd;--green:#03aa5c;--dark:#1e1e1e;--host:'Host Grotesk','Inter',Arial,sans-serif;--mono:'JetBrains Mono','SF Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
+body{font-family:var(--host);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
+a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
+::selection{background:var(--pink);color:var(--ink)}
+.auth-layout{display:grid;grid-template-columns:1fr 1fr;min-height:100vh}
+@media(max-width:900px){.auth-layout{grid-template-columns:1fr}.auth-left{display:none}}
+.auth-left{background:var(--dark);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;position:relative;overflow:hidden}
+.auth-left::before{content:'';position:absolute;top:-200px;right:-200px;width:500px;height:500px;border-radius:50%;background:var(--pink);opacity:.12}
+.auth-left::after{content:'';position:absolute;bottom:-150px;left:-150px;width:400px;height:400px;border-radius:50%;background:var(--teal);opacity:.1}
+.auth-left .brand{position:relative;z-index:1;text-align:center}
+.auth-left .glyph{width:72px;height:72px;border:2px solid rgba(255,255,255,.3);border-radius:50%;display:grid;place-items:center;font-size:32px;font-weight:700;margin:0 auto 32px}
+.auth-left h2{font-size:36px;font-weight:700;letter-spacing:-0.03em;line-height:1.1}
+.auth-left p{margin-top:20px;font-size:16px;color:rgba(255,255,255,.6);max-width:320px;line-height:1.6}
+.auth-right{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 40px}
+@media(max-width:900px){.auth-right{padding:40px 24px}}
+.auth-box{width:100%;max-width:400px}
+.auth-tabs{display:flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-bottom:40px}
+.auth-tab{flex:1;padding:12px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;border:none;background:var(--bg);color:var(--ink2);transition:all .15s;font-family:var(--host)}
+.auth-tab.active{background:var(--ink);color:#fff}
+.auth-tab:not(.active):hover{background:var(--bg2)}
+.auth-form{display:none}
+.auth-form.active{display:block}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.form-group input{width:100%;padding:12px 16px;border:1px solid var(--line2);border-radius:6px;font-family:var(--host);font-size:15px;color:var(--ink);background:var(--bg);transition:border-color .15s;outline:none}
+.form-group input:focus{border-color:var(--ink)}
+.auth-btn{width:100%;padding:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:15px;font-weight:600;transition:all .15s;cursor:pointer;font-family:var(--host);margin-top:8px}
+.auth-btn:hover{background:#000;border-color:#000}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.msg-error{padding:12px;border:1px solid var(--pink-d);border-radius:6px;background:rgba(240,96,128,.06);color:var(--pink-d);font-size:13px;font-weight:500;margin-top:12px;display:none}
+.auth-footer{margin-top:32px;text-align:center;font-size:14px;color:var(--muted)}
+.auth-footer a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;font-weight:500}
+.auth-footer a:hover{opacity:.7}
+.divider-row{display:flex;align-items:center;gap:16px;margin:24px 0}
+.divider-row::before,.divider-row::after{content:'';flex:1;height:1px;background:var(--line2)}
+.divider-row span{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<div class="auth-layout">
+  <div class="auth-left">
+    <div class="brand">
+      <div class="glyph">V</div>
+      <h2>Voice that works like code.</h2>
+      <p>Sign in to access your transcriptions, settings, and upgrade your plan.</p>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Sign In</button>
+        <button class="auth-tab" data-tab="signup">Sign Up</button>
+      </div>
+
+      <form class="auth-form active" id="login-form" autocomplete="on">
+        <div class="form-group">
+          <label for="login-identifier">Email or Phone</label>
+          <input type="text" id="login-identifier" placeholder="you@example.com" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Your password" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="auth-btn" id="login-btn">Sign In</button>
+        <div class="msg-error" id="login-error"></div>
+      </form>
+
+      <form class="auth-form" id="signup-form" autocomplete="on">
+        <div class="form-group">
+          <label for="signup-name">Full Name</label>
+          <input type="text" id="signup-name" placeholder="Your name" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label for="signup-identifier">Email or Phone</label>
+          <input type="text" id="signup-identifier" placeholder="you@example.com" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
+        </div>
+        <button type="submit" class="auth-btn" id="signup-btn">Create Account</button>
+        <div class="msg-error" id="signup-error"></div>
+      </form>
+
+      <div class="auth-footer">
+        <div class="divider-row"><span>or</span></div>
+        <a href="/">Back to home</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab + '-form').classList.add('active');
+    document.querySelectorAll('.msg-error').forEach(e => e.style.display = 'none');
+  });
+});
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// Login
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  document.getElementById('login-error').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        identifier: document.getElementById('login-identifier').value,
+        password: document.getElementById('login-password').value
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.session_id) {
+      localStorage.setItem('session_id', data.session_id);
+      window.location.href = '/dashboard';
+    } else {
+      showError('login-error', data.message || 'Invalid credentials. Please try again.');
+    }
+  } catch (err) {
+    showError('login-error', 'Network error. Please try again later.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+});
+
+// Signup
+document.getElementById('signup-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('signup-btn');
+  btn.disabled = true;
+  btn.textContent = 'Creating account...';
+  document.getElementById('signup-error').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('signup-name').value,
+        identifier: document.getElementById('signup-identifier').value,
+        password: document.getElementById('signup-password').value
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.session_id) {
+      localStorage.setItem('session_id', data.session_id);
+      window.location.href = '/dashboard';
+    } else {
+      showError('signup-error', data.message || 'Could not create account. Please try again.');
+    }
+  } catch (err) {
+    showError('signup-error', 'Network error. Please try again later.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+});
+</script>
+</body>
+</html>

@@ -49,7 +49,7 @@ LOGS_DIR = "logs"
 
 # Timeouts
 TRANSCRIPTION_TIMEOUT = 120  # 2 minutes for long audio
-ENHANCEMENT_TIMEOUT = 60     # 1 minute for long text
+ENHANCEMENT_TIMEOUT = 60  # 1 minute for long text
 INJECTION_TIMEOUT = 5
 
 # Retry settings

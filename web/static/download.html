@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download Voxylis — Voice to Text for Every Platform</title>
+<meta name="description" content="Download Voxylis for Windows, macOS, or Linux. Voice-to-text transcription in 99+ languages with AI enhancement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff;
+  --bg2:#fafafa;
+  --ink:#1e1e1e;
+  --ink2:#3a3a3a;
+  --muted:#858585;
+  --line:#1e1e1e;
+  --line2:#e5e5e5;
+  --pink:#f386a1;
+  --pink-d:#e06080;
+  --teal:#9db8bd;
+  --teal-d:#7d9aa0;
+  --green:#03aa5c;
+  --dark:#1e1e1e;
+  --dark2:#2a2a2a;
+  --host:'Host Grotesk','Host Grotesk Placeholder','Inter','Helvetica Neue',Arial,sans-serif;
+  --mono:'JetBrains Mono','JetBrains Mono Placeholder','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  --space:'Space Mono','Space Mono Placeholder',ui-monospace,Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--host);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+.wrap{width:100%;max-width:1400px;margin:0 auto;padding:0 48px}
+@media(max-width:900px){.wrap{padding:0 20px}}
+::selection{background:var(--pink);color:var(--ink)}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:50}
+@media(max-width:900px){.nav{padding:16px 20px}}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-0.02em}
+.nav-brand .glyph{width:28px;height:28px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:14px}
+.nav-links{display:flex;align-items:center;gap:32px;font-size:15px;font-weight:500}
+.nav-links a{position:relative;opacity:.85;transition:opacity .15s}
+.nav-links a:hover{opacity:1}
+.nav-right{display:flex;align-items:center;gap:24px;font-size:15px;font-weight:500}
+.nav-right a.signin{opacity:.85}
+.nav-right a.signin:hover{opacity:1}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:14px;font-weight:600;transition:all .15s;line-height:1}
+.btn:hover{background:#000;border-color:#000}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:#f0f0f0}
+.btn.plain{border:none;background:transparent;color:inherit;padding:0;text-decoration:underline;text-underline-offset:4px;border-radius:0;font-weight:500}
+.btn.plain:hover{opacity:.7}
+.btn.download-lg{padding:16px 32px;font-size:16px;border-radius:8px;gap:10px}
+@media(max-width:900px){.nav-links,.nav-right{display:none}}
+
+/* HERO */
+.hero{padding:100px 0 60px;text-align:center;border-bottom:1px solid var(--line2)}
+.hero h1{font-size:clamp(42px,7vw,96px);font-weight:700;line-height:.95;letter-spacing:-0.04em}
+.hero p{margin-top:24px;font-size:20px;color:var(--ink2);max-width:480px;margin-left:auto;margin-right:auto}
+
+/* PLATFORM ICONS */
+.plat-icon{width:80px;height:80px;border-radius:16px;display:grid;place-items:center;margin:0 auto 24px;border:1px solid var(--line2);background:var(--bg2)}
+.plat-icon svg{width:40px;height:40px}
+
+/* DOWNLOAD CARDS */
+.dl-section{padding:80px 0}
+.dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:900px){.dl-grid{grid-template-columns:1fr}}
+.dl-card{border:1px solid var(--line2);border-radius:12px;padding:40px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:transform .2s,box-shadow .2s,border-color .2s}
+.dl-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.08)}
+.dl-card.highlighted{border:2px solid var(--pink);box-shadow:0 8px 32px rgba(243,134,161,.15)}
+.dl-card h3{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
+.dl-card .version{font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:4px}
+.dl-card .size{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:24px}
+.dl-card .btn{width:100%;justify-content:center;margin-bottom:24px}
+.dl-card .features{text-align:left;width:100%;display:flex;flex-direction:column;gap:12px}
+.dl-card .features li{list-style:none;font-size:14px;color:var(--ink2);display:flex;align-items:flex-start;gap:10px}
+.dl-card .features li::before{content:"✓";color:var(--green);font-weight:700;flex-shrink:0}
+.os-badge{display:inline-block;font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--pink);color:var(--pink-d);border-radius:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:20px}
+
+/* SYSTEM REQUIREMENTS */
+.req-section{padding:80px 0;border-top:1px solid var(--line2)}
+.req-section h2{font-size:clamp(28px,4vw,42px);font-weight:700;letter-spacing:-0.03em;margin-bottom:48px;text-align:center}
+.req-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:900px){.req-grid{grid-template-columns:1fr}}
+.req-card{border:1px solid var(--line2);border-radius:8px;padding:28px}
+.req-card h4{font-size:16px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.req-card ul{display:flex;flex-direction:column;gap:10px}
+.req-card ul li{font-size:14px;color:var(--ink2);display:flex;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--line2)}
+.req-card ul li:last-child{border-bottom:none;padding-bottom:0}
+.req-card ul li span:first-child{font-weight:500}
+.req-card ul li span:last-child{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* FOOTER CTA */
+.footer-cta{padding:80px 0;text-align:center;border-top:1px solid var(--line2)}
+.footer-cta h2{font-size:clamp(28px,4vw,48px);font-weight:700;letter-spacing:-0.03em;margin-bottom:16px}
+.footer-cta p{font-size:17px;color:var(--ink2);margin-bottom:32px}
+
+/* FOOTER */
+.footer{background:#000;color:#fff;padding:64px 0 40px}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;flex-wrap:wrap;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.12)}
+@media(max-width:700px){.footer-top{flex-direction:column;gap:32px}}
+.footer-brand{font-size:48px;font-weight:700;letter-spacing:-0.03em}
+.footer-nav{display:flex;gap:48px;flex-wrap:wrap}
+.footer-nav .col h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:16px}
+.footer-nav .col a{display:block;padding:6px 0;font-size:14px;opacity:.8;transition:opacity .15s}
+.footer-nav .col a:hover{opacity:1}
+.footer-bot{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-top:32px;font-family:var(--mono);font-size:12px;opacity:.5;flex-wrap:wrap}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease}
+.reveal.visible{opacity:1;transform:none}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></div>
+  <div class="nav-links">
+    <a href="/#features">Features</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/docs/installation">Docs</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/blog">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="/auth" class="signin">Sign In</a>
+    <a href="/download" class="btn">Download App</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <h1>Download Voxylis</h1>
+    <p>Voice to text for every platform. Speak naturally, get clean text in seconds.</p>
+  </div>
+</header>
+
+<!-- DOWNLOAD CARDS -->
+<section class="dl-section">
+  <div class="wrap">
+    <div class="dl-grid" id="dlGrid">
+
+      <!-- WINDOWS -->
+      <div class="dl-card" id="card-windows">
+        <div class="plat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5L10.5 4.5V11.5H3V5.5Z"/><path d="M10.5 4.5L21 3V11.5H10.5V4.5Z"/><path d="M3 12.5H10.5V19.5L3 18.5V12.5Z"/><path d="M10.5 12.5H21V21L10.5 19.5V12.5Z"/></svg>
+        </div>
+        <h3>Windows</h3>
+        <div class="version">Windows 10+</div>
+        <div class="size">~22 MB</div>
+        <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.exe" class="btn download-lg" onclick="trackDownload('windows')">⬇ Download for Windows</a>
+        <ul class="features">
+          <li>System-wide hotkey</li>
+          <li>Auto-start on boot</li>
+          <li>Tray icon</li>
+        </ul>
+      </div>
+
+      <!-- macOS -->
+      <div class="dl-card" id="card-macos">
+        <div class="plat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 16.56 2.93 11.3 4.7 7.72C5.57 5.94 7.36 4.86 9.28 4.84C10.56 4.81 11.78 5.72 12.57 5.72C13.36 5.72 14.85 4.62 16.4 4.8C17.06 4.83 18.84 5.06 19.97 6.77C19.88 6.83 17.67 8.12 17.69 10.86C17.72 14.13 20.55 15.16 20.58 15.17C20.55 15.26 20.11 16.78 18.71 19.5ZM13 3.5C13.73 2.67 14.94 2.04 15.94 2C16.07 3.17 15.6 4.35 14.9 5.19C14.21 6.04 13.07 6.7 11.95 6.61C11.8 5.46 12.36 4.26 13 3.5Z"/></svg>
+        </div>
+        <h3>macOS</h3>
+        <div class="version">macOS 12+</div>
+        <div class="size">~25 MB</div>
+        <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.dmg" class="btn download-lg" onclick="trackDownload('macos')">⬇ Download for macOS</a>
+        <ul class="features">
+          <li>Menu bar integration</li>
+          <li>Native notifications</li>
+          <li>Universal binary</li>
+        </ul>
+      </div>
+
+      <!-- LINUX -->
+      <div class="dl-card" id="card-linux">
+        <div class="plat-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M5.5 13C4 15 4 18 5.5 20.5C7 19 8.5 17.5 10 17.5H14C15.5 17.5 17 19 18.5 20.5C20 18 20 15 18.5 13"/><circle cx="9.5" cy="7.5" r="0.8" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.5" r="0.8" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <h3>Linux</h3>
+        <div class="version">Ubuntu 20.04+ / Fedora / Arch</div>
+        <div class="size">~20 MB</div>
+        <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.AppImage" class="btn download-lg" onclick="trackDownload('linux')">⬇ Download for Linux</a>
+        <ul class="features">
+          <li>AppImage (no install)</li>
+          <li>X11 + Wayland</li>
+          <li>CLI launcher</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SYSTEM REQUIREMENTS -->
+<section class="req-section">
+  <div class="wrap">
+    <h2>System Requirements</h2>
+    <div class="req-grid">
+      <div class="req-card">
+        <h4>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Windows
+        </h4>
+        <ul>
+          <li><span>OS</span><span>Windows 10 / 11</span></li>
+          <li><span>RAM</span><span>4 GB minimum</span></li>
+          <li><span>Disk</span><span>100 MB free</span></li>
+          <li><span>Audio</span><span>Any mic device</span></li>
+        </ul>
+      </div>
+      <div class="req-card">
+        <h4>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18.71 19.5C17.88 20.74 17 21.95 15.66 21.97C14.32 22 13.89 21.18 12.37 21.18C10.84 21.18 10.37 21.95 9.1 22C7.79 22.05 6.8 20.68 5.96 19.47C4.25 16.56 2.93 11.3 4.7 7.72C5.57 5.94 7.36 4.86 9.28 4.84C10.56 4.81 11.78 5.72 12.57 5.72C13.36 5.72 14.85 4.62 16.4 4.8C17.06 4.83 18.84 5.06 19.97 6.77C19.88 6.83 17.67 8.12 17.69 10.86C17.72 14.13 20.55 15.16 20.58 15.17C20.55 15.26 20.11 16.78 18.71 19.5Z"/></svg>
+          macOS
+        </h4>
+        <ul>
+          <li><span>OS</span><span>macOS 12 (Monterey)+</span></li>
+          <li><span>RAM</span><span>4 GB minimum</span></li>
+          <li><span>Disk</span><span>120 MB free</span></li>
+          <li><span>Audio</span><span>Any mic device</span></li>
+        </ul>
+      </div>
+      <div class="req-card">
+        <h4>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="5"/><path d="M5.5 13C4 15 4 18 5.5 20.5C7 19 8.5 17.5 10 17.5H14C15.5 17.5 17 19 18.5 20.5C20 18 20 15 18.5 13"/></svg>
+          Linux
+        </h4>
+        <ul>
+          <li><span>OS</span><span>Ubuntu 20.04+ / Fedora 36+</span></li>
+          <li><span>RAM</span><span>2 GB minimum</span></li>
+          <li><span>Disk</span><span>80 MB free</span></li>
+          <li><span>Display</span><span>X11 or Wayland</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER CTA -->
+<section class="footer-cta">
+  <div class="wrap">
+    <h2>Prefer the web?</h2>
+    <p>Try the dashboard directly in your browser — no download needed.</p>
+    <a href="/dashboard" class="btn download-lg">Open Dashboard →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">Voxylis</div>
+      <div class="footer-nav">
+        <div class="col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
+        <div class="col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
+        <div class="col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
+      </div>
+    </div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+  </div>
+</footer>
+
+<script>
+// OS auto-detection: highlight matching card
+(function(){
+  var ua = navigator.userAgent || '';
+  var pl = navigator.platform || '';
+  var isWin  = pl.indexOf('Win') > -1 || ua.indexOf('Windows') > -1;
+  var isMac  = pl.indexOf('Mac') > -1 || ua.indexOf('Mac') > -1;
+  var isLinux = ua.indexOf('Linux') > -1 && !isAndroid(ua);
+  var isAndroid = ua.indexOf('Android') > -1;
+
+  var cardId = null;
+  if (isWin)  cardId = 'card-windows';
+  else if (isMac)  cardId = 'card-macos';
+  else if (isLinux) cardId = 'card-linux';
+
+  if (cardId) {
+    var card = document.getElementById(cardId);
+    if (card) {
+      card.classList.add('highlighted');
+      // Insert "Your OS" badge
+      var badge = document.createElement('div');
+      badge.className = 'os-badge';
+      badge.textContent = 'Your OS';
+      card.insertBefore(badge, card.querySelector('.version'));
+    }
+  }
+})();
+
+// Track download click
+function trackDownload(platform) {
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/download/track', JSON.stringify({ platform: platform }));
+    } else {
+      fetch('/api/download/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: platform })
+      });
+    }
+  } catch(e) {}
+}
+
+// Scroll reveal
+var revealEls = document.querySelectorAll('.dl-card, .req-card, .footer-cta');
+var io = new IntersectionObserver(function(entries) {
+  entries.forEach(function(e) {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      io.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+revealEls.forEach(function(el) {
+  el.classList.add('reveal');
+  io.observe(el);
+});
+</script>
+</body>
+</html>

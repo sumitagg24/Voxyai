@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voxylis Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%99%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" />
+    <link rel="stylesheet" href="/static/css/dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h3>🎙️ Voxylis</h3>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="overview"><span class="icon">📊</span> Overview</a>
+                <a href="#" class="nav-item" data-section="history"><span class="icon">📝</span> History</a>
+                <a href="#" class="nav-item" data-section="qa"><span class="icon">🤖</span> Q&amp;A</a>
+                <a href="#" class="nav-item" data-section="settings"><span class="icon">⚙️</span> Settings</a>
+                <a href="#" class="nav-item" data-section="hotkeys"><span class="icon">⌨️</span> Hotkeys</a>
+                <a href="#" class="nav-item" data-section="wakeword"><span class="icon">🗣️</span> Wake Word</a>
+                <a href="#" class="nav-item" data-section="subscription"><span class="icon">💳</span> Plan</a>
+                <a href="docs/installation" class="nav-link"><span class="icon">📖</span> Docs</a>
+            </nav>
+        </aside>
+
+        <main class="dashboard-content">
+            <section id="overview" class="section active">
+                <div class="agent-stage">
+                    <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S1 · Overview</div>
+                    <div class="status-pill" id="agentStatus"><span class="dot"></span><span id="agentStatusText">Ready — tap the orb to talk</span></div>
+                    <div class="orb-wrap" id="orbWrap">
+                        <span class="orb-ring"></span><span class="orb-ring"></span>
+                        <button class="orb" id="micOrb" aria-label="Talk to Voxylis">🎙️</button>
+                    </div>
+                    <canvas class="wave-canvas" id="waveCanvas" width="560" height="84"></canvas>
+                    <p class="agent-hint" id="agentHint">Browser mic + live transcript. For system-wide dictation use the desktop hotkey <b>Win+Shift</b>. <span id="serverStatus"></span></p>
+                    <div class="mode-chips" id="modeChips">
+                        <button class="chip active" data-mode="formal" type="button">Formal</button>
+                        <button class="chip" data-mode="casual" type="button">Casual</button>
+                        <button class="chip" data-mode="technical" type="button">Technical</button>
+                        <button class="chip" data-mode="concise" type="button">Concise</button>
+                        <button class="chip" data-mode="creative" type="button">Creative</button>
+                    </div>
+                    <div class="transcript-stream" id="transcriptStream"></div>
+                    <div class="agent-actions">
+                        <button class="btn btn-primary" id="askTranscriptBtn" type="button" disabled>Ask about this</button>
+                        <button class="btn btn-secondary" id="copyTranscriptBtn" type="button" disabled>Copy</button>
+                    </div>
+                </div>
+                <h2>Overview</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-info">
+                            <h3 class="stat-value" id="statTranscriptions">–</h3>
+                            <p class="stat-label">Transcriptions</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-info">
+                            <h3 class="stat-value" id="statTime">–</h3>
+                            <p class="stat-label">Total time</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🌍</div>
+                        <div class="stat-info">
+                            <h3 class="stat-value" id="statLanguages">–</h3>
+                            <p class="stat-label">Languages</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✨</div>
+                        <div class="stat-info">
+                            <h3 class="stat-value" id="statEnhancements">–</h3>
+                            <p class="stat-label">Enhancements</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Weekly activity</h3>
+                        <canvas id="usageChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Languages</h3>
+                        <canvas id="languagesChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="history" class="section">
+                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S2 · History</div>
+                <h2>Transcription History</h2>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input class="search-input" type="search" placeholder="Search transcriptions…" />
+                    <select class="filter-select">
+                        <option value="">All languages</option>
+                        <option value="english">English</option>
+                        <option value="french">French</option>
+                        <option value="spanish">Spanish</option>
+                    </select>
+                </div>
+                <div class="history-list" id="historyList"></div>
+            </section>
+
+            <section id="qa" class="section">
+                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S3 · Q&A</div>
+                <h2>Ask Voxylis</h2>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label for="qaInput">Your question</label>
+                        <textarea id="qaInput" rows="3" placeholder="Ask anything about your transcriptions…"></textarea>
+                    </div>
+                    <button class="btn btn-primary" id="qaAskBtn">Ask</button>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Answer</label>
+                        <div class="history-list"><div class="history-item"><p class="history-text" id="qaAnswer">—</p></div></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="settings" class="section">
+                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S4 · Settings</div>
+                <h2>Settings</h2>
+                <form class="settings-form" id="settingsForm" onsubmit="return false;">
+                    <div class="form-group">
+                        <label for="themeSelect">Theme</label>
+                        <select id="themeSelect">
+                            <option value="light" selected>Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="languageSelect">Language</label>
+                        <select id="languageSelect">
+                            <option value="en">English</option>
+                            <option value="auto">Auto-detect</option>
+                            <option value="es">Spanish</option>
+                            <option value="fr">French</option>
+                            <option value="hi">Hindi</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="notificationsToggle" /> Notifications</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="soundToggle" /> Sound feedback</label>
+                    </div>
+                    <div class="form-group">
+                        <label><input type="checkbox" id="autoStartToggle" /> Start on boot</label>
+                    </div>
+                    <button class="btn btn-primary" id="settingsSaveBtn" type="button">Save settings</button>
+                </form>
+            </section>
+
+            <section id="hotkeys" class="section">
+                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S5 · Hotkeys</div>
+                <h2>Hotkeys</h2>
+                <div class="hotkeys-list" id="hotkeysList"></div>
+            </section>
+
+            <section id="wakeword" class="section">
+                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S6 · Wake Word</div>
+                <h2>Wake Word</h2>
+                <div class="wake-word-config">
+                    <div class="form-group">
+                        <label for="wakeWordInput">Wake word</label>
+                        <input type="text" id="wakeWordInput" value="Voxy" />
+                        <p class="help-text">Say this word to start recording hands-free.</p>
+                    </div>
+                    <button class="btn btn-primary" type="button">Save wake word</button>
+                </div>
+                <div class="wake-word-preview" style="margin-top: 1rem;">
+                    <h3>Try it</h3>
+                    <p id="wakeWordStatus">Ready to listen…</p>
+                    <button class="btn btn-primary" type="button">Test listening</button>
+                </div>
+            </section>
+
+            <section id="subscription" class="section">
+                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S7 · Plan</div>
+                <h2>Subscription</h2>
+                <div class="subscription-info">
+                    <div class="current-plan">
+                        <h3 id="planName">–</h3>
+                        <p class="renewal-date" id="planRenewal"></p>
+                        <button class="btn btn-secondary" type="button">Manage plan</button>
+                    </div>
+                    <div class="usage-stats">
+                        <h3>Usage</h3>
+                        <div class="usage-item"><span>Transcriptions</span><span id="usageCount">–</span></div>
+                        <div class="progress"><div class="progress-bar" id="usageBar" style="width: 0%"></div></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+    // Minimal notification shim (same API as main.js Notification)
+    window.Voxylis = window.Voxylis || {};
+    window.Voxylis.Notification = {
+        show(message, type = "info", duration = 3000) {
+            const el = document.createElement("div");
+            el.className = `notification notification-${type}`;
+            el.textContent = message;
+            el.style.cssText = `position:fixed;top:20px;right:20px;padding:15px 20px;color:#fff;border-radius:8px;z-index:10000;background:${type === "success" ? "#10b981" : type === "error" ? "#ef4444" : "#3b82f6"};`;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), duration);
+        },
+    };
+    </script>
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+    // Voice-agent stage: mic orb + live waveform + speech-to-text + Q&A.
+    (function () {
+        const orb = document.getElementById("micOrb");
+        const wrap = document.getElementById("orbWrap");
+        const pill = document.getElementById("agentStatus");
+        const pillText = document.getElementById("agentStatusText");
+        const canvas = document.getElementById("waveCanvas");
+        const ctx = canvas.getContext("2d");
+        const stream = document.getElementById("transcriptStream");
+        const askBtn = document.getElementById("askTranscriptBtn");
+        const copyBtn = document.getElementById("copyTranscriptBtn");
+        const notify = window.Voxylis.Notification;
+        let listening = false;
+        let audioCtx = null, analyser = null, micStream = null, rafId = null;
+        let recognizer = null, liveBubble = null, lastFinal = "";
+
+        function setStatus(mode, text) {
+            pill.classList.remove("listening", "processing");
+            if (mode) pill.classList.add(mode);
+            pillText.textContent = text;
+        }
+
+        function addBubble(text, who, live) {
+            const div = document.createElement("div");
+            div.className = "bubble " + who + (live ? " live" : "");
+            div.textContent = text;
+            stream.appendChild(div);
+            stream.scrollTop = stream.scrollHeight;
+            return div;
+        }
+
+        function drawWave(data) {
+            const W = canvas.width, H = canvas.height, mid = H / 2;
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = "#7c6cff";
+            const n = 64, bw = W / n;
+            for (let i = 0; i < n; i++) {
+                const v = data ? data[i] / 255 : 0.06 + 0.05 * Math.abs(Math.sin(Date.now() / 350 + i * 0.55));
+                const h = Math.max(3, v * H * 0.92);
+                const x = i * bw + bw * 0.2;
+                ctx.globalAlpha = 0.35 + 0.65 * (v || 0.1);
+                ctx.fillRect(x, mid - h / 2, bw * 0.6, h);
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        function loop() {
+            if (!listening) return;
+            if (analyser) {
+                const arr = new Uint8Array(analyser.frequencyBinCount);
+                analyser.getByteFrequencyData(arr);
+                drawWave(arr.slice(0, 64));
+            } else {
+                drawWave(null); // simulated idle motion
+            }
+            rafId = requestAnimationFrame(loop);
+        }
+
+        async function startAudio() {
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const src = audioCtx.createMediaStreamSource(micStream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;
+                src.connect(analyser);
+                return true;
+            } catch (e) {
+                analyser = null; // fall back to simulated waveform
+                return false;
+            }
+        }
+
+        function startSpeech() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                addBubble("Live transcription needs Chrome or Edge. The waveform still visualizes your mic — use Win+Shift on desktop for full dictation.", "agent");
+                return;
+            }
+            recognizer = new SR();
+            recognizer.continuous = true;
+            recognizer.interimResults = true;
+            recognizer.onresult = (ev) => {
+                let interim = "";
+                for (let i = ev.resultIndex; i < ev.results.length; i++) {
+                    const t = ev.results[i][0].transcript;
+                    if (ev.results[i].isFinal) {
+                        if (liveBubble) { liveBubble.remove(); liveBubble = null; }
+                        lastFinal = (lastFinal + " " + t).trim();
+                        addBubble(t.trim(), "user");
+                        askBtn.disabled = false;
+                        copyBtn.disabled = false;
+                    } else {
+                        interim += t;
+                    }
+                }
+                if (interim) {
+                    if (!liveBubble) liveBubble = addBubble("", "user", true);
+                    liveBubble.textContent = interim;
+                }
+            };
+            recognizer.onerror = () => {};
+            try { recognizer.start(); } catch (e) {}
+        }
+
+        function stopAll() {
+            listening = false;
+            cancelAnimationFrame(rafId);
+            if (recognizer) { try { recognizer.stop(); } catch (e) {} recognizer = null; }
+            if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
+            if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; analyser = null; }
+            if (liveBubble && !liveBubble.textContent) { liveBubble.remove(); }
+            liveBubble = null;
+            wrap.classList.remove("live");
+            drawWave(null);
+        }
+
+        orb.addEventListener("click", async () => {
+            if (listening) {
+                stopAll();
+                setStatus("", "Ready — tap the orb to talk");
+                return;
+            }
+            listening = true;
+            lastFinal = "";
+            wrap.classList.add("live");
+            setStatus("listening", "Listening… speak now (tap orb to stop)");
+            const micOk = await startAudio();
+            if (!micOk) notify.show("Mic blocked — showing simulated waveform", "error");
+            startSpeech();
+            loop();
+        });
+
+        copyBtn.addEventListener("click", () => {
+            if (!lastFinal) return;
+            navigator.clipboard.writeText(lastFinal);
+            notify.show("Transcript copied!", "success");
+        });
+
+        askBtn.addEventListener("click", async () => {
+            if (!lastFinal) return;
+            setStatus("processing", "Voxylis is thinking…");
+            try {
+                const res = await fetch("/api/qa", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question: lastFinal }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+                addBubble(data.answer, "agent");
+            } catch (e) {
+                addBubble("Sorry — I could not answer that: " + e.message, "agent");
+            }
+            setStatus(listening ? "listening" : "", listening ? "Listening… speak now (tap orb to stop)" : "Ready — tap the orb to talk");
+        });
+
+        document.getElementById("modeChips").addEventListener("click", async (e) => {
+            const chip = e.target.closest(".chip");
+            if (!chip) return;
+            document.querySelectorAll("#modeChips .chip").forEach((c) => c.classList.remove("active"));
+            chip.classList.add("active");
+            try {
+                await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ enhancement_mode: chip.dataset.mode }),
+                });
+                notify.show(`Enhancement mode: ${chip.dataset.mode}`, "success");
+            } catch (err) {
+                notify.show("Could not save mode", "error");
+            }
+        });
+
+        drawWave(null);
+    })();
+    </script>
+    <script>
+    // Live API wiring — populates the dashboard from the Flask backend.
+    (async function () {
+        const notify = window.Voxylis.Notification;
+        async function getJSON(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+            return res.json();
+        }
+
+        try {
+            const health = await getJSON("/api/health");
+            document.getElementById("serverStatus").textContent =
+                `● ${health.status} · v${health.version}`;
+        } catch (e) { console.warn("health check failed:", e); }
+
+        try {
+            const { stats } = await getJSON("/api/stats");
+            document.getElementById("statTranscriptions").textContent = stats.transcriptions;
+            document.getElementById("statTime").textContent = stats.totalTime;
+            document.getElementById("statLanguages").textContent = stats.languages;
+            document.getElementById("statEnhancements").textContent = stats.enhancements;
+        } catch (e) { console.warn("stats failed:", e); }
+
+        try {
+            const { history } = await getJSON("/api/history");
+            const list = document.getElementById("historyList");
+            list.innerHTML = history.map((h) => `
+                <div class="history-item">
+                    <div><p class="history-text"></p>
+                    <p class="history-meta">${h.language} · ${h.mode} · ${new Date(h.timestamp).toLocaleString()}</p></div>
+                    <div><button class="btn btn-icon" data-copy>⧉</button><button class="btn btn-icon" data-del>🗑</button></div>
+                </div>`).join("");
+            list.querySelectorAll(".history-item").forEach((item, i) => {
+                item.querySelector(".history-text").textContent = history[i].text;
+            });
+            // Re-bind copy/delete buttons (dashboard.js binds on DOMContentLoaded,
+            // which runs before this async block finishes).
+            list.querySelectorAll("[data-copy]").forEach((btn) => btn.addEventListener("click", () => {
+                navigator.clipboard.writeText(btn.closest(".history-item").querySelector(".history-text").textContent);
+                notify.show("Copied to clipboard!", "success");
+            }));
+            list.querySelectorAll("[data-del]").forEach((btn) => btn.addEventListener("click", () => {
+                btn.closest(".history-item").remove();
+                notify.show("Item deleted", "success");
+            }));
+        } catch (e) { console.warn("history failed:", e); }
+
+        try {
+            const { hotkeys } = await getJSON("/api/hotkeys");
+            document.getElementById("hotkeysList").innerHTML = Object.entries(hotkeys).map(([name, combo]) => `
+                <div class="hotkey-item">
+                    <div class="hotkey-info"><h3>${name}</h3><p>${combo}</p></div>
+                    <button class="btn btn-secondary" type="button">Change</button>
+                </div>`).join("");
+        } catch (e) { console.warn("hotkeys failed:", e); }
+
+        try {
+            const { settings } = await getJSON("/api/settings");
+            if (document.getElementById("themeSelect")) document.getElementById("themeSelect").value = settings.theme;
+            if (document.getElementById("languageSelect")) document.getElementById("languageSelect").value = settings.language;
+            if (document.getElementById("wakeWordInput")) document.getElementById("wakeWordInput").value = settings.wakeWord;
+        } catch (e) { console.warn("settings load failed:", e); }
+
+        try {
+            const { subscription } = await getJSON("/api/subscription");
+            document.getElementById("planName").textContent = `${subscription.plan} — $${subscription.price}/mo`;
+            document.getElementById("planRenewal").textContent = `Renews ${new Date(subscription.renewalDate).toLocaleDateString()}`;
+            document.getElementById("usageCount").textContent = `${subscription.usage.transcriptions} / ${subscription.usage.limit}`;
+            document.getElementById("usageBar").style.width = `${subscription.usage.percentage}%`;
+        } catch (e) { console.warn("subscription failed:", e); }
+
+        document.getElementById("settingsSaveBtn").addEventListener("click", async () => {
+            const payload = {
+                theme: document.getElementById("themeSelect").value,
+                language: document.getElementById("languageSelect").value,
+                notifications: document.getElementById("notificationsToggle").checked,
+                sound: document.getElementById("soundToggle").checked,
+                autoStart: document.getElementById("autoStartToggle").checked,
+            };
+            try {
+                const res = await fetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                notify.show("Settings saved successfully!", "success");
+            } catch (e) { notify.show("Failed to save settings", "error"); }
+        });
+
+        document.getElementById("qaAskBtn").addEventListener("click", async () => {
+            const q = document.getElementById("qaInput").value.trim();
+            if (!q) { notify.show("Type a question first", "error"); return; }
+            document.getElementById("qaAnswer").textContent = "Thinking…";
+            try {
+                const res = await fetch("/api/qa", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question: q }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                document.getElementById("qaAnswer").textContent = data.answer;
+            } catch (e) { document.getElementById("qaAnswer").textContent = `Error: ${e.message}`; }
+        });
+    })();
+    </script>
+</body>
+</html>

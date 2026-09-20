@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog Post — Voxylis</title>
+<meta name="description" content="Read the latest insights, tutorials, and updates from the Voxylis team.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff;
+  --bg2:#fafafa;
+  --ink:#1e1e1e;
+  --ink2:#3a3a3a;
+  --muted:#858585;
+  --line:#1e1e1e;
+  --line2:#e5e5e5;
+  --pink:#f386a1;
+  --pink-d:#e06080;
+  --teal:#9db8bd;
+  --teal-d:#7d9aa0;
+  --green:#03aa5c;
+  --dark:#1e1e1e;
+  --dark2:#2a2a2a;
+  --host:'Host Grotesk','Host Grotesk Placeholder','Inter','Helvetica Neue',Arial,sans-serif;
+  --mono:'JetBrains Mono','JetBrains Mono Placeholder','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  --space:'Space Mono','Space Mono Placeholder',ui-monospace,Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--host);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+.wrap{width:100%;max-width:1400px;margin:0 auto;padding:0 48px}
+@media(max-width:900px){.wrap{padding:0 20px}}
+::selection{background:var(--pink);color:var(--ink)}
+
+/* NAV */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:50}
+@media(max-width:900px){.nav{padding:16px 20px}}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-0.02em}
+.nav-brand .glyph{width:28px;height:28px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:14px}
+.nav-links{display:flex;align-items:center;gap:32px;font-size:15px;font-weight:500}
+.nav-links a{position:relative;opacity:.85;transition:opacity .15s}
+.nav-links a:hover{opacity:1}
+.nav-right{display:flex;align-items:center;gap:24px;font-size:15px;font-weight:500}
+.nav-right a.signin{opacity:.85}
+.nav-right a.signin:hover{opacity:1}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:14px;font-weight:600;transition:all .15s;line-height:1}
+.btn:hover{background:#000;border-color:#000}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:#f0f0f0}
+@media(max-width:900px){.nav-links,.nav-right{display:none}}
+
+/* POST LOADING / NOT FOUND */
+.post-loading,.post-notfound{max-width:720px;margin:0 auto;padding:120px 0 80px;text-align:center}
+.post-loading .spinner{width:32px;height:32px;border:3px solid var(--line2);border-top-color:var(--ink);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.post-loading p{color:var(--muted);font-size:15px}
+.post-notfound h2{font-size:36px;font-weight:700;margin-bottom:12px}
+.post-notfound p{color:var(--ink2);margin-bottom:32px;font-size:16px}
+
+/* POST */
+.post-header{max-width:720px;margin:0 auto;padding:80px 0 48px}
+.post-back{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--muted);margin-bottom:32px;transition:color .15s}
+.post-back:hover{color:var(--ink)}
+.post-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.post-meta .badge{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:4px 12px;border:1px solid var(--line2);border-radius:4px;color:var(--muted);font-weight:500}
+.post-meta .date{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.post-meta .read-time{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.post-header h1{font-size:clamp(32px,5vw,52px);font-weight:700;letter-spacing:-0.03em;line-height:1.1}
+
+/* POST BODY */
+.post-body{max-width:720px;margin:0 auto;padding:0 0 80px}
+.post-body h2{font-size:28px;font-weight:700;letter-spacing:-0.02em;margin:48px 0 20px;padding-top:24px;border-top:1px solid var(--line2)}
+.post-body p{font-size:17px;color:var(--ink2);line-height:1.75;margin-bottom:20px}
+.post-body strong{color:var(--ink);font-weight:700}
+.post-body ul,.post-body ol{margin:20px 0;padding-left:24px;font-size:17px;color:var(--ink2);line-height:1.75}
+.post-body li{margin-bottom:8px}
+.post-body blockquote{border-left:3px solid var(--pink);padding:16px 24px;margin:32px 0;background:var(--bg2);border-radius:0 8px 8px 0;font-style:italic;color:var(--ink2)}
+.post-body code{font-family:var(--mono);font-size:14px;background:var(--bg2);padding:2px 8px;border-radius:4px;border:1px solid var(--line2)}
+.post-body pre{background:var(--dark);color:#e8e8e8;padding:24px;border-radius:8px;overflow-x:auto;margin:24px 0;font-size:14px;line-height:1.6}
+.post-body pre code{background:none;border:none;padding:0;color:inherit}
+.post-body img{max-width:100%;border-radius:8px;margin:32px 0}
+.post-body a{color:var(--pink-d);text-decoration:underline;text-underline-offset:3px}
+.post-body a:hover{opacity:.8}
+
+/* SHARE */
+.share-row{max-width:720px;margin:0 auto;padding:32px 0;border-top:1px solid var(--line2);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.share-row span{font-size:14px;font-weight:600;color:var(--ink)}
+.share-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--line2);border-radius:6px;font-size:13px;font-weight:500;color:var(--ink2);background:var(--bg);transition:all .15s;cursor:pointer}
+.share-btn:hover{border-color:var(--ink);color:var(--ink);background:var(--bg2)}
+.share-btn.copied{border-color:var(--green);color:var(--green)}
+
+/* RELATED */
+.related{padding:80px 0;border-top:1px solid var(--line2)}
+.related h3{font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-0.02em;margin-bottom:40px}
+.related-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+@media(max-width:700px){.related-grid{grid-template-columns:1fr}}
+.related-card{border:1px solid var(--line2);border-radius:8px;padding:28px;transition:transform .15s,box-shadow .15s;display:flex;flex-direction:column;gap:12px}
+.related-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+.related-card .src{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.related-card h4{font-size:18px;font-weight:700;line-height:1.3}
+.related-card p{font-size:14px;color:var(--ink2);line-height:1.5}
+.related-card .more{font-family:var(--mono);font-size:13px;margin-top:auto;text-decoration:underline;text-underline-offset:3px}
+
+/* FOOTER */
+.footer{background:#000;color:#fff;padding:64px 0 40px}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;flex-wrap:wrap;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.12)}
+@media(max-width:700px){.footer-top{flex-direction:column;gap:32px}}
+.footer-brand{font-size:48px;font-weight:700;letter-spacing:-0.03em}
+.footer-nav{display:flex;gap:48px;flex-wrap:wrap}
+.footer-nav .col h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:16px}
+.footer-nav .col a{display:block;padding:6px 0;font-size:14px;opacity:.8;transition:opacity .15s}
+.footer-nav .col a:hover{opacity:1}
+.footer-bot{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-top:32px;font-family:var(--mono);font-size:12px;opacity:.5;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></div>
+  <div class="nav-links">
+    <a href="/#features">Features</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/docs/installation">Docs</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/blog">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="/auth" class="signin">Sign In</a>
+    <a href="/download" class="btn">Download App</a>
+  </div>
+</nav>
+
+<!-- POST CONTAINER -->
+<div id="postContainer">
+  <div class="post-loading" id="postLoading">
+    <div class="spinner"></div>
+    <p>Loading post…</p>
+  </div>
+  <div class="post-notfound" id="postNotFound" style="display:none">
+    <h2>Post not found</h2>
+    <p>The post you're looking for doesn't exist or has been removed.</p>
+    <a href="/blog" class="btn">← Back to Blog</a>
+  </div>
+</div>
+
+<!-- RELATED POSTS -->
+<section class="related" id="relatedSection" style="display:none">
+  <div class="wrap">
+    <h3>Related Posts</h3>
+    <div class="related-grid">
+      <a href="/blog/introducing-voxy-2-0" class="related-card">
+        <div class="src">Voxylis News</div>
+        <h4>Introducing Voxy 2.0</h4>
+        <p>Real-time transcription, calibrated confidence, and five AI enhancement modes in one clean release.</p>
+        <span class="more">Read more →</span>
+      </a>
+      <a href="/blog/bitterest-lesson-voice-ai" class="related-card">
+        <div class="src">Engineering</div>
+        <h4>The bitterest lesson in voice AI</h4>
+        <p>Accuracy comes from better pipelines and feedback loops — not just bigger models.</p>
+        <span class="more">Read more →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">Voxylis</div>
+      <div class="footer-nav">
+        <div class="col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
+        <div class="col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
+        <div class="col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
+      </div>
+    </div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+  </div>
+</footer>
+
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var slug = params.get('slug');
+  var container = document.getElementById('postContainer');
+  var loading = document.getElementById('postLoading');
+  var notFound = document.getElementById('postNotFound');
+  var related = document.getElementById('relatedSection');
+
+  if (!slug) {
+    loading.style.display = 'none';
+    notFound.style.display = 'block';
+    return;
+  }
+
+  // Fetch post from API
+  fetch('/api/blog/' + encodeURIComponent(slug))
+    .then(function(res) {
+      if (!res.ok) throw new Error('Not found');
+      return res.json();
+    })
+    .then(function(post) {
+      document.title = post.title + ' — Voxylis';
+      loading.style.display = 'none';
+
+      var html = '<article class="post-header wrap">';
+      html += '<a href="/blog" class="post-back">← Back to Blog</a>';
+      html += '<div class="post-meta">';
+      if (post.category) html += '<span class="badge">' + esc(post.category) + '</span>';
+      if (post.date) html += '<span class="date">' + esc(post.date) + '</span>';
+      if (post.read_time) html += '<span class="read-time">' + esc(post.read_time) + '</span>';
+      html += '</div>';
+      html += '<h1>' + esc(post.title) + '</h1>';
+      html += '</article>';
+
+      html += '<div class="post-body wrap">';
+      html += renderContent(post.content || '');
+      html += '</div>';
+
+      // Share row
+      html += '<div class="share-row wrap">';
+      html += '<span>Share this post</span>';
+      html += '<button class="share-btn" onclick="shareTwitter()">Twitter</button>';
+      html += '<button class="share-btn" onclick="shareLinkedIn()">LinkedIn</button>';
+      html += '<button class="share-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>';
+      html += '</div>';
+
+      loading.outerHTML = html;
+      related.style.display = 'block';
+    })
+    .catch(function() {
+      loading.style.display = 'none';
+      notFound.style.display = 'block';
+    });
+
+  function esc(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function renderContent(content) {
+    // Split into paragraphs and process
+    var lines = content.split('\n');
+    var out = [];
+    var inList = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        continue;
+      }
+
+      // Headers
+      if (line.match(/^## /)) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push('<h2>' + inlineFormat(line.replace(/^## /, '')) + '</h2>');
+        continue;
+      }
+      if (line.match(/^### /)) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push('<h3 style="font-size:22px;font-weight:700;margin:32px 0 16px">' + inlineFormat(line.replace(/^### /, '')) + '</h3>');
+        continue;
+      }
+
+      // List items
+      if (line.match(/^[-*] /)) {
+        if (!inList) { out.push('<ul>'); inList = true; }
+        out.push('<li>' + inlineFormat(line.replace(/^[-*] /, '')) + '</li>');
+        continue;
+      }
+
+      // Blockquote
+      if (line.match(/^> /)) {
+        if (inList) { out.push('</ul>'); inList = false; }
+        out.push('<blockquote>' + inlineFormat(line.replace(/^> /, '')) + '</blockquote>');
+        continue;
+      }
+
+      // Regular paragraph
+      if (inList) { out.push('</ul>'); inList = false; }
+      out.push('<p>' + inlineFormat(line) + '</p>');
+    }
+    if (inList) out.push('</ul>');
+    return out.join('\n');
+  }
+
+  function inlineFormat(text) {
+    // Bold: **text**
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Inline code: `text`
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Links: [text](url)
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    return text;
+  }
+})();
+
+// Share functions
+function shareTwitter() {
+  var title = document.title;
+  var url = window.location.href;
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(title) + '&url=' + encodeURIComponent(url), '_blank', 'width=550,height=420');
+}
+function shareLinkedIn() {
+  var url = window.location.href;
+  window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url), '_blank', 'width=550,height=420');
+}
+function copyLink() {
+  var btn = document.getElementById('copyBtn');
+  navigator.clipboard.writeText(window.location.href).then(function() {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = 'Copy Link';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(function() {
+    // Fallback
+    var ta = document.createElement('textarea');
+    ta.value = window.location.href;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = 'Copy Link';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+</body>
+</html>

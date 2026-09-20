@@ -2,8 +2,9 @@
 Event management system for Voxylis
 """
 
+import threading
 from typing import Callable, Dict, List
-from utils.logger import log_info, log_error, log_debug, log_warning
+from utils.logger import log_error, log_debug
 
 
 class EventManager:
@@ -12,59 +13,67 @@ class EventManager:
     def __init__(self):
         """Initialize event manager"""
         self.listeners: Dict[str, List[Callable]] = {}
+        self._lock = threading.Lock()
 
     def subscribe(self, event_name: str, callback: Callable) -> None:
-        if event_name not in self.listeners:
-            self.listeners[event_name] = []
+        with self._lock:
+            if event_name not in self.listeners:
+                self.listeners[event_name] = []
 
-        # Prevent duplicate subscriptions
-        if callback not in self.listeners[event_name]:
-            self.listeners[event_name].append(callback)
-            log_debug(f"Subscribed to event: {event_name}")
+            # Prevent duplicate subscriptions
+            if callback not in self.listeners[event_name]:
+                self.listeners[event_name].append(callback)
+                log_debug(f"Subscribed to event: {event_name}")
 
     def unsubscribe(self, event_name: str, callback: Callable) -> None:
         """
         Unsubscribe from an event
-        
+
         Args:
             event_name: Name of the event
             callback: Callback function to remove
         """
-        if event_name in self.listeners:
-            self.listeners[event_name].remove(callback)
-            log_debug(f"Unsubscribed from event: {event_name}")
+        with self._lock:
+            if event_name in self.listeners:
+                self.listeners[event_name].remove(callback)
+                log_debug(f"Unsubscribed from event: {event_name}")
 
     def emit(self, event_name: str, *args, **kwargs) -> None:
         """
         Emit an event
-        
+
         Args:
             event_name: Name of the event
             *args: Positional arguments to pass to callbacks
             **kwargs: Keyword arguments to pass to callbacks
         """
-        if event_name in self.listeners:
-            log_debug(f"Emitting event: {event_name}")
-            for callback in self.listeners[event_name]:
-                try:
-                    callback(*args, **kwargs)
-                except Exception as e:
-                    log_error(f"Error in event callback: {e}", exc_info=True)
+        with self._lock:
+            if event_name not in self.listeners:
+                return
+            callbacks = list(self.listeners[event_name])
+
+        log_debug(f"Emitting event: {event_name}")
+        for callback in callbacks:
+            try:
+                callback(*args, **kwargs)
+            except Exception as e:
+                log_error(f"Error in event callback: {e}", exc_info=True)
 
     def clear_listeners(self, event_name: str = None) -> None:
         """
         Clear event listeners
-        
+
         Args:
             event_name: Specific event to clear (None = clear all)
         """
-        if event_name:
-            if event_name in self.listeners:
-                self.listeners[event_name] = []
-                log_debug(f"Cleared listeners for event: {event_name}")
-        else:
-            self.listeners = {}
-            log_debug("Cleared all event listeners")
+        with self._lock:
+            if event_name:
+                if event_name in self.listeners:
+                    self.listeners[event_name] = []
+                    log_debug(f"Cleared listeners for event: {event_name}")
+            else:
+                self.listeners = {}
+                log_debug("Cleared all event listeners")
 
 
 # Global event manager instance

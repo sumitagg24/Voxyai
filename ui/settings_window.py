@@ -3,29 +3,67 @@ Settings window for Voxylis — all features in one place.
 """
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QLabel, QLineEdit, QComboBox, QPushButton, QCheckBox,
-    QTabWidget, QSpinBox, QDoubleSpinBox, QGroupBox, QTextEdit,
-    QTableWidget, QTableWidgetItem, QHeaderView, QSlider, QScrollArea
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QComboBox,
+    QPushButton,
+    QCheckBox,
+    QTabWidget,
+    QSpinBox,
+    QGroupBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QSlider,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
 from utils.logger import log_info
 
 LANGUAGES = [
-    ("Auto-detect", "auto"), ("English", "en"), ("Spanish", "es"),
-    ("French", "fr"), ("German", "de"), ("Italian", "it"),
-    ("Portuguese", "pt"), ("Japanese", "ja"), ("Chinese", "zh"),
-    ("Hindi", "hi"), ("Bengali", "bn"), ("Punjabi", "pa"),
-    ("Gujarati", "gu"), ("Tamil", "ta"), ("Telugu", "te"),
-    ("Malayalam", "ml"), ("Marathi", "mr"), ("Urdu", "ur"),
-    ("Hinglish", "hi-en"), ("Arabic", "ar"), ("Russian", "ru"),
-    ("Turkish", "tr"), ("Dutch", "nl"), ("Polish", "pl"),
-    ("Swedish", "sv"), ("Norwegian", "no"), ("Danish", "da"),
-    ("Finnish", "fi"), ("Czech", "cs"), ("Hungarian", "hu"),
-    ("Romanian", "ro"), ("Ukrainian", "uk"), ("Greek", "el"),
-    ("Hebrew", "he"), ("Thai", "th"), ("Vietnamese", "vi"),
-    ("Indonesian", "id"), ("Malay", "ms"), ("Tagalog", "tl"),
+    ("Auto-detect", "auto"),
+    ("English", "en"),
+    ("Spanish", "es"),
+    ("French", "fr"),
+    ("German", "de"),
+    ("Italian", "it"),
+    ("Portuguese", "pt"),
+    ("Japanese", "ja"),
+    ("Chinese", "zh"),
+    ("Hindi", "hi"),
+    ("Bengali", "bn"),
+    ("Punjabi", "pa"),
+    ("Gujarati", "gu"),
+    ("Tamil", "ta"),
+    ("Telugu", "te"),
+    ("Malayalam", "ml"),
+    ("Marathi", "mr"),
+    ("Urdu", "ur"),
+    ("Hinglish", "hi-en"),
+    ("Arabic", "ar"),
+    ("Russian", "ru"),
+    ("Turkish", "tr"),
+    ("Dutch", "nl"),
+    ("Polish", "pl"),
+    ("Swedish", "sv"),
+    ("Norwegian", "no"),
+    ("Danish", "da"),
+    ("Finnish", "fi"),
+    ("Czech", "cs"),
+    ("Hungarian", "hu"),
+    ("Romanian", "ro"),
+    ("Ukrainian", "uk"),
+    ("Greek", "el"),
+    ("Hebrew", "he"),
+    ("Thai", "th"),
+    ("Vietnamese", "vi"),
+    ("Indonesian", "id"),
+    ("Malay", "ms"),
+    ("Tagalog", "tl"),
 ]
 BUILTIN_MODES = ["formal", "casual", "technical", "concise", "creative"]
 
@@ -72,12 +110,12 @@ class SettingsWindow(QMainWindow):
         root.setContentsMargins(12, 12, 12, 12)
 
         tabs = QTabWidget()
-        tabs.addTab(self._tab_general(),    "General")
-        tabs.addTab(self._tab_hotkeys(),    "Hotkeys")
-        tabs.addTab(self._tab_ai(),         "AI & Language")
-        tabs.addTab(self._tab_sound(),      "Sound")
-        tabs.addTab(self._tab_profiles(),   "App Profiles")
-        tabs.addTab(self._tab_advanced(),   "Advanced")
+        tabs.addTab(self._tab_general(), "General")
+        tabs.addTab(self._tab_hotkeys(), "Hotkeys")
+        tabs.addTab(self._tab_ai(), "AI & Language")
+        tabs.addTab(self._tab_sound(), "Sound")
+        tabs.addTab(self._tab_profiles(), "App Profiles")
+        tabs.addTab(self._tab_advanced(), "Advanced")
         root.addWidget(tabs)
 
         btns = QHBoxLayout()
@@ -94,12 +132,18 @@ class SettingsWindow(QMainWindow):
     # ── General ───────────────────────────────────────────────────────────────
 
     def _tab_general(self) -> QWidget:
-        w = QWidget(); f = QFormLayout(w); f.setSpacing(10)
+        w = QWidget()
+        f = QFormLayout(w)
+        f.setSpacing(10)
 
-        self.auto_inject   = QCheckBox(); self.auto_inject.setChecked(self.config.get("auto_inject", True))
-        self.show_widget   = QCheckBox(); self.show_widget.setChecked(self.config.get("show_floating_widget", True))
-        self.startup_boot  = QCheckBox(); self.startup_boot.setChecked(self.config.get("startup_on_boot", False))
-        self.toggle_mode   = QCheckBox(); self.toggle_mode.setChecked(self.config.get("toggle_mode", False))
+        self.auto_inject = QCheckBox()
+        self.auto_inject.setChecked(self.config.get("auto_inject", True))
+        self.show_widget = QCheckBox()
+        self.show_widget.setChecked(self.config.get("show_floating_widget", True))
+        self.startup_boot = QCheckBox()
+        self.startup_boot.setChecked(self.config.get("startup_on_boot", False))
+        self.toggle_mode = QCheckBox()
+        self.toggle_mode.setChecked(self.config.get("toggle_mode", False))
 
         f.addRow("Auto-inject text after recording:", self.auto_inject)
         f.addRow("Show floating widget:", self.show_widget)
@@ -107,7 +151,9 @@ class SettingsWindow(QMainWindow):
 
         grp = QGroupBox("Recording Mode")
         gl = QVBoxLayout(grp)
-        self.toggle_mode.setText("Toggle mode  (press once = start, press again = stop)")
+        self.toggle_mode.setText(
+            "Toggle mode  (press once = start, press again = stop)"
+        )
         hint = QLabel("Default: hold hotkey to record, release to stop.")
         hint.setStyleSheet("color:#888; font-size:11px;")
         gl.addWidget(hint)
@@ -118,13 +164,17 @@ class SettingsWindow(QMainWindow):
     # ── Hotkeys ───────────────────────────────────────────────────────────────
 
     def _tab_hotkeys(self) -> QWidget:
-        w = QWidget(); layout = QVBoxLayout(w); layout.setSpacing(10)
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setSpacing(10)
 
         grp1 = QGroupBox("Main Recording Hotkey")
         f1 = QFormLayout(grp1)
         self.hotkey_input = QLineEdit(self.config.get("hotkey", "win+shift"))
-        hint1 = QLabel("Safe combos: win+shift, win+alt, win+ctrl, ctrl+alt+r\n"
-                        "Avoid: ctrl+c, ctrl+v, alt+tab, win+d")
+        hint1 = QLabel(
+            "Safe combos: win+shift, win+alt, win+ctrl, ctrl+alt+r\n"
+            "Avoid: ctrl+c, ctrl+v, alt+tab, win+d"
+        )
         hint1.setStyleSheet("color:#888; font-size:11px;")
         f1.addRow("Hotkey:", self.hotkey_input)
         f1.addRow(hint1)
@@ -133,9 +183,11 @@ class SettingsWindow(QMainWindow):
         grp2 = QGroupBox("Per-Mode Hotkeys  (optional)")
         f2 = QFormLayout(grp2)
         mode_hotkeys = self.config.get("mode_hotkeys", {})
-        self.casual_hk    = QLineEdit(mode_hotkeys.get("casual", "win+alt"))
+        self.casual_hk = QLineEdit(mode_hotkeys.get("casual", "win+alt"))
         self.technical_hk = QLineEdit(mode_hotkeys.get("technical", "win+ctrl"))
-        hint2 = QLabel("These hotkeys record and force a specific mode, ignoring the default.")
+        hint2 = QLabel(
+            "These hotkeys record and force a specific mode, ignoring the default."
+        )
         hint2.setStyleSheet("color:#888; font-size:11px;")
         f2.addRow("Casual mode hotkey:", self.casual_hk)
         f2.addRow("Technical mode hotkey:", self.technical_hk)
@@ -147,7 +199,9 @@ class SettingsWindow(QMainWindow):
     # ── AI & Language ─────────────────────────────────────────────────────────
 
     def _tab_ai(self) -> QWidget:
-        w = QWidget(); f = QFormLayout(w); f.setSpacing(10)
+        w = QWidget()
+        f = QFormLayout(w)
+        f.setSpacing(10)
 
         self.groq_key = QLineEdit(self.config.get("groq_api_key", ""))
         self.groq_key.setEchoMode(QLineEdit.Password)
@@ -185,9 +239,11 @@ class SettingsWindow(QMainWindow):
         f.addRow("Enhancement Mode:", self.mode_combo)
         f.addRow("Enable AI Enhancement:", self.enable_enhance)
 
-        note = QLabel("Primary Language: Whisper detects your language automatically.\n"
-                      "Secondary Language: Used as fallback when primary is not detected.\n"
-                      "Enhancement uses Groq LLaMA (free) or OpenAI GPT.")
+        note = QLabel(
+            "Primary Language: Whisper detects your language automatically.\n"
+            "Secondary Language: Used as fallback when primary is not detected.\n"
+            "Enhancement uses Groq LLaMA (free) or OpenAI GPT."
+        )
         note.setStyleSheet("color:#888; font-size:11px;")
         note.setWordWrap(True)
         f.addRow(note)
@@ -196,7 +252,9 @@ class SettingsWindow(QMainWindow):
     # ── Sound ─────────────────────────────────────────────────────────────────
 
     def _tab_sound(self) -> QWidget:
-        w = QWidget(); f = QFormLayout(w); f.setSpacing(10)
+        w = QWidget()
+        f = QFormLayout(w)
+        f.setSpacing(10)
 
         self.sound_enabled = QCheckBox()
         self.sound_enabled.setChecked(self.config.get("sound_feedback", True))
@@ -210,7 +268,8 @@ class SettingsWindow(QMainWindow):
         vol_row = QHBoxLayout()
         vol_row.addWidget(self.vol_slider)
         vol_row.addWidget(self.vol_label)
-        vol_w = QWidget(); vol_w.setLayout(vol_row)
+        vol_w = QWidget()
+        vol_w.setLayout(vol_row)
 
         f.addRow("Sound feedback:", self.sound_enabled)
         f.addRow("Volume:", vol_w)
@@ -228,7 +287,9 @@ class SettingsWindow(QMainWindow):
     # ── App Profiles ──────────────────────────────────────────────────────────
 
     def _tab_profiles(self) -> QWidget:
-        w = QWidget(); layout = QVBoxLayout(w); layout.setSpacing(8)
+        w = QWidget()
+        layout = QVBoxLayout(w)
+        layout.setSpacing(8)
 
         note = QLabel(
             "Automatically switch enhancement mode based on the focused app.\n"
@@ -254,10 +315,14 @@ class SettingsWindow(QMainWindow):
         add_btn.clicked.connect(lambda: self._add_profile_row("", "formal"))
         del_btn = QPushButton("Remove Selected")
         del_btn.clicked.connect(self._del_profile_row)
-        btns.addWidget(add_btn); btns.addWidget(del_btn); btns.addStretch()
+        btns.addWidget(add_btn)
+        btns.addWidget(del_btn)
+        btns.addStretch()
         layout.addLayout(btns)
 
-        example = QLabel("Examples: slack → casual,  winword → formal,  code → technical")
+        example = QLabel(
+            "Examples: slack → casual,  winword → formal,  code → technical"
+        )
         example.setStyleSheet("color:#666; font-size:11px;")
         layout.addWidget(example)
         return w
@@ -269,17 +334,21 @@ class SettingsWindow(QMainWindow):
         combo = QComboBox()
         all_modes = BUILTIN_MODES + list(self.config.get("custom_modes", {}).keys())
         combo.addItems(all_modes)
-        if mode in all_modes: combo.setCurrentText(mode)
+        if mode in all_modes:
+            combo.setCurrentText(mode)
         self.profiles_table.setCellWidget(r, 1, combo)
 
     def _del_profile_row(self):
         row = self.profiles_table.currentRow()
-        if row >= 0: self.profiles_table.removeRow(row)
+        if row >= 0:
+            self.profiles_table.removeRow(row)
 
     # ── Advanced ──────────────────────────────────────────────────────────────
 
     def _tab_advanced(self) -> QWidget:
-        w = QWidget(); f = QFormLayout(w); f.setSpacing(10)
+        w = QWidget()
+        f = QFormLayout(w)
+        f.setSpacing(10)
 
         self.log_level = QComboBox()
         self.log_level.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
@@ -313,31 +382,31 @@ class SettingsWindow(QMainWindow):
         profiles = {}
         for r in range(self.profiles_table.rowCount()):
             kw_item = self.profiles_table.item(r, 0)
-            combo   = self.profiles_table.cellWidget(r, 1)
+            combo = self.profiles_table.cellWidget(r, 1)
             if kw_item and combo:
                 kw = kw_item.text().strip().lower()
                 if kw:
                     profiles[kw] = combo.currentText()
 
         settings = {
-            "auto_inject":          self.auto_inject.isChecked(),
+            "auto_inject": self.auto_inject.isChecked(),
             "show_floating_widget": self.show_widget.isChecked(),
-            "startup_on_boot":      self.startup_boot.isChecked(),
-            "toggle_mode":          self.toggle_mode.isChecked(),
-            "hotkey":               self.hotkey_input.text().strip(),
-            "mode_hotkeys":         mode_hotkeys,
-            "groq_api_key":         self.groq_key.text().strip(),
-            "openai_api_key":       self.openai_key.text().strip(),
-            "language":             self.lang_combo.currentData(),
-            "secondary_language":   self.secondary_lang_combo.currentData(),
-            "enhancement_mode":     self.mode_combo.currentText(),
+            "startup_on_boot": self.startup_boot.isChecked(),
+            "toggle_mode": self.toggle_mode.isChecked(),
+            "hotkey": self.hotkey_input.text().strip(),
+            "mode_hotkeys": mode_hotkeys,
+            "groq_api_key": self.groq_key.text().strip(),
+            "openai_api_key": self.openai_key.text().strip(),
+            "language": self.lang_combo.currentData(),
+            "secondary_language": self.secondary_lang_combo.currentData(),
+            "enhancement_mode": self.mode_combo.currentText(),
             "enable_ai_enhancement": self.enable_enhance.isChecked(),
-            "sound_feedback":       self.sound_enabled.isChecked(),
-            "sound_volume":         self.vol_slider.value() / 100.0,
-            "app_profiles":         profiles,
-            "log_level":            self.log_level.currentText(),
-            "max_history":          self.max_history.value(),
-            "sample_rate":          self.sample_rate.value(),
+            "sound_feedback": self.sound_enabled.isChecked(),
+            "sound_volume": self.vol_slider.value() / 100.0,
+            "app_profiles": profiles,
+            "log_level": self.log_level.currentText(),
+            "max_history": self.max_history.value(),
+            "sample_rate": self.sample_rate.value(),
         }
 
         for k, v in settings.items():

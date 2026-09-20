@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voxylis — Voice That Writes Itself</title>
+<!-- v2.1.1 -->
+<meta name="description" content="Voxylis is an AI voice model that types for you. Speak naturally and get text in 99+ languages.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff;
+  --bg2:#fafafa;
+  --ink:#1e1e1e;
+  --ink2:#3a3a3a;
+  --muted:#858585;
+  --line:#1e1e1e;
+  --line2:#e5e5e5;
+  --pink:#f386a1;
+  --pink-d:#e06080;
+  --teal:#9db8bd;
+  --teal-d:#7d9aa0;
+  --green:#03aa5c;
+  --dark:#1e1e1e;
+  --dark2:#2a2a2a;
+  --host:'Host Grotesk','Host Grotesk Placeholder','Inter','Helvetica Neue',Arial,sans-serif;
+  --mono:'JetBrains Mono','JetBrains Mono Placeholder','SF Mono',ui-monospace,Menlo,Consolas,monospace;
+  --space:'Space Mono','Space Mono Placeholder',ui-monospace,Menlo,Consolas,monospace;
+}
+.in{opacity:1;transform:none}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--host);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
+body.is-dark{background:var(--dark)}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+.wrap{width:100%;max-width:1400px;margin:0 auto;padding:0 48px}
+@media(max-width:900px){.wrap{padding:0 20px}}
+::selection{background:var(--pink);color:var(--ink)}
+
+/* ── NAV ── */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:50}
+@media(max-width:900px){.nav{padding:16px 20px}}
+.nav-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-0.02em}
+.nav-brand .glyph{width:28px;height:28px;border:1.5px solid var(--ink);border-radius:50%;display:grid;place-items:center;font-size:14px}
+.nav-links{display:flex;align-items:center;gap:32px;font-size:15px;font-weight:500}
+.nav-links a{position:relative;opacity:.85;transition:opacity .15s}
+.nav-links a:hover{opacity:1}
+.nav-right{display:flex;align-items:center;gap:24px;font-size:15px;font-weight:500}
+.nav-right a.signin{opacity:.85}
+.nav-right a.signin:hover{opacity:1}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:14px;font-weight:600;transition:all .15s;line-height:1}
+.btn:hover{background:#000;border-color:#000}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:#f0f0f0}
+.btn.plain{border:none;background:transparent;color:inherit;padding:0;text-decoration:underline;text-underline-offset:4px;border-radius:0;font-weight:500}
+.btn.plain:hover{opacity:.7}
+@media(max-width:900px){.nav-links,.nav-right{display:none}}
+
+/* ── HERO ── */
+.hero{padding:120px 0 80px;text-align:center}
+.hero .eyebrow{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:48px}
+.hero h1{font-size:clamp(48px,8vw,128px);font-weight:700;line-height:.95;letter-spacing:-0.04em;max-width:1400px;margin:0 auto}
+.hero h1 em{font-style:normal;color:var(--pink-d);position:relative}
+.hero-cta{margin-top:56px;display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;font-size:18px;font-weight:600}
+.hero-cta a.plain{text-decoration:underline;text-underline-offset:5px}
+.hero-cta .sep{width:4px;height:4px;border-radius:50%;background:var(--muted)}
+.hero-stats{margin-top:96px;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+@media(max-width:800px){.hero-stats{grid-template-columns:repeat(2,1fr)}}
+.hero-stats .stat{padding:32px 24px;border-right:1px solid var(--line2)}
+.hero-stats .stat:last-child{border-right:none}
+.hero-stats .num{font-size:clamp(36px,5vw,64px);font-weight:700;letter-spacing:-0.03em;line-height:1}
+.hero-stats .lbl{font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:12px}
+
+/* ── NEWSBOX ── */
+.newsbox{display:flex;justify-content:center;padding:48px 0}
+.newsbox-inner{display:inline-flex;align-items:center;gap:24px;padding:16px 24px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--mono);font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
+.newsbox .tag{padding:4px 10px;background:var(--ink);color:#fff;border-radius:4px;font-weight:700;letter-spacing:.05em}
+.newsbox .body{color:var(--ink2)}
+.newsbox .body b{color:var(--ink)}
+.newsbox a{text-decoration:underline;text-underline-offset:3px;margin-left:8px;font-weight:500}
+
+/* ── INTRO ── */
+.intro{padding:140px 0 100px;text-align:center}
+.intro .kicker{font-family:var(--mono);font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:24px}
+.intro h2{font-size:clamp(36px,6vw,72px);font-weight:700;letter-spacing:-0.03em;line-height:1.05;max-width:900px;margin:0 auto}
+.intro p{margin-top:32px;font-size:18px;color:var(--ink2);max-width:640px;margin-left:auto;margin-right:auto;line-height:1.6}
+
+/* ── OPPOSITE SECTION (PINK) ── */
+.opp{background:var(--pink);color:var(--ink)}
+.opp .label{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;opacity:.7;margin-bottom:16px}
+.opp h2{font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1.0;max-width:1000px}
+.opp-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:end;padding:120px 0}
+@media(max-width:900px){.opp-grid{grid-template-columns:1fr;gap:48px}.opp{padding:80px 0}}
+.opp-features{display:grid;gap:1px;background:rgba(0,0,0,.18);border:1px solid rgba(0,0,0,.18);border-radius:8px;overflow:hidden;margin-top:48px}
+.opp-features .row{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;background:var(--pink);font-size:15px;font-weight:500}
+.opp-features .row .mono{font-family:var(--mono);font-size:13px;opacity:.7}
+.opp-table{margin-top:48px;border:1px solid rgba(0,0,0,.2);border-radius:8px;overflow:hidden}
+.opp-table .r{display:grid;grid-template-columns:1.2fr 1fr 1fr;border-bottom:1px solid rgba(0,0,0,.18)}
+.opp-table .r:last-child{border-bottom:none}
+.opp-table .r .c{padding:14px 18px;font-size:14px;border-right:1px solid rgba(0,0,0,.18)}
+.opp-table .r .c:last-child{border-right:none}
+.opp-table .r.head{background:rgba(0,0,0,.06);font-weight:600;font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.opp-table .r .c b{font-weight:700}
+
+/* ── CHART SECTION ── */
+.chart-sec{padding:120px 0;border-bottom:1px solid var(--line2)}
+.chart-sec .head{display:flex;justify-content:space-between;align-items:end;margin-bottom:48px;gap:32px;flex-wrap:wrap}
+.chart-sec h2{font-size:clamp(32px,4vw,52px);font-weight:700;letter-spacing:-0.03em;line-height:1.05;max-width:680px}
+.chart-sec .side{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;text-align:right}
+.chart-canvas{width:100%;height:340px;border:1px solid var(--line2);border-radius:8px;background:var(--bg2);position:relative;overflow:hidden}
+.chart-canvas svg{width:100%;height:100%}
+.chart-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line2);border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-top:32px}
+.chart-stats .c{padding:36px;background:var(--bg)}
+.chart-stats .big{font-size:clamp(48px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1}
+.chart-stats .sub{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:12px}
+.chart-stats .desc{margin-top:24px;font-size:14px;color:var(--ink2);line-height:1.6}
+
+/* ── COME BUILD (TEAL) ── */
+.build{background:var(--teal);padding:120px 0;color:var(--ink)}
+.build-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:64px;align-items:center}
+@media(max-width:900px){.build-grid{grid-template-columns:1fr;gap:40px}}
+.build h2{font-size:clamp(36px,5vw,64px);font-weight:700;letter-spacing:-0.03em;line-height:1.05}
+.build p{margin-top:24px;font-size:17px;color:var(--ink2);line-height:1.6;max-width:520px}
+.build-cta{margin-top:36px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.blog-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:64px}
+@media(max-width:900px){.blog-row{grid-template-columns:1fr}}
+.blog-card{border:1px solid rgba(0,0,0,.2);border-radius:8px;padding:24px;background:var(--teal);display:flex;flex-direction:column;gap:16px;transition:transform .15s,background .15s}
+.blog-card:hover{transform:translateY(-3px);background:#a8c4c9}
+.blog-card .src{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+.blog-card h4{font-size:18px;font-weight:700;line-height:1.3}
+.blog-card p{font-size:14px;color:var(--ink2);line-height:1.5}
+.blog-card .more{font-family:var(--mono);font-size:13px;margin-top:auto;text-decoration:underline;text-underline-offset:3px}
+
+/* ── FAQ ── */
+.faq{background:var(--dark);color:#e8e8e8;padding:120px 0}
+.faq .label{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;opacity:.6;margin-bottom:16px}
+.faq h2{font-size:clamp(36px,5vw,64px);font-weight:700;letter-spacing:-0.03em;margin-bottom:64px;max-width:700px}
+.faq-list{border-top:1px solid rgba(255,255,255,.15)}
+.faq-item{border-bottom:1px solid rgba(255,255,255,.15)}
+.faq-q{display:flex;justify-content:space-between;align-items:center;width:100%;padding:28px 0;background:none;border:none;color:inherit;text-align:left;font-size:18px;font-weight:600;cursor:pointer;font-family:inherit;gap:24px}
+.faq-q .plus{font-family:var(--mono);font-size:22px;font-weight:400;opacity:.6;transition:transform .2s;flex-shrink:0;width:32px;text-align:center}
+.faq-item.open .plus{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease;padding:0 0 0 0;color:rgba(255,255,255,.7);font-size:15px;line-height:1.7;max-width:760px}
+.faq-item.open .faq-a{max-height:400px;padding-bottom:28px}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px}
+@media(max-width:900px){.faq-grid{grid-template-columns:1fr;gap:40px}}
+.faq-side{font-family:var(--mono);font-size:13px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em;line-height:1.8}
+.faq-side .big{display:block;font-family:var(--host);font-size:48px;font-weight:700;color:#fff;letter-spacing:-0.03em;margin-bottom:8px}
+
+/* ── FOOTER ── */
+.footer{background:#000;color:#fff;padding:64px 0 40px}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;flex-wrap:wrap;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.12)}
+@media(max-width:700px){.footer-top{flex-direction:column;gap:32px}}
+.footer-brand{font-size:48px;font-weight:700;letter-spacing:-0.03em}
+.footer-nav{display:flex;gap:48px;flex-wrap:wrap}
+.footer-nav .col h5{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:16px}
+.footer-nav .col a{display:block;padding:6px 0;font-size:14px;opacity:.8;transition:opacity .15s}
+.footer-nav .col a:hover{opacity:1}
+.footer-bot{display:flex;justify-content:space-between;align-items:center;gap:24px;padding-top:32px;font-family:var(--mono);font-size:12px;opacity:.5;flex-wrap:wrap}
+
+/* ── MISC ── */
+.tagline-strip{padding:48px 0;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);overflow:hidden}
+.tagline-strip .inner{display:flex;gap:64px;animation:marquee 30s linear infinite;white-space:nowrap;font-size:28px;font-weight:600;letter-spacing:-0.02em}
+@keyframes marquee{to{transform:translateX(-50%)}}
+.divider{padding:1px 0;background:var(--line);height:1px}
+.section{padding:120px 0}
+@media(max-width:800px){.section{padding:80px 0}}
+.mono{font-family:var(--mono)}
+.tnum{font-variant-numeric:tabular-nums}
+/* ── PRICING SECTION ── */
+.pricing{padding:120px 0;border-bottom:1px solid var(--line2)}
+.pricing .kicker{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px}
+.pricing h2{font-size:clamp(36px,5vw,64px);font-weight:700;letter-spacing:-0.03em;margin-bottom:64px}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr}}
+.price-card{border:1px solid var(--line2);border-radius:8px;padding:32px;display:flex;flex-direction:column;transition:transform .15s}
+.price-card:hover{transform:translateY(-3px)}
+.price-card.popular{border:2px solid var(--pink);background:var(--bg2)}
+.price-card .tier{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.price-card .amount{font-size:clamp(36px,4vw,56px);font-weight:700;letter-spacing:-0.03em;margin:16px 0 8px}
+.price-card .period{font-size:14px;color:var(--muted)}
+.price-card .desc{margin-top:16px;font-size:15px;color:var(--ink2);line-height:1.5}
+.price-card ul{margin-top:24px;list-style:none;display:flex;flex-direction:column;gap:12px;flex:1}
+.price-card ul li{font-size:14px;color:var(--ink2);display:flex;align-items:flex-start;gap:8px}
+.price-card ul li::before{content:"✓";color:var(--green);font-weight:700;flex-shrink:0}
+.price-card .cta{margin-top:24px}
+.price-card .cta .btn{width:100%;justify-content:center}
+/* ── NEWSLETTER ── */
+.newsletter{padding:80px 0;text-align:center;border-bottom:1px solid var(--line2)}
+.newsletter h3{font-size:24px;font-weight:700;margin-bottom:12px}
+.newsletter p{font-size:15px;color:var(--muted);margin-bottom:24px}
+.newsletter form{display:flex;gap:12px;max-width:480px;margin:0 auto}
+.newsletter input{flex:1;padding:12px 16px;border:1px solid var(--line2);border-radius:6px;font-family:var(--host);font-size:14px;outline:none}
+.newsletter input:focus{border-color:var(--ink)}
+.newsletter .btn{flex-shrink:0}
+.newsletter .msg{margin-top:12px;font-size:14px;min-height:20px}
+.newsletter .msg.ok{color:var(--green)}
+.newsletter .msg.err{color:var(--pink-d)}
+/* ── BLOG CARDS ON LANDING ── */
+.blog-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:64px}
+@media(max-width:900px){.blog-row{grid-template-columns:1fr}}
+/* ── PLATFORM TAGS ── */
+.plat-tags{display:flex;gap:8px;margin-top:16px}
+.plat-tag{font-family:var(--mono);font-size:11px;padding:4px 10px;border:1px solid var(--line2);border-radius:4px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.plat-tag.active{border-color:var(--ink);color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/docs/installation">Docs</a>
+    <a href="#faq">FAQ</a>
+    <a href="/blog">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="/auth" class="signin">Sign In</a>
+    <a href="/download" class="btn">Download App</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Voxylis · Voice Model v2.1 · The opposite of typing</div>
+    <h1>The First Voice Model<br>That <em>Types</em> For You</h1>
+    <div class="hero-cta">
+      <a href="/download" class="btn">Download Voxylis</a>
+      <a href="#features" class="plain">See how it works ↓</a>
+      <span class="sep"></span>
+      <a href="/pricing" class="plain">Pricing</a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="num tnum">99+</div><div class="lbl">Languages</div></div>
+      <div class="stat"><div class="num tnum">3s</div><div class="lbl">Voice to text</div></div>
+      <div class="stat"><div class="num tnum">12k+</div><div class="lbl">Users</div></div>
+      <div class="stat"><div class="num tnum">4.8/5</div><div class="lbl">Rating</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- NEWSBOX -->
+<div class="newsbox">
+  <div class="newsbox-inner">
+    <span class="tag">VX.0S1</span>
+    <span class="body"><b>Voxylis announces Voxy 2.0</b> — real-time voice dictation, now with calibrated confidence.</span>
+    <a href="/blog/introducing-voxy-2-0">Read more</a>
+  </div>
+</div>
+
+<!-- INTRO -->
+<section class="intro">
+  <div class="wrap">
+    <div class="kicker">Introducing Voxy ..... Intelligence beyond typing</div>
+    <h2>Speak naturally.<br>Voxylis writes it down.</h2>
+    <p>Voxylis is an AI voice model built for people who think faster than they type. Press a hotkey, say what you mean, and get clean text in 99+ languages — with confidence you can trust.</p>
+  </div>
+</section>
+
+<!-- OPPOSITE / PINK -->
+<section class="opp" id="features">
+  <div class="wrap">
+    <div class="opp-grid">
+      <div>
+        <div class="label">We took the opposite approach to dictation</div>
+        <h2>not typing</h2>
+        <p style="margin-top:32px;font-size:18px;line-height:1.6;max-width:520px">Typing is slow, error-prone, and breaks your flow. Voxylis listens while you keep working, then turns speech into text you can act on — instantly.</p>
+        <div class="opp-features">
+          <div class="row"><span>Typed outputs that software can act on</span><span class="mono">VX.TEXT</span></div>
+          <div class="row"><span>Confidence on every word</span><span class="mono">VX.CONF</span></div>
+          <div class="row"><span>More like code. Reliable, fast, type-safe.</span><span class="mono">VX.CORE</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="opp-table">
+          <div class="r head"><div class="c">Workflow</div><div class="c">Typing</div><div class="c">Voxylis</div></div>
+          <div class="r"><div class="c">Start writing</div><div class="c">Manual</div><div class="c"><b>Win + Shift</b></div></div>
+          <div class="r"><div class="c">Capture ideas</div><div class="c">Slow</div><div class="c"><b>3 seconds</b></div></div>
+          <div class="r"><div class="c">Languages</div><div class="c">1</div><div class="c"><b>99+</b></div></div>
+          <div class="r"><div class="c">Enhancement</div><div class="c">None</div><div class="c"><b>AI modes</b></div></div>
+          <div class="r"><div class="c">Q&amp;A</div><div class="c">Browser</div><div class="c"><b>Built in</b></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHART -->
+<section class="chart-sec" id="pricing">
+  <div class="wrap">
+    <div class="head">
+      <h2>Voxylis turns your voice into text that is literally off the charts.</h2>
+      <div class="side">VX.0S1 · Real-time pipeline<br>Measured on 12,000+ sessions</div>
+    </div>
+    <div class="chart-canvas">
+      <svg viewBox="0 0 1000 340" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f386a1" stop-opacity=".35"/>
+            <stop offset="1" stop-color="#f386a1" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <g stroke="#e5e5e5" stroke-width="1">
+          <line x1="0" y1="60" x2="1000" y2="60"/><line x1="0" y1="120" x2="1000" y2="120"/><line x1="0" y1="180" x2="1000" y2="180"/><line x1="0" y1="240" x2="1000" y2="240"/><line x1="0" y1="300" x2="1000" y2="300"/>
+        </g>
+        <path d="M0,300 L100,280 L200,260 L300,220 L400,200 L500,150 L600,120 L700,80 L800,55 L900,35 L1000,20 L1000,340 L0,340 Z" fill="url(#fill)"/>
+        <path d="M0,300 L100,280 L200,260 L300,220 L400,200 L500,150 L600,120 L700,80 L800,55 L900,35 L1000,20" fill="none" stroke="#f386a1" stroke-width="4" stroke-linecap="round"/>
+        <g fill="#f386a1"><circle cx="100" cy="280" r="5"/><circle cx="300" cy="220" r="5"/><circle cx="500" cy="150" r="5"/><circle cx="700" cy="80" r="5"/><circle cx="900" cy="35" r="5"/></g>
+        <text x="16" y="34" font-family="JetBrains Mono, monospace" font-size="15" fill="#1e1e1e">99.2%</text>
+        <text x="16" y="320" font-family="JetBrains Mono, monospace" font-size="12" fill="#858585">0s</text>
+        <text x="930" y="320" font-family="JetBrains Mono, monospace" font-size="12" fill="#858585">3s</text>
+      </svg>
+    </div>
+    <div class="chart-stats">
+      <div class="c"><div class="big tnum">10x</div><div class="sub">Faster than typing</div><div class="desc">From voice to text in seconds, so your ideas arrive before they fade.</div></div>
+      <div class="c"><div class="big tnum">99+</div><div class="sub">Languages</div><div class="desc">English, Hindi, Punjabi, Urdu, Farsi, Spanish, Bengali, Gujarati and 90+ more.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- COME BUILD / TEAL -->
+<section class="build">
+  <div class="wrap">
+    <div class="build-grid">
+      <div>
+        <div class="label" style="font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;opacity:.7;margin-bottom:16px">Come build with us</div>
+        <h2>Voice that works like code.</h2>
+        <p>Voxylis gives every idea a typed output. Set thresholds, choose enhancement modes, and let your software act with confidence — or ask Voxy anything along the way.</p>
+        <div class="build-cta">
+          <a href="#download" class="btn">Get Voxylis</a>
+          <a href="#docs" class="btn ghost">Read the docs</a>
+        </div>
+      </div>
+      <div>
+        <div class="newsbox-inner" style="display:block;width:100%;padding:24px">
+          <div class="mono" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.7">VX.0S1 · System</div>
+          <div style="font-size:20px;font-weight:700;margin-top:12px">Voice → text → action</div>
+          <p style="font-size:14px;color:var(--ink2);margin-top:12px;line-height:1.6">Hotkey, wake word, or click. Voxylis captures, transcribes, enhances, and types — while you stay in flow.</p>
+          <div class="mono" style="margin-top:20px;font-size:12px;opacity:.7">Win + Shift &nbsp;·&nbsp; Voxy &nbsp;·&nbsp; Click</div>
+        </div>
+      </div>
+    </div>
+    <div class="blog-row">
+      <article class="blog-card"><div class="src">Voxylis News</div><h4>Introducing Voxy 2.0</h4><p>Real-time transcription, calibrated confidence, and five AI enhancement modes in one clean release.</p><a class="more" href="/blog/introducing-voxy-2-0">Read more →</a></article>
+      <article class="blog-card"><div class="src">Engineering</div><h4>The bitterest lesson in voice AI</h4><p>Accuracy comes from better pipelines and feedback loops — not just bigger models.</p><a class="more" href="/blog/bitterest-lesson-voice-ai">Read more →</a></article>
+      <article class="blog-card"><div class="src">Product</div><h4>AI: too good to be true, too bad to type</h4><p>Why voice is the missing input layer for software, and how Voxylis makes it reliable.</p><a class="more" href="/blog/ai-too-good-to-be-true">Read more →</a></article>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="wrap">
+    <div class="faq-grid">
+      <div>
+        <div class="label">We give a FAQ</div>
+        <h2>What is Voxylis?</h2>
+      </div>
+      <div class="faq-side"><span class="big">Voice in.<br>Text out.</span>Voxylis is an AI-powered voice assistant that turns speech into text across 99+ languages, with hotkeys, wake words, AI enhancement, and Q&amp;A built in.</div>
+    </div>
+    <div class="faq-list" style="margin-top:64px">
+      <div class="faq-item open"><button class="faq-q" type="button"><span>What is Voxylis?</span><span class="plus">+</span></button><div class="faq-a">Voxylis is an AI voice model that transcribes your speech into text in 99+ languages. It works with hotkeys, wake words, and clicks — and can enhance, copy, save, or ask questions about your text.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>How do I start recording?</span><span class="plus">+</span></button><div class="faq-a">Press Win + Shift, say “Voxy”, or click the Voxylis orb. Speak naturally, then release the hotkey or wait three seconds.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Which languages are supported?</span><span class="plus">+</span></button><div class="faq-a">Voxylis supports 99+ languages including English, Hindi, Punjabi, Urdu, Farsi, Spanish, Bengali, Gujarati, French, German, Japanese, and Chinese.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>What are the enhancement modes?</span><span class="plus">+</span></button><div class="faq-a">Choose Formal, Casual, Technical, Concise, or Creative. Voxylis improves grammar, punctuation, clarity, and tone while preserving your meaning.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Can Voxylis answer questions?</span><span class="plus">+</span></button><div class="faq-a">Yes. Ask Voxy a question and get an instant answer powered by advanced AI. Perfect for quick lookups, definitions, and explanations.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Is my data private?</span><span class="plus">+</span></button><div class="faq-a">Your recordings are stored locally by default. AI features use your configured providers only when you enable them.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">Voxylis</div>
+      <div class="footer-nav">
+        <div class="col"><h5>Product</h5><a href="#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
+        <div class="col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
+        <div class="col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="#faq">FAQ</a><a href="/contact">Support</a></div>
+      </div>
+    </div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+  </div>
+</footer>
+
+<!-- DOWNLOAD CTA -->
+<section class="section" id="download">
+  <div class="wrap">
+    <div class="label mono" style="font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S1 · Get started</div>
+    <h2 style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1.05">Speak.<br>Voxylis writes.</h2>
+    <p style="margin-top:28px;font-size:18px;color:var(--ink2);max-width:560px;line-height:1.6">Download Voxylis for Windows, macOS, or Linux. Your voice is ready when you are.</p>
+    <div style="margin-top:40px;display:flex;gap:16px;flex-wrap:wrap" id="downloadBtns">
+      <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.exe" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
+      <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.dmg" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
+      <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.AppImage" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
+    </div>
+    <div class="plat-tags" style="margin-top:20px">
+      <span class="plat-tag" id="tag-win">Windows 10+</span>
+      <span class="plat-tag" id="tag-mac">macOS 12+</span>
+      <span class="plat-tag" id="tag-linux">Ubuntu / Fedora / Arch</span>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="newsletter" id="newsletter">
+  <div class="wrap">
+    <h3>Stay updated</h3>
+    <p>Get product updates, tips, and voice AI insights delivered to your inbox.</p>
+    <form id="newsletterForm" onsubmit="return subscribeNewsletter(event)">
+      <input type="email" id="nlEmail" placeholder="you@email.com" required>
+      <button type="submit" class="btn">Subscribe</button>
+    </form>
+    <div class="msg" id="nlMsg"></div>
+  </div>
+</section>
+
+<script>
+// FAQ accordion
+document.querySelectorAll('.faq-item').forEach(item=>{
+  const q=item.querySelector('.faq-q');
+  q.addEventListener('click',()=>{
+    const isOpen=item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+    if(!isOpen)item.classList.add('open');
+  });
+});
+// Smooth reveal
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='none';io.unobserve(e.target)}}),{threshold:.1});
+document.querySelectorAll('section,header,footer').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(18px)';el.style.transition='opacity .5s ease,transform .5s ease';io.observe(el)});
+const firstHeader=document.querySelector('header');if(firstHeader){firstHeader.style.opacity='1';firstHeader.style.transform='none';}
+document.addEventListener('DOMContentLoaded',()=>{document.body.style.overflow='auto'});
+
+// Detect OS and highlight the right download button
+(function(){
+  var ua=navigator.userAgent||'';
+  var pl=navigator.platform||'';
+  var isWin=pl.indexOf('Win')>-1||ua.indexOf('Windows')>-1;
+  var isMac=pl.indexOf('Mac')>-1||ua.indexOf('Mac')>-1;
+  var isLinux=ua.indexOf('Linux')>-1;
+  if(isWin){var b=document.getElementById('dl-win');if(b){b.className='btn';document.getElementById('tag-win').classList.add('active')}}
+  else if(isMac){var b=document.getElementById('dl-mac');if(b){b.className='btn';document.getElementById('tag-mac').classList.add('active')}}
+  else if(isLinux){var b=document.getElementById('dl-linux');if(b){b.className='btn';document.getElementById('tag-linux').classList.add('active')}}
+})();
+
+// Track download click
+function trackDownload(platform){
+  try{navigator.sendBeacon&&navigator.sendBeacon('/api/download/track',JSON.stringify({platform:platform}))}catch(e){}
+}
+
+// Newsletter subscription
+function subscribeNewsletter(e){
+  e.preventDefault();
+  var email=document.getElementById('nlEmail').value;
+  var msg=document.getElementById('nlMsg');
+  if(!email){return false}
+  fetch('/api/newsletter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})})
+  .then(function(r){return r.json()})
+  .then(function(d){
+    if(d.success){msg.className='msg ok';msg.textContent='Thanks! You\'re subscribed.';document.getElementById('nlEmail').value=''}
+    else{msg.className='msg err';msg.textContent=d.error||'Something went wrong.'}
+  })
+  .catch(function(){msg.className='msg err';msg.textContent='Network error. Try again.'});
+  return false;
+}
+
+// Fetch live stats
+fetch('/api/stats/public').then(function(r){return r.json()}).then(function(d){
+  if(d.status==='success'){
+    var nums=document.querySelectorAll('.hero-stats .num');
+    if(nums[2]&&d.stats)nums[2].textContent=d.stats.users||'12k+';
+  }
+}).catch(function(){});
+</script>
+</body>
+</html>

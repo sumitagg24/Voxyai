@@ -62,7 +62,7 @@ echo ""
 echo "Press Ctrl+C to stop the application"
 echo ""
 
-python3 start_voxylis.py
+python3 main.py
 
 if [ $? -ne 0 ]; then
     echo ""

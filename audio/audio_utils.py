@@ -3,17 +3,16 @@ Audio utility functions for Voxylis
 """
 
 import numpy as np
-from config.constants import SAMPLE_RATE
 
 
 def apply_noise_gate(audio_data: np.ndarray, threshold: float = 0.02) -> np.ndarray:
     """
     Apply noise gate to reduce background noise
-    
+
     Args:
         audio_data: Audio samples as numpy array
         threshold: Noise threshold (0-1)
-    
+
     Returns:
         Processed audio data (float32, 1D)
     """
@@ -38,10 +37,10 @@ def apply_noise_gate(audio_data: np.ndarray, threshold: float = 0.02) -> np.ndar
 def normalize_audio(audio_data: np.ndarray) -> np.ndarray:
     """
     Normalize audio to prevent clipping
-    
+
     Args:
         audio_data: Audio samples as numpy array
-    
+
     Returns:
         Normalized audio data (int16)
     """
@@ -66,10 +65,10 @@ def normalize_audio(audio_data: np.ndarray) -> np.ndarray:
 def calculate_audio_level(audio_data: np.ndarray) -> float:
     """
     Calculate audio level (0-100)
-    
+
     Args:
         audio_data: Audio samples as numpy array
-    
+
     Returns:
         Audio level percentage
     """
@@ -80,7 +79,7 @@ def calculate_audio_level(audio_data: np.ndarray) -> float:
     if audio_data.dtype == np.int16:
         flat = flat / 32767.0
 
-    rms = float(np.sqrt(np.mean(flat ** 2)))
+    rms = float(np.sqrt(np.mean(flat**2)))
     return min(100.0, rms * 100.0 * 10)  # scale to 0-100
 
 
@@ -96,14 +95,16 @@ def detect_silence(audio_data: np.ndarray, threshold: float = 0.01) -> bool:
     if audio_data.dtype == np.int16:
         flat = flat / 32767.0
 
-    rms = float(np.sqrt(np.mean(flat ** 2)))
+    rms = float(np.sqrt(np.mean(flat**2)))
     return rms < threshold
 
 
-def has_speech(audio_data: np.ndarray,
-               rms_threshold: float = 0.02,
-               peak_threshold: float = 0.08,
-               min_speech_ratio: float = 0.10) -> bool:
+def has_speech(
+    audio_data: np.ndarray,
+    rms_threshold: float = 0.02,
+    peak_threshold: float = 0.08,
+    min_speech_ratio: float = 0.10,
+) -> bool:
     """
     Returns True only if the audio likely contains real speech.
 
@@ -123,7 +124,7 @@ def has_speech(audio_data: np.ndarray,
         flat = flat / 32767.0
 
     # 1. Overall RMS
-    rms = float(np.sqrt(np.mean(flat ** 2)))
+    rms = float(np.sqrt(np.mean(flat**2)))
     if rms < rms_threshold:
         return False
 
@@ -139,8 +140,9 @@ def has_speech(audio_data: np.ndarray,
         return rms >= rms_threshold
 
     active = sum(
-        1 for i in range(n_frames)
-        if float(np.sqrt(np.mean(flat[i * frame_size:(i + 1) * frame_size] ** 2)))
+        1
+        for i in range(n_frames)
+        if float(np.sqrt(np.mean(flat[i * frame_size : (i + 1) * frame_size] ** 2)))
         >= rms_threshold
     )
 
@@ -150,12 +152,12 @@ def has_speech(audio_data: np.ndarray,
 def resample_audio(audio_data: np.ndarray, orig_sr: int, target_sr: int) -> np.ndarray:
     """
     Resample audio to target sample rate
-    
+
     Args:
         audio_data: Audio samples as numpy array
         orig_sr: Original sample rate
         target_sr: Target sample rate
-    
+
     Returns:
         Resampled audio data
     """

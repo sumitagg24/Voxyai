@@ -18,27 +18,28 @@ from utils.logger import log_info, log_debug
 # Built-in commands: phrase -> action key
 # Matching is case-insensitive, strips punctuation
 BUILTIN_COMMANDS = {
-    "clear that":       "clear_last",
-    "delete that":      "clear_last",
-    "undo":             "undo",
-    "undo that":        "undo",
-    "new line":         "new_line",
-    "next line":        "new_line",
-    "new paragraph":    "new_paragraph",
-    "stop":             "cancel",
-    "cancel":           "cancel",
-    "select all":       "select_all",
-    "copy that":        "copy",
-    "paste":            "paste",
-    "caps lock":        "caps_lock",
-    "capital lock":     "caps_lock",
-    "translate it to":  "translate_pending",
+    "clear that": "clear_last",
+    "delete that": "clear_last",
+    "undo": "undo",
+    "undo that": "undo",
+    "new line": "new_line",
+    "next line": "new_line",
+    "new paragraph": "new_paragraph",
+    "stop": "cancel",
+    "cancel": "cancel",
+    "select all": "select_all",
+    "copy that": "copy",
+    "paste": "paste",
+    "caps lock": "caps_lock",
+    "capital lock": "caps_lock",
+    "translate it to": "translate_pending",
 }
 
 
 def _normalise(text: str) -> str:
     """Lowercase and strip punctuation for fuzzy matching."""
     import re
+
     return re.sub(r"[^\w\s]", "", text.lower()).strip()
 
 
@@ -123,4 +124,5 @@ class VoiceCommandProcessor:
 
         except Exception as e:
             from utils.logger import log_error
+
             log_error(f"Voice command execution error: {e}")

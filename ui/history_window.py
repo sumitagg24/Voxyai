@@ -3,19 +3,25 @@ Transcription History Panel for Voxylis
 """
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QListWidgetItem, QLabel, QPushButton,
-    QTextEdit, QSplitter, QMessageBox, QFrame
+    QMainWindow,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QLabel,
+    QPushButton,
+    QTextEdit,
+    QSplitter,
+    QMessageBox,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QSize
-from PyQt5.QtGui import QFont, QColor
-from utils.logger import log_debug
+from PyQt5.QtCore import Qt, pyqtSignal
 
 
 class HistoryWindow(QMainWindow):
     """Floating history panel showing past transcriptions."""
 
-    inject_requested = pyqtSignal(str)   # emitted when user clicks Re-inject
+    inject_requested = pyqtSignal(str)  # emitted when user clicks Re-inject
     closed = pyqtSignal()
 
     def __init__(self, history_manager):
@@ -181,6 +187,7 @@ class HistoryWindow(QMainWindow):
         entry = self._current_entry()
         if entry:
             from PyQt5.QtWidgets import QApplication
+
             QApplication.clipboard().setText(entry["enhanced"])
 
     def _on_delete(self):
@@ -190,10 +197,15 @@ class HistoryWindow(QMainWindow):
             self.refresh()
 
     def _on_clear_all(self):
-        if QMessageBox.question(
-            self, "Clear History", "Delete all transcription history?",
-            QMessageBox.Yes | QMessageBox.No
-        ) == QMessageBox.Yes:
+        if (
+            QMessageBox.question(
+                self,
+                "Clear History",
+                "Delete all transcription history?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            == QMessageBox.Yes
+        ):
             self.history_manager.clear()
             self.refresh()
 

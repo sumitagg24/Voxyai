@@ -1,0 +1,19 @@
+{
+  "framework": null,
+  "outputDirectory": "web/static",
+  "installCommand": "echo skip",
+  "buildCommand": "echo skip",
+  "cleanUrls": false,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/pricing", "destination": "/pricing.html" },
+    { "source": "/blog", "destination": "/blog.html" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/download", "destination": "/download.html" },
+    { "source": "/blog/:slug", "destination": "/blog-post.html" },
+    { "source": "/docs/:page", "destination": "/docs/:page.html" }
+  ]
+}

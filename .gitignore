@@ -47,8 +47,17 @@ tmp/
 *.tmp
 *.bak
 
-# Configuration (local)
+# Configuration (local — contains API keys)
+config/settings.json
 config/settings.json.local
+config/sessions.json
+config/users.json
+web/config/*.json
+web/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
 .env
 .env.local
 
@@ -79,3 +88,8 @@ htmlcov/
 # IDE specific
 .vscode/settings.json
 .idea/workspace.xml
+.vercel
+.playwright-mcp/
+
+# One-off verification screenshots
+landing-verify.png
