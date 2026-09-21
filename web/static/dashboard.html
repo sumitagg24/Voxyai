@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" />
     <link rel="stylesheet" href="/static/css/dashboard.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/static/js/api.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -361,7 +362,7 @@
             if (!lastFinal) return;
             setStatus("processing", "Voxylis is thinking…");
             try {
-                const res = await fetch("/api/qa", {
+                const res = await voxyFetch("/api/qa", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ question: lastFinal }),
@@ -381,7 +382,7 @@
             document.querySelectorAll("#modeChips .chip").forEach((c) => c.classList.remove("active"));
             chip.classList.add("active");
             try {
-                await fetch("/api/settings", {
+                await voxyFetch("/api/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ enhancement_mode: chip.dataset.mode }),
@@ -400,7 +401,7 @@
     (async function () {
         const notify = window.Voxylis.Notification;
         async function getJSON(url) {
-            const res = await fetch(url);
+            const res = await fetch((window.VOXY_API_BASE || '') + url);
             if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
             return res.json();
         }
@@ -476,7 +477,7 @@
                 autoStart: document.getElementById("autoStartToggle").checked,
             };
             try {
-                const res = await fetch("/api/settings", {
+                const res = await voxyFetch("/api/settings", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
@@ -491,7 +492,7 @@
             if (!q) { notify.show("Type a question first", "error"); return; }
             document.getElementById("qaAnswer").textContent = "Thinking…";
             try {
-                const res = await fetch("/api/qa", {
+                const res = await voxyFetch("/api/qa", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ question: q }),

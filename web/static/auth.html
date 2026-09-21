@@ -102,6 +102,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
   </div>
 </div>
 
+<script src="/static/js/api.js"></script>
 <script>
 // Tab switching
 document.querySelectorAll('.auth-tab').forEach(tab => {
@@ -129,7 +130,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
   document.getElementById('login-error').style.display = 'none';
 
   try {
-    const res = await fetch('/api/auth/login', {
+    const res = await voxyFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -161,7 +162,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
   document.getElementById('signup-error').style.display = 'none';
 
   try {
-    const res = await fetch('/api/auth/signup', {
+    const res = await voxyFetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

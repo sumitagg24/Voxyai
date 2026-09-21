@@ -143,6 +143,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
   </div>
 </footer>
 
+<script src="/static/js/api.js"></script>
 <script>
 document.getElementById('contact-form').addEventListener('submit', async function(e) {
   e.preventDefault();
@@ -162,7 +163,7 @@ document.getElementById('contact-form').addEventListener('submit', async functio
   };
 
   try {
-    const res = await fetch('/api/contact', {
+    const res = await voxyFetch('/api/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

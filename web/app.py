@@ -881,10 +881,12 @@ def newsletter_subscribe():
 
 @app.route("/api/download/urls", methods=["GET"])
 def download_urls():
+    # Real release artifacts (Backblaze B2, bucket taskflow-uploads/voxylis/).
+    # Windows = ready-to-run exe bundle; macOS/Linux = Python source bundle.
     return jsonify({
-        "windows": "https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.exe",
-        "macos": "https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.dmg",
-        "linux": "https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.AppImage",
+        "windows": "https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Windows-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&X-Amz-Date=20260921T111813Z&X-Amz-Expires=604800&X-Amz-Signature=7e12ea683db02bedc07f21b711d622f7a770e7b9a67042f5583f24e24c421f1b&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+        "macos": "https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Source-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&X-Amz-Date=20260921T111813Z&X-Amz-Expires=604800&X-Amz-Signature=7755abb4721c34dfeebef82a26302cf97ea3a298437dd08d8eb29c808024f105&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
+        "linux": "https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Source-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&X-Amz-Date=20260921T111813Z&X-Amz-Expires=604800&X-Amz-Signature=7755abb4721c34dfeebef82a26302cf97ea3a298437dd08d8eb29c808024f105&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
     })
 
 

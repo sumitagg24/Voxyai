@@ -185,6 +185,7 @@ button{font-family:inherit;cursor:pointer}
   </div>
 </footer>
 
+<script src="/static/js/api.js"></script>
 <script>
 (function() {
   var params = new URLSearchParams(window.location.search);
@@ -194,50 +195,65 @@ button{font-family:inherit;cursor:pointer}
   var notFound = document.getElementById('postNotFound');
   var related = document.getElementById('relatedSection');
 
-  if (!slug) {
+  // Offline fallback: same 4 posts the API seeds, shown when the
+  // backend is unreachable (e.g. static hosting without an API server).
+  var FALLBACK_POSTS = {
+    "introducing-voxy-2-0": {title:"Introducing Voxy 2.0", date:"2026-09-15", category:"Product Update", read_time:"4 min read", content:"## What is new\n\nVoxy 2.0 brings **real-time transcription**, 40% faster AI enhancement, and a completely redesigned command palette.\n\n## Highlights\n\n- **Real-time results** - words appear as you speak.\n- **Calibrated confidence** - every word carries a trust score.\n- **Five enhancement modes** - Formal, Casual, Technical, Concise, Creative.\n\n## Get it\n\nDownload the latest build from the [download page](/download) and press Win + Shift to try it."},
+    "bitterest-lesson-voice-ai": {title:"The Bitterest Lesson in Voice AI", date:"2026-08-28", category:"Engineering", read_time:"6 min read", content:"## The lesson\n\nScaling **data and compute** beat every clever algorithmic trick we tried.\n\n## What worked\n\n- More diverse **training audio** across accents and microphones.\n- Tighter **feedback loops** from real user corrections.\n- Simple pipelines that are easy to measure and improve.\n\n## Takeaway\n\nBetter pipelines and feedback loops beat bigger models."},
+    "ai-too-good-to-be-true": {title:"AI: Too Good to Be True, Too Bad to Type", date:"2026-08-10", category:"Product", read_time:"5 min read", content:"## The bottleneck\n\nAI writing assistants are everywhere, but **typing is still the bottleneck**.\n\n## Voice is the unlock\n\n1. **Speak naturally** - no syntax to memorize.\n2. **AI enhances on-the-fly** - grammar, tone, and clarity.\n3. **Paste anywhere** - Slack, email, docs, code comments.\n\n## Numbers\n\nBeta users produced **3.2x more words** per session with voice."},
+    "voice-input-vs-typing-numbers": {title:"Voice Input vs Typing: The Numbers", date:"2026-07-22", category:"Data & Research", read_time:"5 min read", content:"## Methodology\n\nWe aggregated **50 000 anonymised sessions** from July 2026.\n\n## Key findings\n\n- Median voice speed: **142 WPM** vs typing **38 WPM**.\n- Word error rate after enhancement: **3.2 %**.\n- Voice NPS: **72** vs keyboard-only **41**.\n\n## Takeaway\n\nVoice input is significantly faster, and AI enhancement closes the accuracy gap."}
+  };
+
+  function renderPost(post) {
+    document.title = post.title + ' — Voxylis';
+    loading.style.display = 'none';
+
+    var html = '<article class="post-header wrap">';
+    html += '<a href="/blog" class="post-back">← Back to Blog</a>';
+    html += '<div class="post-meta">';
+    if (post.category) html += '<span class="badge">' + esc(post.category) + '</span>';
+    if (post.date) html += '<span class="date">' + esc(post.date) + '</span>';
+    if (post.read_time) html += '<span class="read-time">' + esc(post.read_time) + '</span>';
+    html += '</div>';
+    html += '<h1>' + esc(post.title) + '</h1>';
+    html += '</article>';
+
+    html += '<div class="post-body wrap">';
+    html += renderContent(post.content || '');
+    html += '</div>';
+
+    // Share row
+    html += '<div class="share-row wrap">';
+    html += '<span>Share this post</span>';
+    html += '<button class="share-btn" onclick="shareTwitter()">Twitter</button>';
+    html += '<button class="share-btn" onclick="shareLinkedIn()">LinkedIn</button>';
+    html += '<button class="share-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>';
+    html += '</div>';
+
+    loading.outerHTML = html;
+    related.style.display = 'block';
+  }
+
+  function showNotFound() {
     loading.style.display = 'none';
     notFound.style.display = 'block';
+  }
+
+  if (!slug) {
+    showNotFound();
     return;
   }
 
-  // Fetch post from API
-  fetch('/api/blog/' + encodeURIComponent(slug))
+  // Fetch post from API, fall back to bundled copy when offline
+  voxyFetch('/api/blog/' + encodeURIComponent(slug))
     .then(function(res) {
       if (!res.ok) throw new Error('Not found');
       return res.json();
     })
-    .then(function(post) {
-      document.title = post.title + ' — Voxylis';
-      loading.style.display = 'none';
-
-      var html = '<article class="post-header wrap">';
-      html += '<a href="/blog" class="post-back">← Back to Blog</a>';
-      html += '<div class="post-meta">';
-      if (post.category) html += '<span class="badge">' + esc(post.category) + '</span>';
-      if (post.date) html += '<span class="date">' + esc(post.date) + '</span>';
-      if (post.read_time) html += '<span class="read-time">' + esc(post.read_time) + '</span>';
-      html += '</div>';
-      html += '<h1>' + esc(post.title) + '</h1>';
-      html += '</article>';
-
-      html += '<div class="post-body wrap">';
-      html += renderContent(post.content || '');
-      html += '</div>';
-
-      // Share row
-      html += '<div class="share-row wrap">';
-      html += '<span>Share this post</span>';
-      html += '<button class="share-btn" onclick="shareTwitter()">Twitter</button>';
-      html += '<button class="share-btn" onclick="shareLinkedIn()">LinkedIn</button>';
-      html += '<button class="share-btn" id="copyBtn" onclick="copyLink()">Copy Link</button>';
-      html += '</div>';
-
-      loading.outerHTML = html;
-      related.style.display = 'block';
-    })
+    .then(renderPost)
     .catch(function() {
-      loading.style.display = 'none';
-      notFound.style.display = 'block';
+      if (FALLBACK_POSTS[slug]) renderPost(FALLBACK_POSTS[slug]);
+      else showNotFound();
     });
 
   function esc(str) {

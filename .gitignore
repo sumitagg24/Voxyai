@@ -93,3 +93,6 @@ htmlcov/
 
 # One-off verification screenshots
 landing-verify.png
+
+# Release bundles (hosted on Backblaze B2, not in git)
+*.zip

@@ -397,9 +397,9 @@ button{font-family:inherit;cursor:pointer}
     <h2 style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1.05">Speak.<br>Voxylis writes.</h2>
     <p style="margin-top:28px;font-size:18px;color:var(--ink2);max-width:560px;line-height:1.6">Download Voxylis for Windows, macOS, or Linux. Your voice is ready when you are.</p>
     <div style="margin-top:40px;display:flex;gap:16px;flex-wrap:wrap" id="downloadBtns">
-      <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.exe" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
-      <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.dmg" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
-      <a href="https://github.com/voxylis/voxylis/releases/latest/download/Voxylis.AppImage" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
+      <a href="https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Windows-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&amp;X-Amz-Date=20260921T111813Z&amp;X-Amz-Expires=604800&amp;X-Amz-Signature=7e12ea683db02bedc07f21b711d622f7a770e7b9a67042f5583f24e24c421f1b&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
+      <a href="https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Source-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&amp;X-Amz-Date=20260921T111813Z&amp;X-Amz-Expires=604800&amp;X-Amz-Signature=7755abb4721c34dfeebef82a26302cf97ea3a298437dd08d8eb29c808024f105&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
+      <a href="https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Source-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&amp;X-Amz-Date=20260921T111813Z&amp;X-Amz-Expires=604800&amp;X-Amz-Signature=7755abb4721c34dfeebef82a26302cf97ea3a298437dd08d8eb29c808024f105&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
     </div>
     <div class="plat-tags" style="margin-top:20px">
       <span class="plat-tag" id="tag-win">Windows 10+</span>
@@ -422,6 +422,7 @@ button{font-family:inherit;cursor:pointer}
   </div>
 </section>
 
+<script src="/static/js/api.js"></script>
 <script>
 // FAQ accordion
 document.querySelectorAll('.faq-item').forEach(item=>{
@@ -452,7 +453,7 @@ document.addEventListener('DOMContentLoaded',()=>{document.body.style.overflow='
 
 // Track download click
 function trackDownload(platform){
-  try{navigator.sendBeacon&&navigator.sendBeacon('/api/download/track',JSON.stringify({platform:platform}))}catch(e){}
+  try{window.voxyBeacon&&window.voxyBeacon('/api/download/track',{platform:platform})}catch(e){}
 }
 
 // Newsletter subscription
@@ -461,7 +462,7 @@ function subscribeNewsletter(e){
   var email=document.getElementById('nlEmail').value;
   var msg=document.getElementById('nlMsg');
   if(!email){return false}
-  fetch('/api/newsletter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})})
+  fetch((window.VOXY_API_BASE||'')+'/api/newsletter',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email})})
   .then(function(r){return r.json()})
   .then(function(d){
     if(d.success){msg.className='msg ok';msg.textContent='Thanks! You\'re subscribed.';document.getElementById('nlEmail').value=''}
@@ -472,7 +473,7 @@ function subscribeNewsletter(e){
 }
 
 // Fetch live stats
-fetch('/api/stats/public').then(function(r){return r.json()}).then(function(d){
+fetch((window.VOXY_API_BASE||'')+'/api/stats/public').then(function(r){return r.json()}).then(function(d){
   if(d.status==='success'){
     var nums=document.querySelectorAll('.hero-stats .num');
     if(nums[2]&&d.stats)nums[2].textContent=d.stats.users||'12k+';

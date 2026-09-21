@@ -19,6 +19,7 @@ checks = [
     ("GET", "/dashboard", None, 200),
     ("GET", "/static/css/dashboard.css", None, 200),
     ("GET", "/static/js/dashboard.js", None, 200),
+    ("GET", "/static/js/api.js", None, 200),
     ("GET", "/docs/installation", None, 200),
     ("GET", "/docs/troubleshooting", None, 200),
     ("GET", "/docs/nope", None, 404),

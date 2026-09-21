@@ -96,14 +96,13 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
   </div>
 </footer>
 
+<script src="/static/js/api.js"></script>
 <script>
 const FALLBACK_POSTS = [
-  {slug:"introducing-voxy-2", date:"2026-09-15", category:"Product", title:"Introducing Voxy 2.0", excerpt:"Real-time transcription, calibrated confidence, and five AI enhancement modes in one clean release.", read_time:"4 min"},
-  {slug:"bitterest-lesson-voice-ai", date:"2026-09-10", category:"Engineering", title:"The bitterest lesson in voice AI", excerpt:"Accuracy comes from better pipelines and feedback loops — not just bigger models.", read_time:"6 min"},
-  {slug:"ai-too-good-to-type", date:"2026-09-05", category:"Product", title:"AI: too good to be true, too bad to type", excerpt:"Why voice is the missing input layer for software, and how Voxylis makes it reliable.", read_time:"5 min"},
-  {slug:"voice-input-99-languages", date:"2026-08-28", category:"Product", title:"Voice input in 99+ languages", excerpt:"A deep dive into our multilingual pipeline and the challenges of supporting low-resource languages.", read_time:"7 min"},
-  {slug:"hotkeys-wake-words-clicks", date:"2026-08-20", category:"Engineering", title:"Hotkeys, wake words, and clicks", excerpt:"How we built three activation modes that feel native on every platform.", read_time:"4 min"},
-  {slug:"building-confidence-scoring", date:"2026-08-12", category:"Engineering", title:"Building confidence scoring into transcription", excerpt:"Why every word needs a confidence score, and how we calibrated ours.", read_time:"5 min"}
+  {slug:"introducing-voxy-2-0", date:"2026-09-15", category:"Product Update", title:"Introducing Voxy 2.0", excerpt:"Voxy 2.0 brings real-time transcription, 40% faster AI enhancement, and a completely redesigned command palette.", read_time:"4 min read"},
+  {slug:"bitterest-lesson-voice-ai", date:"2026-08-28", category:"Engineering", title:"The Bitterest Lesson in Voice AI", excerpt:"Why scaling data and compute beat every clever algorithmic trick we tried - and what that means for the future of voice input.", read_time:"6 min read"},
+  {slug:"ai-too-good-to-be-true", date:"2026-08-10", category:"Product", title:"AI: Too Good to Be True, Too Bad to Type", excerpt:"AI writing assistants are everywhere - but typing is still the bottleneck. Voice input is the unlock.", read_time:"5 min read"},
+  {slug:"voice-input-vs-typing-numbers", date:"2026-07-22", category:"Data & Research", title:"Voice Input vs Typing: The Numbers", excerpt:"We analysed 50 000 Voxylis sessions to compare voice input speed, error rates, and user satisfaction against traditional typing.", read_time:"5 min read"}
 ];
 
 function renderPosts(posts) {
@@ -124,7 +123,7 @@ function renderPosts(posts) {
   }).join('');
 }
 
-fetch('/api/blog').then(r => r.ok ? r.json() : Promise.reject()).then(data => {
+voxyFetch('/api/blog').then(r => r.ok ? r.json() : Promise.reject()).then(data => {
   const posts = Array.isArray(data) ? data : (data.posts || []);
   renderPosts(posts);
 }).catch(() => renderPosts(FALLBACK_POSTS));
