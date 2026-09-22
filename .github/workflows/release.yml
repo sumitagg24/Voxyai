@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pyinstaller voxylis.spec
+      - name: Sign executable (skipped unless WINDOWS_CERT_BASE64 secret is set)
+        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $pfx = "$env:RUNNER_TEMP\voxylis-cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String('${{ secrets.WINDOWS_CERT_BASE64 }}'))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          & $signtool sign /f $pfx /p '${{ secrets.WINDOWS_CERT_PASSWORD }}' /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/Voxylis/Voxylis.exe
+      - name: Create ZIP
+        run: Compress-Archive -Path dist/Voxylis -DestinationPath Voxylis-Windows-${{ github.ref_name }}.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: Voxylis-Windows-${{ github.ref_name }}.zip
+
+  release-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"

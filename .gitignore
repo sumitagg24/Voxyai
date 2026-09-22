@@ -64,7 +64,7 @@ web/data/
 # Build artifacts
 dist/
 build/
-*.spec
+# NOTE: voxylis.spec is tracked on purpose — CI builds the EXE from it.
 
 # OS
 .DS_Store

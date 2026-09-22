@@ -1,0 +1,35 @@
+# UTF-8
+#
+# PyInstaller version resource for Voxylis.exe.
+# Referenced from voxylis.spec (EXE -> version=...).
+# An EXE without version metadata looks anonymous to Windows
+# SmartScreen and always triggers the "unrecognized app" warning.
+# Keep FileVersion / ProductVersion in sync with the release tag.
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(2, 2, 0, 0),
+    prodvers=(2, 2, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          u'040904B0',
+          [StringStruct(u'CompanyName', u'Voxylis'),
+          StringStruct(u'FileDescription', u'Voxylis - AI Voice Assistant'),
+          StringStruct(u'FileVersion', u'2.2.0'),
+          StringStruct(u'InternalName', u'Voxylis'),
+          StringStruct(u'LegalCopyright', u'Copyright (c) 2026 Voxylis'),
+          StringStruct(u'OriginalFilename', u'Voxylis.exe'),
+          StringStruct(u'ProductName', u'Voxylis'),
+          StringStruct(u'ProductVersion', u'2.2.0')])
+      ]),
+    VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
+  ]
+)
