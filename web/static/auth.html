@@ -38,6 +38,13 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 .form-group input:focus{border-color:var(--ink)}
 .auth-btn{width:100%;padding:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:15px;font-weight:600;transition:all .15s;cursor:pointer;font-family:var(--host);margin-top:8px}
 .auth-btn:hover{background:#000;border-color:#000}
+
+/* Mobile improvements */
+@media(max-width:900px){
+  .auth-right{padding:40px 24px}
+  .form-group input{padding:14px 16px;font-size:16px}
+  .auth-btn{padding:14px;font-size:16px}
+}
 .auth-btn:disabled{opacity:.5;cursor:not-allowed}
 .msg-error{padding:12px;border:1px solid var(--pink-d);border-radius:6px;background:rgba(240,96,128,.06);color:var(--pink-d);font-size:13px;font-weight:500;margin-top:12px;display:none}
 .auth-footer{margin-top:32px;text-align:center;font-size:14px;color:var(--muted)}
@@ -46,6 +53,30 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 .divider-row{display:flex;align-items:center;gap:16px;margin:24px 0}
 .divider-row::before,.divider-row::after{content:'';flex:1;height:1px;background:var(--line2)}
 .divider-row span{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.social-btn{width:100%;padding:12px;border:1px solid var(--line2);background:#fff;color:var(--ink);border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host);display:flex;align-items:center;justify-content:center;gap:10px;transition:all .15s}
+.social-btn:hover{background:var(--bg2);border-color:var(--ink)}
+.social-btn:disabled{opacity:.5;cursor:not-allowed}
+.social-btn svg{width:20px;height:20px;flex-shrink:0}
+.social-btn + .social-btn{margin-top:10px}
+.qr-link{display:block;margin:20px auto 0;background:none;border:none;color:var(--ink);font-size:14px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-family:var(--host)}
+.qr-link:hover{opacity:.7}
+.domain-hint{font-size:12px;color:var(--muted);margin-top:6px}
+/* QR modal */
+.qr-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.qr-overlay.open{display:flex}
+.qr-dialog{background:#fff;border-radius:14px;max-width:640px;width:100%;padding:32px;position:relative;display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media(max-width:640px){.qr-dialog{grid-template-columns:1fr;padding:24px}}
+.qr-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.qr-left{text-align:center}
+.qr-box{width:200px;height:200px;margin:0 auto 16px;border:1px solid var(--line2);border-radius:12px;display:grid;place-items:center;overflow:hidden;background:#fff}
+.qr-box img,.qr-box canvas,.qr-box table{margin:auto}
+.qr-code{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.2em;margin-bottom:4px}
+.qr-expiry{font-size:13px;color:var(--muted);margin-bottom:12px}
+.qr-new{background:none;border:1px solid var(--line2);border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--host)}
+.qr-right h3{margin:0 0 8px;font-size:20px;letter-spacing:-0.02em}
+.qr-right p{font-size:14px;color:var(--ink2);line-height:1.6}
+.qr-status{margin-top:16px;font-size:14px;font-weight:600}
+.qr-approve-btn{width:100%;padding:12px;margin-top:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host)}
 </style>
 </head>
 <body>
@@ -59,6 +90,16 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
   </div>
   <div class="auth-right">
     <div class="auth-box">
+      <button class="social-btn" id="google-btn" type="button">
+        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <button class="social-btn" id="github-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        Continue with GitHub
+      </button>
+      <div class="msg-error" id="social-error"></div>
+      <div class="divider-row"><span>or continue with email</span></div>
       <div class="auth-tabs">
         <button class="auth-tab active" data-tab="login">Sign In</button>
         <button class="auth-tab" data-tab="signup">Sign Up</button>
@@ -84,7 +125,8 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         </div>
         <div class="form-group">
           <label for="signup-identifier">Email or Phone</label>
-          <input type="text" id="signup-identifier" placeholder="you@example.com" required autocomplete="username">
+          <input type="text" id="signup-identifier" placeholder="you@gmail.com" required autocomplete="username">
+          <div class="domain-hint">Password signup: Gmail or company email only. No temporary mail.</div>
         </div>
         <div class="form-group">
           <label for="signup-password">Password</label>
@@ -96,12 +138,35 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 
       <div class="auth-footer">
         <div class="divider-row"><span>or</span></div>
-        <a href="/">Back to home</a>
+        <button class="qr-link" id="qr-open" type="button">📷 Scan a QR code to sign in</button>
+        <div style="margin-top:16px"><a href="/">Back to home</a></div>
       </div>
     </div>
   </div>
 </div>
 
+<div class="qr-overlay" id="qr-overlay" role="dialog" aria-modal="true" aria-label="Sign in with QR code">
+  <div class="qr-dialog">
+    <button class="qr-close" id="qr-close" type="button" aria-label="Close">×</button>
+    <div class="qr-left">
+      <div class="qr-box" id="qr-box"><span style="font-size:13px;color:var(--muted)">Loading…</span></div>
+      <div class="qr-code" id="qr-code">······</div>
+      <div class="qr-expiry" id="qr-expiry"></div>
+      <button class="qr-new" id="qr-new" type="button">New code</button>
+    </div>
+    <div class="qr-right">
+      <h3>Use your phone camera to scan</h3>
+      <p>Point your camera at the code, open the link, and approve the login on your phone. This device signs in automatically — nothing to type.</p>
+      <div class="qr-status" id="qr-status"></div>
+      <div id="qr-approve-box" style="display:none">
+        <p><b>Approve this login?</b> <span id="qr-approve-device"></span></p>
+        <button class="qr-approve-btn" id="qr-approve-btn" type="button">Approve login</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 <script src="/static/js/api.js"></script>
 <script>
 // Tab switching
@@ -134,16 +199,17 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        identifier: document.getElementById('login-identifier').value,
+        email_or_phone: document.getElementById('login-identifier').value,
         password: document.getElementById('login-password').value
       })
     });
     const data = await res.json();
     if (res.ok && data.session_id) {
       localStorage.setItem('session_id', data.session_id);
+      await maybeApproveQR();
       window.location.href = '/dashboard';
     } else {
-      showError('login-error', data.message || 'Invalid credentials. Please try again.');
+      showError('login-error', data.error || data.message || 'Invalid credentials. Please try again.');
     }
   } catch (err) {
     showError('login-error', 'Network error. Please try again later.');
@@ -167,16 +233,17 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: document.getElementById('signup-name').value,
-        identifier: document.getElementById('signup-identifier').value,
+        email_or_phone: document.getElementById('signup-identifier').value,
         password: document.getElementById('signup-password').value
       })
     });
     const data = await res.json();
     if (res.ok && data.session_id) {
       localStorage.setItem('session_id', data.session_id);
+      await maybeApproveQR();
       window.location.href = '/dashboard';
     } else {
-      showError('signup-error', data.message || 'Could not create account. Please try again.');
+      showError('signup-error', data.error || data.message || 'Could not create account. Please try again.');
     }
   } catch (err) {
     showError('signup-error', 'Network error. Please try again later.');
@@ -185,6 +252,277 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     btn.textContent = 'Create Account';
   }
 });
+</script>
+<script>
+// ---- Social Login (Google + GitHub via Auth0) ----
+let AUTH0 = { enabled: false, domain: '', clientId: '' };
+let pendingApproveCode = '';
+try { pendingApproveCode = (new URLSearchParams(location.search).get('qr') || '').toUpperCase(); } catch (e) {}
+
+function b64url(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function randStr(n) {
+  const a = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const rnd = new Uint8Array(n);
+  crypto.getRandomValues(rnd);
+  return Array.from(rnd, b => a[b % a.length]).join('');
+}
+
+async function pkceChallenge(v) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  return b64url(d);
+}
+
+function redirectUri() { return location.origin + '/auth'; }
+
+function showSocialError(msg) {
+  const el = document.getElementById('social-error');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function loadAuth0Config() {
+  try {
+    const res = await voxyFetch('/api/auth/auth0/config');
+    AUTH0 = await res.json();
+  } catch (e) { AUTH0 = { enabled: false }; }
+  if (!AUTH0.enabled) {
+    document.getElementById('google-btn').disabled = true;
+    document.getElementById('github-btn').disabled = true;
+    document.getElementById('google-btn').title = 'Social login is not configured on this server yet';
+    document.getElementById('github-btn').title = 'Social login is not configured on this server yet';
+  }
+}
+
+async function startSocialLogin(connection) {
+  showSocialError('');
+  if (!AUTH0.enabled) { showSocialError('Social login is not configured yet. Use email signup below.'); return; }
+  try {
+    const verifier = randStr(64);
+    const challenge = await pkceChallenge(verifier);
+    const state = randStr(32);
+    sessionStorage.setItem('auth0_verifier', verifier);
+    sessionStorage.setItem('auth0_state', state);
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: AUTH0.clientId,
+      redirect_uri: redirectUri(),
+      scope: 'openid profile email',
+      state: state,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      connection: connection,
+    });
+    location.href = `https://${AUTH0.domain}/authorize?${params}`;
+  } catch (e) { showSocialError('Could not start login.'); }
+}
+
+document.getElementById('google-btn').addEventListener('click', () => startSocialLogin('google-oauth2'));
+document.getElementById('github-btn').addEventListener('click', () => startSocialLogin('github'));
+
+async function finishAuth0Login(idToken) {
+  const res = await voxyFetch('/api/auth/auth0', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.session_id) throw new Error((data && (data.error || data.message)) || 'Auth0 login failed');
+  localStorage.setItem('session_id', data.session_id);
+  await maybeApproveQR();
+  location.href = '/dashboard';
+}
+
+async function handleAuth0Callback() {
+  const q = new URLSearchParams(location.search);
+  const code = q.get('code');
+  if (!code) return false;
+  history.replaceState({}, '', location.pathname);
+  if (q.get('error')) { showSocialError('Login: ' + (q.get('error_description') || q.get('error'))); return true; }
+  const verifier = sessionStorage.getItem('auth0_verifier');
+  const savedState = sessionStorage.getItem('auth0_state');
+  sessionStorage.removeItem('auth0_verifier');
+  sessionStorage.removeItem('auth0_state');
+  if (!verifier || q.get('state') !== savedState) { showSocialError('Login session expired. Please try again.'); return true; }
+  document.getElementById('google-btn').disabled = true;
+  document.getElementById('github-btn').disabled = true;
+  document.getElementById('google-btn').textContent = 'Signing you in…';
+  document.getElementById('github-btn').textContent = 'Signing you in…';
+  try {
+    const tokenRes = await fetch(`https://${AUTH0.domain}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        grant_type: 'authorization_code',
+        client_id: AUTH0.clientId,
+        code: code,
+        redirect_uri: redirectUri(),
+        code_verifier: verifier,
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokenRes.ok || !tokens.id_token) throw new Error((tokens && (tokens.error_description || tokens.error)) || 'Token exchange failed');
+    await finishAuth0Login(tokens.id_token);
+  } catch (e) {
+    showSocialError(e.message);
+    document.getElementById('google-btn').disabled = false;
+    document.getElementById('github-btn').disabled = false;
+    document.getElementById('google-btn').innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google';
+    document.getElementById('github-btn').innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg> Continue with GitHub';
+  }
+  return true;
+}
+
+// ---- QR login: scan with your phone, approve, this device signs in ----
+let qrTimer = null, qrPoll = null, qrExpiresAt = 0;
+
+function openQR() {
+  document.getElementById('qr-overlay').classList.add('open');
+  startQR();
+}
+function closeQR() {
+  document.getElementById('qr-overlay').classList.remove('open');
+  if (qrTimer) clearInterval(qrTimer);
+  if (qrPoll) clearInterval(qrPoll);
+  qrTimer = qrPoll = null;
+}
+document.getElementById('qr-open').addEventListener('click', openQR);
+document.getElementById('qr-close').addEventListener('click', closeQR);
+document.getElementById('qr-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'qr-overlay') closeQR();
+});
+document.getElementById('qr-new').addEventListener('click', startQR);
+
+async function startQR() {
+  const box = document.getElementById('qr-box');
+  const status = document.getElementById('qr-status');
+  document.getElementById('qr-approve-box').style.display = 'none';
+  document.getElementById('qr-new').style.display = '';
+  box.innerHTML = '<span style="font-size:13px;color:var(--muted)">Loading…</span>';
+  status.textContent = '';
+  try {
+    const res = await voxyFetch('/api/auth/qr/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_name: navigator.platform || 'browser' }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.code) throw new Error((data && (data.error || data.message)) || 'Could not create code');
+    const url = location.origin + '/auth?qr=' + data.code;
+    box.innerHTML = '';
+    if (window.QRCode) {
+      new QRCode(box, { text: url, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+    } else {
+      box.innerHTML = '<span style="font-size:12px">QR library offline — open:<br><b>' + data.code + '</b></span>';
+    }
+    document.getElementById('qr-code').textContent = data.code;
+    qrExpiresAt = Date.now() + (data.expires_in || 300) * 1000;
+    tickQR();
+    if (qrTimer) clearInterval(qrTimer);
+    qrTimer = setInterval(tickQR, 1000);
+    if (qrPoll) clearInterval(qrPoll);
+    qrPoll = setInterval(() => pollQR(data.code), 2000);
+  } catch (e) {
+    box.innerHTML = '<span style="font-size:13px">Unavailable</span>';
+    status.textContent = e.message;
+  }
+}
+
+function tickQR() {
+  const left = Math.max(0, Math.round((qrExpiresAt - Date.now()) / 1000));
+  const m = Math.floor(left / 60), s = String(left % 60).padStart(2, '0');
+  document.getElementById('qr-expiry').textContent = left ? `Code expires in ${m}:${s}` : 'Code expired';
+  if (!left && qrTimer) { clearInterval(qrTimer); qrTimer = null; }
+}
+
+async function pollQR(code) {
+  try {
+    const res = await fetch((window.VOXY_API_BASE || '') + '/api/auth/qr/status?code=' + encodeURIComponent(code));
+    const data = await res.json();
+    if (data.status === 'approved' && data.session_id) {
+      if (qrTimer) clearInterval(qrTimer);
+      if (qrPoll) clearInterval(qrPoll);
+      document.getElementById('qr-status').textContent = '✓ Approved — signing you in…';
+      localStorage.setItem('session_id', data.session_id);
+      location.href = '/dashboard';
+    } else if (data.status === 'expired') {
+      document.getElementById('qr-status').textContent = 'Code expired — tap “New code”.';
+      if (qrPoll) clearInterval(qrPoll);
+    }
+  } catch (e) { /* keep polling */ }
+}
+
+// Incoming approval (opened via ?qr=CODE on the phone).
+function checkQRApprove() {
+  if (!pendingApproveCode) return;
+  if (qrTimer) clearInterval(qrTimer);
+  if (qrPoll) clearInterval(qrPoll);
+  document.getElementById('qr-overlay').classList.add('open');
+  document.getElementById('qr-new').style.display = 'none';
+  document.getElementById('qr-box').innerHTML = '<span style="font-size:48px">📱</span>';
+  document.getElementById('qr-code').textContent = pendingApproveCode;
+  document.getElementById('qr-expiry').textContent = '';
+  let sid = null;
+  try { sid = localStorage.getItem('session_id'); } catch (e) {}
+  if (!sid) {
+    document.getElementById('qr-status').textContent = 'Sign in below first — then come back to approve.';
+    return;
+  }
+  showApproveBox(pendingApproveCode);
+}
+
+function showApproveBox(code) {
+  const box = document.getElementById('qr-approve-box');
+  box.style.display = 'block';
+  document.getElementById('qr-approve-device').textContent = 'Code ' + code;
+  document.getElementById('qr-status').textContent = '';
+  const btn = document.getElementById('qr-approve-btn');
+  btn.disabled = false;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const res = await voxyFetch('/api/auth/qr/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || data.message || ('HTTP ' + res.status));
+      document.getElementById('qr-status').textContent = '✓ Approved! You can close this.';
+      box.style.display = 'none';
+      pendingApproveCode = '';
+      history.replaceState({}, '', location.pathname);
+    } catch (e) {
+      document.getElementById('qr-status').textContent = e.message;
+      btn.disabled = false;
+    }
+  };
+}
+
+async function maybeApproveQR() {
+  if (!pendingApproveCode) return;
+  try {
+    await voxyFetch('/api/auth/qr/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: pendingApproveCode }),
+    });
+  } catch (e) { /* best effort */ }
+  pendingApproveCode = '';
+  history.replaceState({}, '', location.pathname);
+}
+
+(async function initAuth() {
+  await loadAuth0Config();
+  if (await handleAuth0Callback()) return;
+  if (pendingApproveCode) checkQRApprove();
+})();
 </script>
 </body>
 </html>

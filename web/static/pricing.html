@@ -35,6 +35,15 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:14px;font-weight:600;transition:all .15s;line-height:1}
 .btn:hover{background:#000;border-color:#000}.btn.ghost{background:transparent;color:var(--ink)}.btn.ghost:hover{background:#f0f0f0}
 @media(max-width:900px){.nav-links,.nav-right{display:none}}
+
+/* Mobile hamburger */
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px}
+.nav-toggle span{display:block;width:22px;height:2px;background:var(--ink);margin:5px 0;transition:all .2s}
+@media(max-width:900px){.nav-toggle{display:block}}
+@media(max-width:900px){
+  .nav-links,.nav-right{display:none!important;position:absolute;top:100%;left:0;right:0;background:var(--bg);border-bottom:1px solid var(--line2);flex-direction:column;padding:20px;gap:16px;z-index:100}
+  .nav-links.open,.nav-right.open{display:flex!important}
+}
 .footer{background:#000;color:#fff;padding:64px 0 40px}
 .footer-top{display:flex;justify-content:space-between;align-items:flex-start;gap:48px;flex-wrap:wrap;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,.12)}
 @media(max-width:700px){.footer-top{flex-direction:column;gap:32px}}
@@ -82,6 +91,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 <body>
 <nav class="nav">
   <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
+  <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
   <div class="nav-links"><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a></div>
   <div class="nav-right"><a href="/auth" class="signin">Sign In</a><a href="/download" class="btn">Download App</a></div>
 </nav>

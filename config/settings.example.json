@@ -30,6 +30,7 @@
   "web_ui_host": "127.0.0.1",
   "web_ui_port": 5000,
   "web_token": "",
+  "api_base": "",
   "voice_commands": {
     "clear that": "clear_last",
     "delete that": "clear_last",

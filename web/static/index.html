@@ -59,6 +59,20 @@ button{font-family:inherit;cursor:pointer}
 .btn.plain:hover{opacity:.7}
 @media(max-width:900px){.nav-links,.nav-right{display:none}}
 
+/* Mobile hamburger */
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px}
+.nav-toggle span{display:block;width:22px;height:2px;background:var(--ink);margin:5px 0;transition:all .2s}
+@media(max-width:900px){.nav-toggle{display:block}}
+@media(max-width:900px){
+  .nav-links,.nav-right{display:none!important;position:absolute;top:100%;left:0;right:0;background:var(--bg);border-bottom:1px solid var(--line2);flex-direction:column;padding:20px;gap:16px;z-index:100}
+  .nav-links.open,.nav-right.open{display:flex!important}
+}
+
+/* Mobile form inputs */
+@media(max-width:700px){
+  input[type="email"],input[type="text"],input[type="password"]{padding:14px 16px;font-size:16px}
+}
+
 /* ── HERO ── */
 .hero{padding:120px 0 80px;text-align:center}
 .hero .eyebrow{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:48px}
@@ -211,7 +225,8 @@ button{font-family:inherit;cursor:pointer}
 <body>
 <!-- NAV -->
 <nav class="nav">
-  <div class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></div>
+  <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
+  <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
   <div class="nav-links">
     <a href="#features">Features</a>
     <a href="/pricing">Pricing</a>
@@ -397,9 +412,9 @@ button{font-family:inherit;cursor:pointer}
     <h2 style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1.05">Speak.<br>Voxylis writes.</h2>
     <p style="margin-top:28px;font-size:18px;color:var(--ink2);max-width:560px;line-height:1.6">Download Voxylis for Windows, macOS, or Linux. Your voice is ready when you are.</p>
     <div style="margin-top:40px;display:flex;gap:16px;flex-wrap:wrap" id="downloadBtns">
-      <a href="https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Windows-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&amp;X-Amz-Date=20260921T111813Z&amp;X-Amz-Expires=604800&amp;X-Amz-Signature=7e12ea683db02bedc07f21b711d622f7a770e7b9a67042f5583f24e24c421f1b&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
-      <a href="https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Source-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&amp;X-Amz-Date=20260921T111813Z&amp;X-Amz-Expires=604800&amp;X-Amz-Signature=7755abb4721c34dfeebef82a26302cf97ea3a298437dd08d8eb29c808024f105&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
-      <a href="https://s3.eu-central-003.backblazeb2.com/taskflow-uploads/voxylis/Voxylis-Source-v2.1.1.zip?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&amp;X-Amz-Credential=00306de4c93c2520000000003%2F20260921%2Feu-central-003%2Fs3%2Faws4_request&amp;X-Amz-Date=20260921T111813Z&amp;X-Amz-Expires=604800&amp;X-Amz-Signature=7755abb4721c34dfeebef82a26302cf97ea3a298437dd08d8eb29c808024f105&amp;X-Amz-SignedHeaders=host&amp;x-amz-checksum-mode=ENABLED&amp;x-id=GetObject" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
+      <a href="#" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
+      <a href="#" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
+      <a href="#" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
     </div>
     <div class="plat-tags" style="margin-top:20px">
       <span class="plat-tag" id="tag-win">Windows 10+</span>
@@ -450,6 +465,13 @@ document.addEventListener('DOMContentLoaded',()=>{document.body.style.overflow='
   else if(isMac){var b=document.getElementById('dl-mac');if(b){b.className='btn';document.getElementById('tag-mac').classList.add('active')}}
   else if(isLinux){var b=document.getElementById('dl-linux');if(b){b.className='btn';document.getElementById('tag-linux').classList.add('active')}}
 })();
+
+// Load download URLs from API
+fetch((window.VOXY_API_BASE||'')+'/api/download/urls').then(function(r){return r.json()}).then(function(d){
+  if(d.windows)document.getElementById('dl-win').href=d.windows;
+  if(d.macos)document.getElementById('dl-mac').href=d.macos;
+  if(d.linux)document.getElementById('dl-linux').href=d.linux;
+}).catch(function(){});
 
 // Track download click
 function trackDownload(platform){

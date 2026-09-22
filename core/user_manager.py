@@ -88,6 +88,7 @@ class UserManager:
             "password": self.hash_password(password),
             "created_at": datetime.now().isoformat(),
             "last_login": None,
+            "tier": "free",
             "stats": {"transcriptions": 0, "total_time": 0, "languages": []},
         }
 
@@ -132,6 +133,38 @@ class UserManager:
             "name": user["name"],
             "session_id": session_id,
         }
+
+    def save_auth0_login(self, email, name, session_id, tier="free", role="user"):
+        """Persist an Auth0-backed login (from the device flow or backend).
+
+        Creates/updates the local user record and stores the Voxylis
+        session issued by the backend, so the desktop works offline.
+        """
+        email = (email or "").strip().lower()
+        if not email or not session_id:
+            return {"success": False, "error": "Missing email or session"}
+        users = self.load_users()
+        user = users.get(email, {})
+        user.update({
+            "name": name or user.get("name") or email.split("@")[0],
+            "last_login": datetime.now().isoformat(),
+            "tier": tier or user.get("tier", "free"),
+            "role": role or user.get("role", "user"),
+            "auth_provider": "auth0",
+            "created_at": user.get("created_at") or datetime.now().isoformat(),
+            "stats": user.get("stats", {"transcriptions": 0, "total_time": 0, "languages": []}),
+        })
+        users[email] = user
+        self.save_users(users)
+
+        sessions = self.load_sessions()
+        sessions[session_id] = {
+            "user": email,
+            "created_at": datetime.now().isoformat(),
+            "expires_at": (datetime.now().timestamp() + 86400 * 30),  # 30 days
+        }
+        self.save_sessions(sessions)
+        return {"success": True, "user": email, "name": user["name"]}
 
     def verify_session(self, session_id):
         """Verify if session is valid"""

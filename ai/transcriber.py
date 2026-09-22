@@ -170,7 +170,7 @@ class Transcriber:
     # ── public ────────────────────────────────────────────────────────────
 
     def transcribe(
-        self, audio_data: np.ndarray, language: Optional[str] = None
+        self, audio_data: np.ndarray, language: Optional[str] = None, settings: dict = None
     ) -> Optional[str]:
         """
         Transcribe audio.

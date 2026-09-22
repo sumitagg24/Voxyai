@@ -343,7 +343,7 @@ class AppOrchestrator:
 
             lang = self.config.get("language", "auto")
             transcript = self.transcriber.transcribe(
-                audio_data, language=None if lang == "auto" else lang
+                audio_data, language=None if lang == "auto" else lang, settings=self.config
             )
 
             if not transcript:
@@ -412,7 +412,7 @@ class AppOrchestrator:
 
             if self.config.get("enable_ai_enhancement") and self.enhancer:
                 event_manager.emit(Events.ENHANCEMENT_STARTED)
-                result = self.enhancer.enhance(transcript, mode)
+                result = self.enhancer.enhance(transcript, mode, settings=self.config)
                 if result:
                     enhanced = result
                     event_manager.emit(Events.ENHANCEMENT_COMPLETED, enhanced)

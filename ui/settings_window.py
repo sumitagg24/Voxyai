@@ -149,6 +149,18 @@ class SettingsWindow(QMainWindow):
         f.addRow("Show floating widget:", self.show_widget)
         f.addRow("Start with Windows:", self.startup_boot)
 
+        acct = QGroupBox("Account")
+        al = QVBoxLayout(acct)
+        self.account_status = QLabel()
+        self.account_status.setStyleSheet("color:#888; font-size:11px;")
+        self.account_status.setWordWrap(True)
+        al.addWidget(self.account_status)
+        self.auth0_btn = QPushButton("Sign in with Auth0")
+        self.auth0_btn.clicked.connect(self._auth0_login)
+        al.addWidget(self.auth0_btn)
+        f.addRow(acct)
+        self._refresh_account_status()
+
         grp = QGroupBox("Recording Mode")
         gl = QVBoxLayout(grp)
         self.toggle_mode.setText(
@@ -160,6 +172,45 @@ class SettingsWindow(QMainWindow):
         gl.addWidget(self.toggle_mode)
         f.addRow(grp)
         return w
+
+    def _refresh_account_status(self):
+        email = (self.config.get("user_email") or "").strip()
+        tier = self.config.get("tier", "free")
+        role = self.config.get("user_role", "user")
+        if email:
+            extra = " (admin — all features)" if role == "admin" else ""
+            self.account_status.setText(f"Signed in as {email} · {tier}{extra}")
+            self.auth0_btn.setText("Switch account")
+        else:
+            self.account_status.setText("Not signed in — free tier, works offline.")
+            self.auth0_btn.setText("Sign in with Auth0")
+
+    def _auth0_login(self):
+        from ui.auth0_dialog import Auth0LoginDialog
+
+        cfg = self.config
+        base = (cfg.get("api_base") or "").strip()
+        if not base:
+            base = (
+                f"http://{cfg.get('web_ui_host', '127.0.0.1')}"
+                f":{cfg.get('web_ui_port', 5000)}"
+            )
+        dlg = Auth0LoginDialog(self, api_base=base)
+        if dlg.exec_() and dlg.result_data:
+            data = dlg.result_data
+            try:
+                from core.user_manager import user_manager
+                user_manager.save_auth0_login(
+                    data["email"], data.get("name", ""), data["session_id"],
+                    data.get("tier", "free"), data.get("role", "user"),
+                )
+            except Exception:
+                pass
+            self.config["user_email"] = data["email"]
+            self.config["tier"] = data.get("tier", "free")
+            self.config["user_role"] = data.get("role", "user")
+            self.settings_changed.emit("tier", self.config["tier"])
+            self._refresh_account_status()
 
     # ── Hotkeys ───────────────────────────────────────────────────────────────
 
@@ -407,6 +458,9 @@ class SettingsWindow(QMainWindow):
             "log_level": self.log_level.currentText(),
             "max_history": self.max_history.value(),
             "sample_rate": self.sample_rate.value(),
+            "user_email": self.config.get("user_email", ""),
+            "tier": self.config.get("tier", "free"),
+            "user_role": self.config.get("user_role", "user"),
         }
 
         for k, v in settings.items():

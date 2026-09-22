@@ -2,6 +2,130 @@
 // DASHBOARD JAVASCRIPT
 // ============================================
 
+// ============================================
+// TIER MANAGEMENT
+// ============================================
+
+class TierManager {
+    constructor() {
+        this.tier = 'free';
+        this.enhancementModes = {
+            free: ['formal'],
+            pro: ['formal', 'casual', 'technical', 'concise', 'creative'],
+            business: ['formal', 'casual', 'technical', 'concise', 'creative']
+        };
+        this.fetchTier();
+    }
+
+    async fetchTier() {
+        try {
+            const r = await voxyFetch('/api/me');
+            if (r && r.success && r.user && r.user.tier) {
+                this.tier = r.user.tier;
+            }
+        } catch (e) {
+            // default to free
+        }
+        this.applyTierUI();
+    }
+
+    isFree() { return this.tier === 'free'; }
+
+    hasFeature(feature) {
+        const features = {
+            free: ['transcription', 'enhancement_basic', 'history', 'settings', 'hotkeys'],
+            pro: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'history', 'settings', 'hotkeys'],
+            business: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys']
+        };
+        return feature in (features[this.tier] || features.free);
+    }
+
+    canUseMode(mode) {
+        return this.enhancementModes[this.tier] && this.enhancementModes[this.tier].includes(mode);
+    }
+
+    applyTierUI() {
+        // Gate enhancement mode chips
+        const chips = document.querySelectorAll('#modeChips .chip');
+        chips.forEach(chip => {
+            const mode = chip.dataset.mode;
+            if (this.canUseMode(mode)) {
+                chip.style.opacity = '1';
+                chip.style.pointerEvents = 'auto';
+                chip.removeAttribute('title');
+            } else {
+                chip.style.opacity = '0.4';
+                chip.style.pointerEvents = 'none';
+                chip.title = 'Upgrade to Pro to use this mode';
+            }
+        });
+
+        // Gate Q&A nav link and section
+        const qaNav = document.querySelector('[data-section="qa"]');
+        if (qaNav && this.isFree()) {
+            qaNav.style.opacity = '0.4';
+            qaNav.title = 'Upgrade to Pro to use Q&A';
+        } else if (qaNav) {
+            qaNav.style.opacity = '1';
+            qaNav.removeAttribute('title');
+        }
+
+        // Gate Q&A section content
+        const qaSection = document.getElementById('qa');
+        if (qaSection && this.isFree()) {
+            const form = qaSection.querySelector('.settings-form');
+            if (form) {
+                form.innerHTML = `
+                    <div class="tier-locked" style="text-align:center;padding:3rem 1rem;">
+                        <div style="font-size:2.5rem;margin-bottom:1rem;">🔒</div>
+                        <h3 style="margin-bottom:0.5rem;">Q&A requires a Pro plan</h3>
+                        <p style="color:var(--muted);margin-bottom:1.5rem;">Upgrade to ask questions about your transcriptions.</p>
+                        <a href="/pricing" class="btn btn-primary">View Plans</a>
+                    </div>
+                `;
+            }
+        }
+
+        // Update tier badge in subscription section
+        const tierBadge = document.getElementById('subscriptionTierBadge');
+        if (tierBadge) {
+            tierBadge.textContent = this.tier.charAt(0).toUpperCase() + this.tier.slice(1);
+            tierBadge.className = 'tier-badge tier-' + this.tier;
+        }
+    }
+}
+
+const tierManager = new TierManager();
+
+// Load subscription data into the plan section
+async function loadSubscriptionData() {
+    try {
+        const r = await voxyFetch('/api/subscription');
+        if (r && r.success && r.subscription) {
+            const s = r.subscription;
+            const planEl = document.getElementById('planName');
+            const renewalEl = document.getElementById('planRenewal');
+            const countEl = document.getElementById('usageCount');
+            const barEl = document.getElementById('usageBar');
+            const badgeEl = document.getElementById('subscriptionTierBadge');
+            if (planEl) planEl.textContent = s.plan || 'Free';
+            if (renewalEl) renewalEl.textContent = s.renewalDate ? 'Renews ' + s.renewalDate : '';
+            if (countEl) countEl.textContent = s.usage ? s.usage.transcriptions + '/' + s.usage.limit : '–';
+            if (barEl) barEl.style.width = s.usage ? s.usage.percentage + '%' : '0%';
+            if (badgeEl) {
+                badgeEl.textContent = s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Free';
+                badgeEl.className = 'tier-badge tier-' + (s.tier || 'free');
+            }
+            // Update manage button
+            const btn = document.getElementById('managePlanBtn');
+            if (btn && s.tier !== 'free') {
+                btn.textContent = 'Manage Plan';
+            }
+        }
+    } catch (e) {}
+}
+document.addEventListener('DOMContentLoaded', loadSubscriptionData);
+
 // Section Navigation
 class DashboardNav {
     constructor() {
@@ -54,7 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================
 
 function initializeCharts() {
-    // Usage Chart
+    // The live wiring block in dashboard.html renders real charts from
+    // /api/stats + /api/history when the backend is reachable. The sample
+    // charts below are only a fallback for offline/demo mode.
+    if (window.__chartsReal) return;
     const usageCtx = document.getElementById('usageChart');
     if (usageCtx) {
         new Chart(usageCtx, {

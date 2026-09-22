@@ -87,7 +87,7 @@ class TextEnhancer:
         """Update custom enhancement modes."""
         self.custom_modes = custom_modes
 
-    def enhance(self, text: str, mode: str = "formal") -> Optional[str]:
+    def enhance(self, text: str, mode: str = "formal", settings: dict = None) -> Optional[str]:
         if not self.client:
             log_warning("No enhancement client — returning original text")
             return text
@@ -95,6 +95,15 @@ class TextEnhancer:
         try:
             if not text or not text.strip():
                 return text
+
+            # Tier-based mode enforcement
+            if settings:
+                from config.constants import get_user_tier, TIER_ENHANCEMENT_MODES
+                tier = get_user_tier(settings)
+                allowed = TIER_ENHANCEMENT_MODES.get(tier, TIER_ENHANCEMENT_MODES["free"])
+                if mode not in allowed:
+                    log_info(f"Mode '{mode}' not allowed for tier '{tier}', falling back to formal")
+                    mode = "formal"
 
             # Detect language from text
             lang_code, script, confidence = language_detector.detect_from_text(text)

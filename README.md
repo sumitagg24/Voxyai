@@ -227,6 +227,18 @@ docker compose up -d
 gunicorn --bind 0.0.0.0:5000 --workers 4 web.app:app
 ```
 
+### Connecting the Vercel Frontend to the Backend API
+Vercel serves static files only — the dashboard calls a backend for everything
+real (stats, history, Q&A, transcription). Point it at a hosted backend once:
+- Open `https://voxylis-web.vercel.app/dashboard?api=https://your-backend.example.com`
+  (the choice is remembered in the browser), or set `window.VOXYLIS_API_BASE`
+  before `api.js` loads.
+- The backend must allow the origin: `CORS_ORIGINS` env (the default already
+  includes `https://voxylis-web.vercel.app`).
+- Host the backend via `Dockerfile` / `docker-compose.yml`, or gunicorn as above,
+  with `MODEL_API_KEY` / `GROQ_API_KEY` set — without keys, `/api/transcribe`
+  and `/api/qa` return 503 and the dashboard says so.
+
 ### GitHub Actions
 - **CI**: Runs on every push/PR (lint, test, build)
 - **Release**: Triggered by `v*` tags (builds desktop exe, deploys web)

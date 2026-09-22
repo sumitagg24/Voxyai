@@ -19,6 +19,7 @@ from ui.overlay import FloatingWidget
 from ui.settings_window import SettingsWindow
 from ui.history_window import HistoryWindow
 from ui.custom_modes_window import CustomModesWindow
+from ui.onboarding_window import OnboardingWindow, has_completed_onboarding
 from utils.logger import log_info, log_error
 from utils.helpers import ensure_directories
 
@@ -394,6 +395,12 @@ class VoxylisApp:
 
     def run(self) -> int:
         try:
+            # Show onboarding on first run
+            if not has_completed_onboarding():
+                log_info("First run detected - showing onboarding")
+                onboarding = OnboardingWindow(self.orchestrator.config)
+                onboarding.exec_()
+
             if not self.orchestrator.start():
                 log_error("Failed to start orchestrator")
                 QMessageBox.critical(None, "Error", "Failed to start Voxylis.")

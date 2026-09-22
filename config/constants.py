@@ -55,3 +55,45 @@ INJECTION_TIMEOUT = 5
 # Retry settings
 MAX_RETRIES = 3
 RETRY_DELAY = 1  # seconds
+
+# Subscription tiers
+TIER_FREE = "free"
+TIER_PRO = "pro"
+TIER_BUSINESS = "business"
+
+TIER_FEATURES = {
+    TIER_FREE: {"transcription", "enhancement_basic", "history", "settings"},
+    TIER_PRO: {
+        "transcription", "enhancement_basic", "enhancement_all", "qa",
+        "advanced_stt", "wake_word", "history", "settings",
+    },
+    TIER_BUSINESS: {
+        "transcription", "enhancement_basic", "enhancement_all", "qa",
+        "advanced_stt", "wake_word", "api_access", "team_features", "history", "settings",
+    },
+}
+
+FREE_MONTHLY_TRANSCRIPTIONS = 100
+
+TIER_ENHANCEMENT_MODES = {
+    TIER_FREE: {"formal"},
+    TIER_PRO: {"formal", "casual", "technical", "concise", "creative"},
+    TIER_BUSINESS: {"formal", "casual", "technical", "concise", "creative"},
+}
+
+TIER_STT_MODES = {
+    TIER_FREE: {"PUSH_TO_TALK"},
+    TIER_PRO: {"PUSH_TO_TALK", "ENDPOINTING", "DIARIZATION"},
+    TIER_BUSINESS: {"PUSH_TO_TALK", "ENDPOINTING", "DIARIZATION"},
+}
+
+
+def get_user_tier(settings: dict) -> str:
+    """Get tier from user settings. Defaults to free."""
+    return settings.get("tier", TIER_FREE)
+
+
+def has_tier_feature(settings: dict, feature: str) -> bool:
+    """Check if user's tier has a feature."""
+    tier = get_user_tier(settings)
+    return feature in TIER_FEATURES.get(tier, TIER_FEATURES[TIER_FREE])

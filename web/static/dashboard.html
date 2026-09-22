@@ -186,12 +186,12 @@
 
             <section id="subscription" class="section">
                 <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S7 · Plan</div>
-                <h2>Subscription</h2>
+                <h2>Subscription <span id="subscriptionTierBadge" class="tier-badge tier-free" style="font-size:0.7em;padding:4px 10px;border-radius:12px;margin-left:8px;background:var(--muted);color:#fff;">Free</span></h2>
                 <div class="subscription-info">
                     <div class="current-plan">
-                        <h3 id="planName">–</h3>
+                        <h3 id="planName">Free</h3>
                         <p class="renewal-date" id="planRenewal"></p>
-                        <button class="btn btn-secondary" type="button">Manage plan</button>
+                        <a href="/pricing" class="btn btn-secondary" id="managePlanBtn">Upgrade Plan</a>
                     </div>
                     <div class="usage-stats">
                         <h3>Usage</h3>
@@ -234,6 +234,133 @@
         let listening = false;
         let audioCtx = null, analyser = null, micStream = null, rafId = null;
         let recognizer = null, liveBubble = null, lastFinal = "";
+        let mediaRecorder = null, audioChunks = [], pendingAudio = null;
+
+        function hasSession() {
+            try { return !!localStorage.getItem('session_id'); } catch (e) { return false; }
+        }
+
+        function currentMode() {
+            const c = document.querySelector('#modeChips .chip.active');
+            return c ? c.dataset.mode : 'formal';
+        }
+
+        // --- Real cloud transcription path: MediaRecorder -> 16kHz mono WAV -> /api/transcribe ---
+        function startRecorder(stream) {
+            audioChunks = [];
+            let rec = null;
+            try {
+                const mime = (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : '';
+                rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+            } catch (e) { notify.show("Recording not supported in this browser", "error"); return false; }
+            mediaRecorder = rec;
+            mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) audioChunks.push(e.data); };
+            pendingAudio = new Promise((resolve) => {
+                mediaRecorder.onstop = () => resolve(new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' }));
+            });
+            try { mediaRecorder.start(250); } catch (e) { return false; }
+            return true;
+        }
+
+        function stopRecorder() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                try { mediaRecorder.stop(); } catch (e) {}
+            }
+            mediaRecorder = null;
+        }
+
+        function floatTo16BitPCM(view, offset, input) {
+            for (let i = 0; i < input.length; i++, offset += 2) {
+                const s = Math.max(-1, Math.min(1, input[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+        }
+
+        function encodeWAV(samples, sampleRate) {
+            const buffer = new ArrayBuffer(44 + samples.length * 2);
+            const view = new DataView(buffer);
+            const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+            writeStr(0, 'RIFF'); view.setUint32(4, 36 + samples.length * 2, true); writeStr(8, 'WAVE');
+            writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+            writeStr(36, 'data'); view.setUint32(40, samples.length * 2, true);
+            floatTo16BitPCM(view, 44, samples);
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        async function blobToMono16k(blob) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            const tmpCtx = new AC();
+            try {
+                const buf = await blob.arrayBuffer();
+                const audioBuf = await tmpCtx.decodeAudioData(buf);
+                const targetRate = 16000;
+                const ratio = audioBuf.sampleRate / targetRate;
+                const len = Math.max(1, Math.floor(audioBuf.length / ratio));
+                const out = new Float32Array(len);
+                const ch0 = audioBuf.getChannelData(0);
+                const ch1 = audioBuf.numberOfChannels > 1 ? audioBuf.getChannelData(1) : null;
+                for (let i = 0; i < len; i++) {
+                    const idx = Math.min(ch0.length - 1, Math.floor(i * ratio));
+                    out[i] = ch1 ? (ch0[idx] + ch1[idx]) / 2 : ch0[idx];
+                }
+                return encodeWAV(out, targetRate);
+            } finally { try { tmpCtx.close(); } catch (e) {} }
+        }
+
+        async function transcribeWithBackend(wavBlob) {
+            const fd = new FormData();
+            fd.append('audio', wavBlob, 'recording.wav');
+            fd.append('mode', 'PUSH_TO_TALK');
+            const res = await voxyFetch('/api/transcribe', { method: 'POST', body: fd });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const err = new Error(data.error || ('HTTP ' + res.status));
+                err.status = res.status;
+                throw err;
+            }
+            return data;
+        }
+
+        async function finishBackendTranscription() {
+            setStatus("processing", "Transcribing…");
+            try {
+                const blob = await pendingAudio;
+                if (!blob || !blob.size) throw new Error("No audio captured — mic may be blocked.");
+                const wav = await blobToMono16k(blob);
+                const data = await transcribeWithBackend(wav);
+                lastFinal = data.transcript;
+                addBubble(data.transcript + (data.provider ? `  [${data.provider}]` : ""), "user");
+                askBtn.disabled = false;
+                copyBtn.disabled = false;
+                try {
+                    await voxyFetch('/api/history', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: data.transcript, mode: currentMode(), language: 'en' }),
+                    });
+                } catch (e) { /* history save is best-effort */ }
+                if (window.refreshHistory) { try { await window.refreshHistory(); } catch (e) {} }
+                if (window.refreshStats) { try { await window.refreshStats(); } catch (e) {} }
+                setStatus("", "Ready — tap the orb to talk");
+                notify.show("Transcription saved to history", "success");
+            } catch (e) {
+                if (e && e.status === 401) {
+                    addBubble("Please sign in to use cloud transcription.", "agent");
+                    if (window.showLoginBanner) window.showLoginBanner();
+                } else if (e && e.status === 403) {
+                    addBubble("Transcription blocked: " + e.message, "agent");
+                } else if (e && e.status === 503) {
+                    addBubble("Speech service is offline (no API key on server). " + (lastFinal ? "Browser transcript kept below." : "Sign in and try the desktop app instead."), "agent");
+                } else {
+                    addBubble("Transcription failed: " + (e && e.message ? e.message : e), "agent");
+                }
+                setStatus("", "Ready — tap the orb to talk");
+            } finally {
+                pendingAudio = null;
+            }
+        }
 
         function setStatus(mode, text) {
             pill.classList.remove("listening", "processing");
@@ -327,6 +454,7 @@
         function stopAll() {
             listening = false;
             cancelAnimationFrame(rafId);
+            stopRecorder(); // resolves pendingAudio with the captured clip
             if (recognizer) { try { recognizer.stop(); } catch (e) {} recognizer = null; }
             if (micStream) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; }
             if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; analyser = null; }
@@ -338,8 +466,17 @@
 
         orb.addEventListener("click", async () => {
             if (listening) {
+                const wasBackend = hasSession();
+                const recBubble = liveBubble;
                 stopAll();
-                setStatus("", "Ready — tap the orb to talk");
+                if (wasBackend) {
+                    // Remove the "Recording…" placeholder; the real transcript bubble follows.
+                    if (recBubble && recBubble.parentNode) recBubble.remove();
+                    liveBubble = null;
+                    await finishBackendTranscription();
+                } else {
+                    setStatus("", "Ready — tap the orb to talk");
+                }
                 return;
             }
             listening = true;
@@ -348,7 +485,18 @@
             setStatus("listening", "Listening… speak now (tap orb to stop)");
             const micOk = await startAudio();
             if (!micOk) notify.show("Mic blocked — showing simulated waveform", "error");
-            startSpeech();
+            if (hasSession()) {
+                // Logged in: capture audio for real cloud transcription on stop.
+                if (micOk && micStream && startRecorder(micStream)) {
+                    liveBubble = addBubble("Recording… tap the orb to stop", "user", true);
+                } else {
+                    addBubble("Mic recording unavailable — falling back to browser transcription.", "agent");
+                    startSpeech();
+                }
+            } else {
+                // Logged out: free browser transcription demo (Chrome/Edge).
+                startSpeech();
+            }
             loop();
         });
 
@@ -397,78 +545,267 @@
     })();
     </script>
     <script>
-    // Live API wiring — populates the dashboard from the Flask backend.
+    // Live API wiring — every section below talks to the real Flask backend.
+    // Nothing here is mock data. Requires the backend (same-origin, or set
+    // via ?api=<base-url> once — remembered in localStorage).
+    window.showLoginBanner = function () {
+        if (document.getElementById('loginBanner')) return;
+        const main = document.querySelector('.dashboard-content');
+        if (!main) return;
+        const div = document.createElement('div');
+        div.id = 'loginBanner';
+        div.style.cssText = 'margin-bottom:1rem;padding:12px 16px;border:1px solid var(--line2,#e5e5e5);border-radius:10px;background:var(--bg2,#fafafa);font-size:14px;';
+        div.innerHTML = 'Browsing as a guest — stats, history, Q&amp;A and cloud transcription need an account. <a href="/auth" style="font-weight:700;text-decoration:underline;">Sign in</a>';
+        main.prepend(div);
+    };
+
     (async function () {
         const notify = window.Voxylis.Notification;
+        function hasSession() {
+            try { return !!localStorage.getItem('session_id'); } catch (e) { return false; }
+        }
         async function getJSON(url) {
-            const res = await fetch((window.VOXY_API_BASE || '') + url);
+            const sid = localStorage.getItem('session_id') || '';
+            const res = await fetch((window.VOXY_API_BASE || '') + url, {
+                headers: sid ? { 'X-Session-Id': sid } : {}
+            });
             if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
             return res.json();
         }
 
+        if (!hasSession()) window.showLoginBanner();
+
+        // Backend reachability indicator + one-click backend switcher.
         try {
             const health = await getJSON("/api/health");
             document.getElementById("serverStatus").textContent =
                 `● ${health.status} · v${health.version}`;
-        } catch (e) { console.warn("health check failed:", e); }
-
-        try {
-            const { stats } = await getJSON("/api/stats");
-            document.getElementById("statTranscriptions").textContent = stats.transcriptions;
-            document.getElementById("statTime").textContent = stats.totalTime;
-            document.getElementById("statLanguages").textContent = stats.languages;
-            document.getElementById("statEnhancements").textContent = stats.enhancements;
-        } catch (e) { console.warn("stats failed:", e); }
-
-        try {
-            const { history } = await getJSON("/api/history");
-            const list = document.getElementById("historyList");
-            list.innerHTML = history.map((h) => `
-                <div class="history-item">
-                    <div><p class="history-text"></p>
-                    <p class="history-meta">${h.language} · ${h.mode} · ${new Date(h.timestamp).toLocaleString()}</p></div>
-                    <div><button class="btn btn-icon" data-copy>⧉</button><button class="btn btn-icon" data-del>🗑</button></div>
-                </div>`).join("");
-            list.querySelectorAll(".history-item").forEach((item, i) => {
-                item.querySelector(".history-text").textContent = history[i].text;
+        } catch (e) {
+            console.warn("health check failed:", e);
+            const el = document.getElementById("serverStatus");
+            el.innerHTML = '';
+            const warn = document.createElement('span');
+            warn.textContent = '○ backend unreachable ';
+            const btn = document.createElement('button');
+            btn.textContent = 'Set backend';
+            btn.type = 'button';
+            btn.className = 'btn btn-secondary';
+            btn.style.cssText = 'padding:4px 10px;min-height:0;font-size:12px;';
+            btn.addEventListener('click', () => {
+                let cur = '';
+                try { cur = localStorage.getItem('voxy_api_base') || ''; } catch (err) {}
+                const next = prompt('Backend API base URL (e.g. https://your-api.example.com). Leave empty for same-origin:', cur);
+                if (next === null) return;
+                try {
+                    if (next.trim()) localStorage.setItem('voxy_api_base', next.trim().replace(/\/+$/, ''));
+                    else localStorage.removeItem('voxy_api_base');
+                } catch (err) {}
+                location.reload();
             });
-            // Re-bind copy/delete buttons (dashboard.js binds on DOMContentLoaded,
-            // which runs before this async block finishes).
-            list.querySelectorAll("[data-copy]").forEach((btn) => btn.addEventListener("click", () => {
-                navigator.clipboard.writeText(btn.closest(".history-item").querySelector(".history-text").textContent);
-                notify.show("Copied to clipboard!", "success");
-            }));
-            list.querySelectorAll("[data-del]").forEach((btn) => btn.addEventListener("click", () => {
-                btn.closest(".history-item").remove();
-                notify.show("Item deleted", "success");
-            }));
-        } catch (e) { console.warn("history failed:", e); }
+            el.appendChild(warn);
+            el.appendChild(btn);
+        }
 
-        try {
-            const { hotkeys } = await getJSON("/api/hotkeys");
-            document.getElementById("hotkeysList").innerHTML = Object.entries(hotkeys).map(([name, combo]) => `
-                <div class="hotkey-item">
-                    <div class="hotkey-info"><h3>${name}</h3><p>${combo}</p></div>
-                    <button class="btn btn-secondary" type="button">Change</button>
-                </div>`).join("");
-        } catch (e) { console.warn("hotkeys failed:", e); }
+        function renderCharts(stats, history) {
+            if (typeof Chart === 'undefined') return;
+            const weekly = (stats && stats.weekly) || { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], counts: [0, 0, 0, 0, 0, 0, 0] };
+            const usageEl = document.getElementById('usageChart');
+            if (usageEl) {
+                const prev = Chart.getChart(usageEl);
+                if (prev) prev.destroy();
+                new Chart(usageEl, {
+                    type: 'line',
+                    data: {
+                        labels: weekly.labels,
+                        datasets: [{
+                            label: 'Transcriptions',
+                            data: weekly.counts,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+            }
+            const langEl = document.getElementById('languagesChart');
+            if (langEl) {
+                const counts = {};
+                (history || []).forEach(h => {
+                    const k = h.language || 'Unknown';
+                    counts[k] = (counts[k] || 0) + 1;
+                });
+                const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+                const top = entries.slice(0, 4);
+                const rest = entries.slice(4).reduce((s, en) => s + en[1], 0);
+                if (rest) top.push(['Others', rest]);
+                const prev2 = Chart.getChart(langEl);
+                if (prev2) prev2.destroy();
+                new Chart(langEl, {
+                    type: 'doughnut',
+                    data: {
+                        labels: top.length ? top.map(t => t[0]) : ['No data yet'],
+                        datasets: [{
+                            data: top.length ? top.map(t => t[1]) : [1],
+                            backgroundColor: ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6']
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                });
+            }
+            window.__chartsReal = true;
+        }
+
+        window.refreshStats = async function () {
+            try {
+                const { stats } = await getJSON("/api/stats");
+                document.getElementById("statTranscriptions").textContent = stats.transcriptions;
+                document.getElementById("statTime").textContent = stats.totalTime;
+                document.getElementById("statLanguages").textContent = stats.languages;
+                document.getElementById("statEnhancements").textContent = stats.enhancements;
+                const hist = await getJSON("/api/history").catch(() => ({ history: [] }));
+                renderCharts(stats, hist.history || []);
+            } catch (e) { console.warn("stats failed:", e); }
+        };
+
+        window.refreshHistory = async function () {
+            try {
+                const { history } = await getJSON("/api/history");
+                const list = document.getElementById("historyList");
+                list.innerHTML = history.map((h) => `
+                    <div class="history-item" data-id="${h.id}">
+                        <div><p class="history-text"></p>
+                        <p class="history-meta">${h.language || ''} · ${h.mode || ''} · ${h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}${h.enhanced ? ' · ✨' : ''}</p></div>
+                        <div><button class="btn btn-icon" data-copy>⧉</button><button class="btn btn-icon" data-del>🗑</button></div>
+                    </div>`).join("");
+                list.querySelectorAll(".history-item").forEach((item, i) => {
+                    item.querySelector(".history-text").textContent = history[i].text;
+                });
+                list.querySelectorAll("[data-copy]").forEach((btn) => btn.addEventListener("click", () => {
+                    navigator.clipboard.writeText(btn.closest(".history-item").querySelector(".history-text").textContent);
+                    notify.show("Copied to clipboard!", "success");
+                }));
+                list.querySelectorAll("[data-del]").forEach((btn) => btn.addEventListener("click", async () => {
+                    const item = btn.closest(".history-item");
+                    const id = item.dataset.id;
+                    try {
+                        const res = await voxyFetch('/api/history/' + id, { method: 'DELETE' });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+                        item.remove();
+                        notify.show('Item deleted', 'success');
+                        if (window.refreshStats) { try { await window.refreshStats(); } catch (e) {} }
+                    } catch (e) {
+                        notify.show('Delete failed: ' + e.message, 'error');
+                    }
+                }));
+            } catch (e) { console.warn("history failed:", e); }
+        };
+
+        async function loadHotkeys() {
+            try {
+                const { hotkeys } = await getJSON("/api/hotkeys");
+                const box = document.getElementById("hotkeysList");
+                const entries = Object.entries(hotkeys);
+                box.innerHTML = entries.map(([name]) => `
+                    <div class="hotkey-item">
+                        <div class="hotkey-info"><h3></h3><p></p></div>
+                        <button class="btn btn-secondary" type="button" data-hotkey-name="${name}">Change</button>
+                    </div>`).join("");
+                box.querySelectorAll('.hotkey-item').forEach((item, i) => {
+                    item.querySelector('h3').textContent = entries[i][0];
+                    item.querySelector('p').textContent = entries[i][1];
+                });
+            } catch (e) { console.warn("hotkeys failed:", e); }
+        }
+
+        // Real hotkey capture. Capture-phase listener on the container wins
+        // over the demo binder in dashboard.js, so only this one fires.
+        document.getElementById("hotkeysList").addEventListener("click", async (e) => {
+            const btn = e.target.closest('[data-hotkey-name]');
+            if (!btn) return;
+            e.stopPropagation();
+            e.preventDefault();
+            const name = btn.dataset.hotkeyName;
+            const combo = await captureHotkey();
+            if (!combo) return;
+            try {
+                const res = await voxyFetch("/api/hotkeys", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ [name]: combo }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || data.message || ('HTTP ' + res.status));
+                notify.show(`Hotkey saved: ${combo}`, "success");
+                loadHotkeys();
+            } catch (err) { notify.show("Could not save hotkey: " + err.message, "error"); }
+        }, true);
+
+        function captureHotkey() {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = `<div class="modal-content">
+                    <h3>Press your new hotkey combination</h3>
+                    <p id="hotkeyDisplay">Waiting for input… (Esc cancels)</p>
+                    <button class="btn btn-secondary" type="button">Cancel</button>
+                </div>`;
+                document.body.appendChild(modal);
+                const done = (value) => {
+                    modal.remove();
+                    document.removeEventListener('keydown', onKey, true);
+                    resolve(value);
+                };
+                modal.querySelector('button').addEventListener('click', () => done(null));
+                const onKey = (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    if (ev.key === 'Escape' || ev.key === 'Enter') { done(null); return; }
+                    if (['Control', 'Alt', 'Shift', 'Meta'].includes(ev.key)) return;
+                    const keys = [];
+                    if (ev.ctrlKey) keys.push('Ctrl');
+                    if (ev.altKey) keys.push('Alt');
+                    if (ev.shiftKey) keys.push('Shift');
+                    if (ev.metaKey) keys.push('Win');
+                    keys.push(ev.key.length === 1 ? ev.key.toUpperCase() : ev.key);
+                    const combo = keys.join('+');
+                    document.getElementById('hotkeyDisplay').textContent = combo;
+                    setTimeout(() => done(combo), 300);
+                };
+                document.addEventListener('keydown', onKey, true);
+            });
+        }
 
         try {
             const { settings } = await getJSON("/api/settings");
             if (document.getElementById("themeSelect")) document.getElementById("themeSelect").value = settings.theme;
             if (document.getElementById("languageSelect")) document.getElementById("languageSelect").value = settings.language;
             if (document.getElementById("wakeWordInput")) document.getElementById("wakeWordInput").value = settings.wakeWord;
+            if (document.getElementById("notificationsToggle")) document.getElementById("notificationsToggle").checked = settings.notifications !== false;
+            if (document.getElementById("soundToggle")) document.getElementById("soundToggle").checked = settings.sound !== false;
+            if (document.getElementById("autoStartToggle")) document.getElementById("autoStartToggle").checked = settings.autoStart === true;
         } catch (e) { console.warn("settings load failed:", e); }
 
         try {
             const { subscription } = await getJSON("/api/subscription");
-            document.getElementById("planName").textContent = `${subscription.plan} — $${subscription.price}/mo`;
-            document.getElementById("planRenewal").textContent = `Renews ${new Date(subscription.renewalDate).toLocaleDateString()}`;
+            document.getElementById("planName").textContent = subscription.price
+                ? `${subscription.plan} — $${subscription.price}/mo`
+                : subscription.plan;
+            document.getElementById("planRenewal").textContent = subscription.renewalDate
+                ? `Renews ${new Date(subscription.renewalDate).toLocaleDateString()}`
+                : (subscription.tier && subscription.tier !== 'free' ? '' : 'Free plan');
             document.getElementById("usageCount").textContent = `${subscription.usage.transcriptions} / ${subscription.usage.limit}`;
             document.getElementById("usageBar").style.width = `${subscription.usage.percentage}%`;
         } catch (e) { console.warn("subscription failed:", e); }
 
-        document.getElementById("settingsSaveBtn").addEventListener("click", async () => {
+        document.getElementById("settingsSaveBtn").addEventListener("click", async (e) => {
+            e.stopImmediatePropagation(); // supersedes the demo binder in dashboard.js
             const payload = {
                 theme: document.getElementById("themeSelect").value,
                 language: document.getElementById("languageSelect").value,
@@ -483,11 +820,75 @@
                     body: JSON.stringify(payload),
                 });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                try { localStorage.setItem('voxylis_theme', payload.theme); } catch (err) {}
+                if (window.applyTheme) window.applyTheme(payload.theme);
                 notify.show("Settings saved successfully!", "success");
-            } catch (e) { notify.show("Failed to save settings", "error"); }
+            } catch (err) { notify.show("Failed to save settings", "error"); }
         });
 
-        document.getElementById("qaAskBtn").addEventListener("click", async () => {
+        // Wake word: save goes to the real backend (not localStorage-only).
+        const wakeSaveBtn = document.querySelector(".wake-word-config .btn-primary");
+        if (wakeSaveBtn) wakeSaveBtn.addEventListener("click", async (e) => {
+            e.stopImmediatePropagation(); // supersedes the demo binder in dashboard.js
+            const val = (document.getElementById("wakeWordInput").value || "").trim() || "Voxy";
+            try {
+                const res = await voxyFetch("/api/settings", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ wakeWord: val }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || data.message || ("HTTP " + res.status));
+                try { localStorage.setItem("voxylis_wakeword", val); } catch (err) {}
+                notify.show(`Wake word set to "${val}"`, "success");
+            } catch (err) { notify.show("Could not save wake word: " + err.message, "error"); }
+        });
+
+        // Wake-word test: real detection via the browser speech engine.
+        const wakeTestBtn = document.querySelector(".wake-word-preview .btn-primary");
+        if (wakeTestBtn) wakeTestBtn.addEventListener("click", async (e) => {
+            e.stopImmediatePropagation(); // replaces the simulated demo
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const statusEl = document.getElementById("wakeWordStatus");
+            const target = ((document.getElementById("wakeWordInput").value || "Voxy").trim() || "Voxy").toLowerCase();
+            if (!SR) { statusEl.textContent = "Wake-word test needs Chrome or Edge."; return; }
+            statusEl.textContent = `Say "${target}"… (10s)`;
+            wakeTestBtn.disabled = true;
+            try {
+                const rec = new SR();
+                rec.continuous = false;
+                rec.interimResults = false;
+                try { rec.lang = document.getElementById("languageSelect").value || "en"; } catch (err) {}
+                let settled = false;
+                const heard = await new Promise((resolve) => {
+                    const to = setTimeout(() => { try { rec.stop(); } catch (err) {} if (!settled) { settled = true; resolve(""); } }, 10000);
+                    rec.onresult = (ev) => {
+                        clearTimeout(to);
+                        if (!settled) { settled = true; resolve(ev.results[0][0].transcript || ""); }
+                    };
+                    rec.onerror = () => { clearTimeout(to); if (!settled) { settled = true; resolve(""); } };
+                    rec.onend = () => { clearTimeout(to); if (!settled) { settled = true; resolve(""); } };
+                    try { rec.start(); } catch (err) { clearTimeout(to); if (!settled) { settled = true; resolve(""); } }
+                });
+                if (heard && heard.toLowerCase().includes(target)) {
+                    statusEl.textContent = `Wake word detected! (heard: "${heard.trim()}")`;
+                    notify.show("Wake word detected!", "success");
+                } else if (heard) {
+                    statusEl.textContent = `Heard "${heard.trim()}" — no wake word. Try again.`;
+                } else {
+                    statusEl.textContent = "Nothing heard — check your mic and try again.";
+                }
+            } finally {
+                wakeTestBtn.disabled = false;
+                setTimeout(() => { statusEl.textContent = "Ready to listen…"; }, 5000);
+            }
+        });
+
+        // NOTE: TierManager may replace the Q&A form with an upgrade prompt
+        // (free/guest users) before this runs — so the button may not exist.
+        const qaAskBtn = document.getElementById("qaAskBtn");
+        if (qaAskBtn) qaAskBtn.addEventListener("click", async (e) => {
+            e.stopImmediatePropagation(); // dashboard.js demo toast would also fire
             const q = document.getElementById("qaInput").value.trim();
             if (!q) { notify.show("Type a question first", "error"); return; }
             document.getElementById("qaAnswer").textContent = "Thinking…";
@@ -500,8 +901,12 @@
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
                 document.getElementById("qaAnswer").textContent = data.answer;
-            } catch (e) { document.getElementById("qaAnswer").textContent = `Error: ${e.message}`; }
+            } catch (err) { document.getElementById("qaAnswer").textContent = `Error: ${err.message}`; }
         });
+
+        await window.refreshStats();
+        await window.refreshHistory();
+        await loadHotkeys();
     })();
     </script>
 </body>

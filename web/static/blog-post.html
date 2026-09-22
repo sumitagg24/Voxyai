@@ -54,6 +54,15 @@ button{font-family:inherit;cursor:pointer}
 .btn.ghost:hover{background:#f0f0f0}
 @media(max-width:900px){.nav-links,.nav-right{display:none}}
 
+/* Mobile hamburger */
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px}
+.nav-toggle span{display:block;width:22px;height:2px;background:var(--ink);margin:5px 0;transition:all .2s}
+@media(max-width:900px){.nav-toggle{display:block}}
+@media(max-width:900px){
+  .nav-links,.nav-right{display:none!important;position:absolute;top:100%;left:0;right:0;background:var(--bg);border-bottom:1px solid var(--line2);flex-direction:column;padding:20px;gap:16px;z-index:100}
+  .nav-links.open,.nav-right.open{display:flex!important}
+}
+
 /* POST LOADING / NOT FOUND */
 .post-loading,.post-notfound{max-width:720px;margin:0 auto;padding:120px 0 80px;text-align:center}
 .post-loading .spinner{width:32px;height:32px;border:3px solid var(--line2);border-top-color:var(--ink);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 24px}
@@ -123,6 +132,7 @@ button{font-family:inherit;cursor:pointer}
 <!-- NAV -->
 <nav class="nav">
   <div class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></div>
+  <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
   <div class="nav-links">
     <a href="/#features">Features</a>
     <a href="/pricing">Pricing</a>
