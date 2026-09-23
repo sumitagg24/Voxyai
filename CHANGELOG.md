@@ -1,0 +1,128 @@
+# Changelog
+
+All notable changes to Voxylis. The canonical version lives in
+`config/version.py`; see `docs/RELEASE.md` for the release procedure.
+
+## 3.0.0 — production release (hardening)
+
+> Release note: the `v3.0.0` tag currently points at the commit *before* this
+> hardening work. Move the tag onto the hardened commit, or bump
+> `config/version.py` to `3.0.1`, before publishing — do not ship an artifact
+> whose version string disagrees with the tag.
+
+### Desktop
+
+* **Application shell.** The recording overlay is no longer the whole UI. A
+  persistent, branded main window with sidebar navigation adds Home, History,
+  Microphone, AI Providers, Shortcuts, Privacy, Account, Diagnostics and About,
+  and the tray exposes Open Voxylis, History, Settings, current mode, status and
+  Quit without rebuilding its menus on every change.
+* **Single instance.** A second launch signals the running instance and brings
+  the existing window forward instead of starting a duplicate process.
+* **Shortcut recorder.** Shortcuts are recorded, not typed: reserved Windows
+  combinations, modifier-only combos, duplicates and invalid keys are rejected
+  before registration, with reset-to-default.
+* **Overlay.** Recording state, microphone level, elapsed time, live transcript,
+  language and mode, explicit success/error states, cancel, DPI-correct and
+  multi-monitor-safe placement, theme support.
+* **Error UX.** Failures render as *what happened → why → what you can do* with
+  one-click jumps into the relevant settings page; raw detail is behind
+  "Show diagnostics".
+* **Diagnostics.** A redacted support bundle (version, OS, runtime, provider,
+  microphone, connectivity, last error, recent pipeline stages). It cannot
+  contain keys, tokens or transcripts.
+* **Onboarding.** Rewritten first-run flow: welcome, microphone permission and
+  test, shortcut, provider and key, language, enhancement mode, optional sign-in,
+  test recording.
+* **Updates.** Version check → download → size and SHA-256 verification → hand
+  off to the installer. A running binary is never replaced in place and a
+  manifest without a checksum is refused.
+
+### Storage and privacy
+
+* **User data moved out of the install directory** to
+  `%LOCALAPPDATA%\Voxylis` (config, data, secrets, logs, cache, models, temp,
+  updates, crashes), with a non-destructive migration of legacy in-tree files.
+* **History is now SQLite** (`data/history.sqlite3`) instead of a plaintext JSON
+  file, with per-entry delete, delete-all, retention window, entry cap, JSON/CSV
+  export, and a setting that disables history storage entirely.
+* **API keys moved to the OS credential store** — Windows DPAPI via `crypt32`,
+  falling back to `keyring`, then to a documented obfuscated store. Plaintext
+  keys in a legacy `settings.json` are migrated into the vault and removed from
+  the file. Nothing logs a credential; `${value}` redaction is applied before
+  display.
+
+### Voice pipeline and injection
+
+* Explicit state machine with cancellation, timeouts, bounded retry with
+  backoff, provider fallback, duplicate-start and duplicate-injection
+  prevention, max recording duration, microphone/network/quota/invalid-key
+  handling, and guaranteed return to `idle` after any failure.
+* Injection is now a strategy chain (clipboard paste → keyboard typing →
+  unsupported) that reports success only when the chosen strategy completed,
+  with clipboard restoration, Unicode handling and retry.
+* Hotkey listener validates configuration, recovers from listener loss,
+  supports hold and toggle modes, and can be disabled without crashing the app.
+
+### Backend and security
+
+* **Client-forgeable tier upgrade removed.** `POST /api/subscription/upgrade`
+  can no longer set a tier from a client request. Tier changes are owned by
+  `web/services/subscription_service.py`: verified payment webhook, audited
+  admin action, or a development override that is *refused in production*.
+  `GET /api/subscription` reports whether self-service upgrade or checkout
+  exists so the UI can hide what is not implemented.
+* **`SECRET_KEY` guard.** The backend refuses to start in production when the
+  key is missing, a known placeholder, or shorter than 32 characters.
+* **Session rotation fixed.** Rotated session ids are actually returned to
+  clients (`X-Rotated-Session-Id` and a JSON field) instead of being discarded.
+* Security headers, explicit CORS allow-list, 1 MB request cap, per-user rate
+  limit keys, generic error responses and parameterised SQL throughout.
+* `web/tier.py` and `web/services/` extracted from the single large Flask file
+  without changing the public API.
+
+### Packaging, brand and docs
+
+* **Real Windows installer** (Inno Setup 6): branded name, publisher, version,
+  Start Menu entry, optional desktop shortcut, optional run-at-login, per-user
+  install by default, upgrade path, clean uninstall that asks before touching
+  user data, and no file associations it does not need.
+* **Icon/brand system** generated by `packaging/make_icons.py` (`.ico` with
+  multiple sizes, favicon, apple-touch icon, Open Graph image, installer and
+  shortcut icons) — no generic microphone stock art as the product mark.
+* **One canonical version** feeding EXE metadata, installer, `/api/health`,
+  website download metadata and the About dialog, with a sync command and a test
+  that fails when they disagree.
+* **Marketing claims audited.** Fabricated traction, unverifiable speed claims
+  and invented ratings were removed or labelled as illustrative; feature and
+  language claims now match the implementation.
+* **Docs:** `docs/ARCHITECTURE.md`, `docs/PRIVACY.md`, `docs/SECURITY.md`,
+  `docs/RELEASE.md`, updated `docs/API.md` and the in-site docs pages, plus a
+  README that describes the product that actually exists.
+* **Tests:** backend (auth, sessions, rotation, rate limits, tier enforcement,
+  subscription policy, security headers), desktop units (credentials, history
+  store, paths, errors, shortcut validation), and version/site consistency.
+
+### Repository hygiene
+
+* Removed `config/users.json` and `config/sessions.json` (plaintext user and
+  session data) from tracking; they are user data, not source.
+* Removed the abandoned generated `docs/superpowers/` plan tree and the
+  duplicate settings/history windows superseded by the main window pages.
+* `.gitignore` now covers user data, vault files, databases, installer output,
+  screenshots, `.freebuff/`, `.playwright-mcp/` and verification artefacts.
+
+## 2.2.0
+
+* Real download flow and frontend → backend connection (`window.VOXYLIS_API_BASE`,
+  `?api=` override, CORS allow-list).
+
+## 2.1.1
+
+* Vercel rewrite for `/static/:dir/:file` so dashboard assets resolve on the
+  static host.
+
+## 2.1.0
+
+* Repository cleanup checkpoint: single desktop implementation, single website,
+  single backend.

@@ -1,47 +1,49 @@
 {
+  "_comment": "Reference only. Real settings live in %LOCALAPPDATA%\\Voxylis\\config\\settings.json and are edited through the Settings UI. Secrets are never stored here: API keys and session tokens go to the OS credential store, and any plaintext *_api_key found in a settings file is migrated into the vault and stripped from the JSON.",
+
   "hotkey": "win+shift",
   "toggle_mode": false,
   "mode_hotkeys": {
     "win+alt": "casual",
     "win+ctrl": "technical"
   },
+  "global_shortcuts_disabled": false,
+
   "language": "auto",
   "secondary_language": "auto",
+
   "enhancement_mode": "formal",
-  "enable_ai_enhancement": true,
-  "groq_api_key": "",
-  "openai_api_key": "",
-  "enhancer_model": "",
-  "transcriber_model": "",
+  "enable_ai_enhancement": false,
+
   "audio_device": null,
   "sample_rate": 16000,
   "auto_inject": true,
   "show_floating_widget": true,
+
   "theme": "dark",
   "startup_on_boot": false,
   "log_level": "INFO",
-  "max_history": 100,
+
+  "history_enabled": true,
+  "history_retention_days": 0,
+  "max_history": 500,
+
   "sound_feedback": true,
   "sound_volume": 0.7,
-  "wake_word_enabled": false,
-  "wake_word": "voxy",
-  "wake_word_min_interval": 3.0,
-  "web_ui_enabled": true,
-  "web_ui_host": "127.0.0.1",
-  "web_ui_port": 5000,
-  "web_token": "",
-  "api_base": "",
+
   "voice_commands": {
     "clear that": "clear_last",
     "delete that": "clear_last",
     "new line": "new_line",
     "undo": "undo"
   },
+
   "custom_modes": {
     "Email Reply": "Rewrite the following as a professional email reply.\n\n{text}\n\nReturn only the email.",
     "Bullet Points": "Convert the following into a clear bullet point list.\n\n{text}\n\nReturn only the bullet points.",
     "Fix Grammar": "Fix only the grammar and punctuation. Do not change words or style.\n\n{text}\n\nCorrected text:"
   },
+
   "app_profiles": {
     "slack": "casual",
     "teams": "casual",

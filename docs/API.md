@@ -348,6 +348,63 @@ Returns public user/transcription counts.
 ### GET /api/subscription
 Returns current subscription status (requires auth).
 
+```json
+{
+  "status": "success",
+  "subscription": {
+    "plan": "Free",
+    "tier": "free",
+    "price": 0,
+    "renewalDate": null,
+    "status": "active",
+    "usage": { "transcriptions": 0, "limit": "100/month", "max": 100, "percentage": 0 },
+    "can_self_upgrade": false,
+    "checkout_available": false
+  }
+}
+```
+
+Logged-out visitors get Free-tier defaults plus `"authenticated": false`.
+`can_self_upgrade` and `checkout_available` are false whenever no payment
+provider is configured, so a client can hide a control that cannot complete.
+
+### POST /api/subscription/upgrade
+**This endpoint cannot grant a tier from a client request.** Sending a `tier`
+in the body has no effect. Tier changes are owned by
+`web/services/subscription_service.py` and come from exactly one of:
+
+| Source | Allowed in production |
+|---|---|
+| `payment_webhook` — a verified webhook from the payment provider | yes (once configured) |
+| `admin` — an admin acting on a user, audited | yes |
+| `development` — the `ALLOW_DEV_TIER_CHANGE` override | **no** |
+
+With no payment provider configured the endpoint answers `403` and reports why:
+
+```json
+{
+  "success": false,
+  "code": "self_service_tier_change_disabled",
+  "error": "Plans cannot be changed from the app. Paid plans must be purchased through the payment provider.",
+  "payments_configured": false
+}
+```
+
+Other denial codes: `admin_required` (403), `owner_restricted` (403),
+`invalid_tier` / `invalid_source` (400), `user_not_found` (404),
+`payments_not_configured` (503), `webhook_unverified` (401). Every decision is
+written to the `tier_audit` table with the old tier, new tier, source and actor.
+
+Production flow, once payment is wired up:
+
+```text
+client → checkout → payment provider → verified webhook → backend
+       → subscription state → client reads state from GET /api/subscription
+```
+
+The desktop client never grants itself Pro/Business access, and development
+controls are separated from production controls rather than shipped.
+
 ---
 
 ## Q&A
@@ -429,9 +486,19 @@ Health check endpoint.
 {
   "status": "healthy",
   "timestamp": "2026-01-01T12:00:00",
-  "version": "2.2.0"
+  "version": "3.0.0",
+  "subscription_policy": {
+    "environment": "production",
+    "payments_configured": false,
+    "dev_tier_change_enabled": false,
+    "self_service_upgrade_available": false
+  }
 }
 ```
+
+`version` is read from `config/version.py`, so it cannot drift from the desktop
+build, the installer or the website. `subscription_policy` never contains a
+secret and is safe to expose.
 
 ---
 
