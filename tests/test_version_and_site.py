@@ -63,7 +63,17 @@ def test_download_page_reads_the_version_from_one_source():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
     assert "data-voxylis-version" in text
     assert "/version.json" in text
-    assert not re.search(r"v2\.\d\.\d", text)
+    # The page loads the version at runtime; nothing may bake a release number
+    # into the markup, or the fallback text silently goes stale on a bump.
+    assert not re.search(r"v\d+\.\d+\.\d+", text)
+
+
+def test_version_json_is_served_by_the_backend_too(app_client):
+    """The static host resolves the file; Flask needs its own route."""
+    client, _ = app_client
+    payload = client.get("/version.json").get_json()
+    assert payload["version"] == version.__version__
+    assert payload["releases_url"] == version.RELEASES_URL
 
 
 # ── website routes ───────────────────────────────────────────────────────────

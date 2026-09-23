@@ -24,7 +24,12 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from config.version import __version__ as APP_VERSION
+from config.version import (
+    APP_NAME,
+    ENGINE_NAME,
+    RELEASES_URL,
+    __version__ as APP_VERSION,
+)
 from web.tier import (
     TIER_FREE, TIER_BUSINESS, TIER_OWNER,
     TIER_FEATURES, TIER_ENHANCEMENT_MODES, TIER_STT_MODES,
@@ -2757,6 +2762,24 @@ def download_track():
 # ============================================
 # HEALTH
 # ============================================
+
+
+@app.route("/version.json", methods=["GET"])
+def version_json():
+    """Serve the canonical version to the website on either host.
+
+    The static deployment (Vercel, outputDirectory web/static) resolves this
+    file directly, but the Flask deployment needs an explicit route or the
+    download page's version fetch fails silently and the page falls back to
+    stale text.
+    """
+    return jsonify({
+        "version": APP_VERSION,
+        "name": APP_NAME,
+        "engine": ENGINE_NAME,
+        "released": "stable",
+        "releases_url": RELEASES_URL,
+    })
 
 
 @app.route("/api/health", methods=["GET"])
