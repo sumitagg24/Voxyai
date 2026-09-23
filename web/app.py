@@ -11,24 +11,27 @@ import re
 import secrets
 import sqlite3
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 
 import requests as http_requests
 
-from flask import Flask, g, jsonify, request, send_from_directory
+from flask import Flask, g, jsonify, redirect, request, send_from_directory, url_for
 from flask_cors import CORS
 from flask_caching import Cache
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from config.version import __version__ as APP_VERSION
 from web.tier import (
-    TIER_FREE, TIER_PRO, TIER_BUSINESS,
+    TIER_FREE, TIER_BUSINESS, TIER_OWNER,
     TIER_FEATURES, TIER_ENHANCEMENT_MODES, TIER_STT_MODES,
-    FREE_MONTHLY_TRANSCRIPTIONS,
+    FREE_MONTHLY_TRANSCRIPTIONS, OWNER_MONTHLY_TRANSCRIPTIONS,
+    TIER_QUOTAS,
 )
+from web.services import subscription_service
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +40,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 DB_DIR = BASE_DIR / "data"
-DB_PATH = DB_DIR / "voxylis.db"
+#: Overridable so tests and containers can point at a scratch database.
+#: Note: web/data is gitignored — the production database is created on the
+#: host (Docker volume / Vercel filesystem), never committed.
+DB_PATH = Path(os.environ.get("VOXYLIS_DB_PATH") or (DB_DIR / "voxylis.db"))
 
 app = Flask(__name__, static_folder="static")
 # CORS origins are env-configurable so the statically-hosted frontend
@@ -87,10 +93,54 @@ def _get_user_key():
             pass
     return get_remote_address()
 
+
 app.config["JSON_SORT_KEYS"] = False
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # 1 MB request cap
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+
+#: Secrets that must never be used as a real signing key.
+_PLACEHOLDER_SECRETS = {
+    "change-me-in-production",
+    "your_secret_key_here_change_in_production",
+    "secret",
+    "dev",
+}
+
+
+class InsecureConfiguration(RuntimeError):
+    """Raised at import time when production security settings are missing."""
+
+
+def _resolve_secret_key() -> str:
+    """Resolve and validate SECRET_KEY.
+
+    A per-process random key silently breaks sessions across workers and hides
+    a misconfigured deployment. In production we therefore refuse to start
+    rather than run with an insecure or ephemeral key.
+    """
+    provided = (os.environ.get("SECRET_KEY") or "").strip()
+    insecure = (
+        not provided
+        or provided.lower() in _PLACEHOLDER_SECRETS
+        or len(provided) < 32
+    )
+    if not insecure:
+        return provided
+
+    if subscription_service.is_production():
+        raise InsecureConfiguration(
+            "SECRET_KEY must be set to a random value of at least 32 characters in production. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+
+    logger.warning(
+        "SECRET_KEY is unset or too weak — using an ephemeral development key. "
+        "Set SECRET_KEY before deploying."
+    )
+    return secrets.token_hex(32)
+
+
+app.config["SECRET_KEY"] = _resolve_secret_key()
 
 # Load .env if present
 try:
@@ -100,8 +150,24 @@ except ImportError:
     pass
 
 # ---------------------------------------------------------------------------
+# Time helpers
+# ---------------------------------------------------------------------------
+
+
+def utcnow() -> datetime:
+    """Naive UTC now, matching SQLite's ``datetime('now')``.
+
+    ``datetime.utcnow()`` is deprecated from Python 3.12. Sessions, tokens and
+    email codes are stored as naive UTC strings so they can be compared against
+    ``datetime('now')`` inside SQL, so the tzinfo is stripped deliberately.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+# ---------------------------------------------------------------------------
 # Security headers (applied to every response)
 # ---------------------------------------------------------------------------
+
 
 @app.after_request
 def security_headers(resp):
@@ -120,7 +186,13 @@ def security_headers(resp):
         "connect-src 'self'; "
         "frame-ancestors 'self'"
     )
+    # A session older than 24h is transparently rotated inside _verify_session().
+    # Tell the client its new id, otherwise it would keep using a dead session.
+    rotated = getattr(g, "rotated_session_id", None)
+    if rotated:
+        resp.headers["X-Session-Rotated"] = rotated
     return resp
+
 
 # ---------------------------------------------------------------------------
 # Database helpers
@@ -153,6 +225,15 @@ def _check_password(password_hash: str, password: str) -> bool:
 
 def _is_hex(value: str) -> bool:
     return all(c in "0123456789abcdefABCDEF" for c in value)
+
+
+def _owner_emails() -> set:
+    """Emails that are designated owners (unlimited server-enforced usage)."""
+    return {
+        e.strip().lower()
+        for e in os.environ.get("OWNER_EMAILS", "sumitagg24@gmail.com").split(",")
+        if e.strip()
+    }
 
 
 def _init_db() -> None:
@@ -234,6 +315,35 @@ def _init_db() -> None:
             created_at       TEXT NOT NULL DEFAULT (datetime('now')),
             expires_at       TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS subscriptions (
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id              INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            tier                 TEXT NOT NULL DEFAULT 'free',
+            status               TEXT NOT NULL DEFAULT 'active',
+            current_period_start TEXT NOT NULL DEFAULT (datetime('now')),
+            current_period_end   TEXT NOT NULL DEFAULT (datetime('now', '+30 days')),
+            cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+            created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS usage_records (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            feature    TEXT NOT NULL,
+            tokens     INTEGER NOT NULL DEFAULT 0,
+            count      INTEGER NOT NULL DEFAULT 1,
+            metadata   TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_transcriptions_user_id ON transcriptions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_transcriptions_created ON transcriptions(created_at);
+        CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_usage_records_user_id_feature ON usage_records(user_id, feature, created_at);
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email_or_phone);
         """
     )
     conn.commit()
@@ -258,30 +368,37 @@ def _init_db() -> None:
     if "role" not in cols:
         cur.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
         conn.commit()
+    if "is_owner" not in cols:
+        cur.execute("ALTER TABLE users ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
     if "auth0_sub" not in cols:
         cur.execute("ALTER TABLE users ADD COLUMN auth0_sub TEXT")
         conn.commit()
 
-    # Seed blog posts if table doesn't exist yet (using a simple check)
-    cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='blog_posts'"
-    )
-    if cur.fetchone() is None:
-        cur.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS blog_posts (
-                id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                slug      TEXT NOT NULL UNIQUE,
-                title     TEXT NOT NULL,
-                date      TEXT NOT NULL,
-                category  TEXT NOT NULL DEFAULT '',
-                excerpt   TEXT NOT NULL DEFAULT '',
-                content   TEXT NOT NULL DEFAULT '',
-                read_time TEXT NOT NULL DEFAULT '5 min read'
-            );
-            """
+    for owner_email in _owner_emails():
+        cur.execute(
+            "UPDATE users SET is_owner = 1, role = 'owner', tier = 'owner' WHERE LOWER(email_or_phone) = ?",
+            (owner_email.lower(),),
         )
-        _seed_blog(conn)
+    conn.commit()
+
+    # Blog content is seeded/updated on every start so corrections to copy are
+    # actually published (the upsert in _seed_blog also prunes withdrawn posts).
+    cur.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS blog_posts (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug      TEXT NOT NULL UNIQUE,
+            title     TEXT NOT NULL,
+            date      TEXT NOT NULL,
+            category  TEXT NOT NULL DEFAULT '',
+            excerpt   TEXT NOT NULL DEFAULT '',
+            content   TEXT NOT NULL DEFAULT '',
+            read_time TEXT NOT NULL DEFAULT '5 min read'
+        );
+        """
+    )
+    _seed_blog(conn)
     conn.close()
 
 
@@ -289,25 +406,35 @@ def _seed_blog(conn: sqlite3.Connection) -> None:
     """Insert hardcoded blog posts."""
     posts = [
         {
-            "slug": "introducing-voxy-2-0",
-            "title": "Introducing Voxy 2.0",
-            "date": "2026-09-15",
+            "slug": "introducing-voxylis-3-0",
+            "title": "Introducing Voxylis 3.0",
+            "date": "2026-09-23",
             "category": "Product Update",
-            "excerpt": "Voxy 2.0 brings real-time transcription, 40% faster AI enhancement, and a completely redesigned command palette.",
+            "excerpt": "Voxylis 3.0 is the release that turns a tray utility into a real desktop application: a main window, encrypted API keys and a local SQLite history.",
             "content": (
-                "We're thrilled to announce **Voxy 2.0** — the biggest update since launch.\n\n"
-                "## What's New\n\n"
-                "### Real-Time Transcription\n"
-                "Voxy now streams text to your cursor as you speak. No more waiting for the recording to finish before seeing results.\n\n"
-                "### 40% Faster Enhancement\n"
-                "Our new inference pipeline cuts AI enhancement latency from ~1.2 s to ~700 ms on typical paragraphs.\n\n"
-                "### Command Palette\n"
-                "Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac) to open the command palette — switch modes, change language, or trigger Q&A without leaving the keyboard.\n\n"
-                "### Under the Hood\n"
-                "- Migrated from Whisper v3 to a custom fine-tuned model for lower latency\n"
-                "- Added on-device fallback so you can transcribe offline\n"
-                "- Session tokens now rotate every 24 hours automatically\n\n"
-                "Update today from the in-app updater or download from [voxylis.com/download](/download)."
+                "Voxylis 3.0 is the first release we are comfortable calling a desktop product rather than a tray utility.\n\n"
+                "## What changed\n\n"
+                "### A real application window\n"
+                "The recording overlay is no longer the whole interface. Voxylis now has a persistent window with "
+                "Home, History, Microphone, AI Providers, Shortcuts, Privacy, Account, Diagnostics and About. "
+                "The overlay is what it should be: a small transient pill that appears while you hold your shortcut.\n\n"
+                "### API keys left the settings file\n"
+                "Keys were previously stored as plaintext JSON. They now live in the operating system credential "
+                "store (Windows DPAPI, or your keyring). Existing plaintext keys are migrated automatically and "
+                "removed from `settings.json`, which now only records whether a provider is configured.\n\n"
+                "### User data moved out of the install directory\n"
+                "Settings, history, logs and temporary audio now live under `%LOCALAPPDATA%`\\Voxylis. The install "
+                "directory is treated as read-only, so an upgrade can never destroy your configuration.\n\n"
+                "### History is a database, not a text file\n"
+                "Transcripts are stored in SQLite with per-entry delete, retention, export, and an off switch that "
+                "stops recordings being written at all.\n\n"
+                "### Shortcuts are recorded, not typed\n"
+                "Every shortcut field is a press-to-capture control that rejects reserved Windows combinations and "
+                "duplicate assignments.\n\n"
+                "## Honest limits\n\n"
+                "Voxylis does not train or host a speech model. Transcription is performed by the Groq or OpenAI "
+                "key you connect, which is what sets your language coverage and latency. Paid plans are described "
+                "on the pricing page but cannot be purchased yet, because no payment provider is connected."
             ),
             "read_time": "4 min read",
         },
@@ -316,23 +443,27 @@ def _seed_blog(conn: sqlite3.Connection) -> None:
             "title": "The Bitterest Lesson in Voice AI",
             "date": "2026-08-28",
             "category": "Engineering",
-            "excerpt": "Why scaling data and compute beat every clever algorithmic trick we tried — and what that means for the future of voice input.",
+            "excerpt": "We deliberately do not train a speech model. Here is why the product is better for it, and where the clever work actually goes.",
             "content": (
-                "Rich Sutton's famous essay *The Bitter Lesson* argues that general methods that leverage computation ultimately outperform clever, hand-crafted tricks.\n\n"
-                "We learned this the hard way at Voxylis.\n\n"
-                "## The Experiment\n\n"
-                "Over Q2 2026 we ran a controlled A/B test across three approaches:\n\n"
-                "| Approach | WER (English) | WER (Multilingual) |\n"
-                "|----------|--------------|--------------------|\n"
-                "| Fine-tuned small model (125 M) | 6.8 % | 11.2 % |\n"
-                "| Rule-based post-processing on top of small model | 6.5 % | 10.9 % |\n"
-                "| Larger model (1.5 B) trained on 10x more data | **4.1 %** | **6.7 %** |\n\n"
-                "The hand-tuned rules shaved off 0.3 percentage points. The bigger model crushed both.\n\n"
-                "## Implications\n\n"
-                "1. **Invest in data pipelines, not heuristic rules.**\n"
-                "2. **Leverage on-device GPU where available** — even a fraction of a Teraflop helps.\n"
-                "3. **Let the model learn its own post-processing.** The rules we wrote were approximations of what the model could learn end-to-end.\n\n"
-                "We've since re-allocated 80 % of our research time to data curation and scaling. The results speak for themselves."
+                "Rich Sutton's essay *The Bitter Lesson* argues that general methods which leverage computation "
+                "beat hand-crafted tricks. For a small team the lesson is blunter: **do not compete with the "
+                "foundation models. Build the layer around them.**\n\n"
+                "## What we do not do\n\n"
+                "Voxylis trains nothing. Speech recognition comes from Whisper through Groq or OpenAI, and text "
+                "enhancement comes from the language models those providers expose. Choosing to own a model would "
+                "have cost us the time we spent on the parts our users actually touch.\n\n"
+                "## Where the work goes instead\n\n"
+                "1. **Provider abstraction.** One interface for transcription and one for enhancement, with model "
+                "fallback, timeouts and retries in a single place rather than scattered across call sites.\n"
+                "2. **Error mapping with a name.** An HTTP 401 becomes *\"Groq rejected the API key\"* plus an action, "
+                "not a stack trace in a dialog.\n"
+                "3. **Insertion that admits failure.** Pasting into a window that lost focus used to report success. "
+                "It now returns a structured result and tries the next strategy.\n"
+                "4. **Readable state.** Silence, network failure, quota exhaustion and a bad key are four different "
+                "messages, because they need four different fixes.\n\n"
+                "## The takeaway\n\n"
+                "The model is not the product. Deterministic plumbing, honest errors and a UI that behaves "
+                "predictably are, and that is where a small team can still win."
             ),
             "read_time": "6 min read",
         },
@@ -341,63 +472,82 @@ def _seed_blog(conn: sqlite3.Connection) -> None:
             "title": "AI: Too Good to Be True, Too Bad to Type",
             "date": "2026-08-10",
             "category": "Product",
-            "excerpt": "AI writing assistants are everywhere — but typing is still the bottleneck. Voice input is the unlock.",
+            "excerpt": "AI can draft an email in seconds — but you still have to type the prompt. That gap is the whole reason this app exists.",
             "content": (
-                "AI can draft an email in seconds. But you still have to *type* the prompt.\n\n"
-                "That's the paradox we set out to solve with Voxylis.\n\n"
-                "## The Typing Tax\n\n"
-                "The average knowledge worker types at 40 WPM but *thinks* at roughly 400 WPM. That 10x gap is pure friction.\n\n"
-                "Voice input bridges the gap. When you can speak your intent at full conversational speed and let AI polish the output, you effectively 10x your throughput.\n\n"
-                "## How Voxylis Fits In\n\n"
-                "1. **Speak naturally** — no special syntax or commands to memorize.\n"
-                "2. **AI enhances on-the-fly** — choose Formal, Casual, or Technical mode.\n"
-                "3. **Paste anywhere** — the result lands on your clipboard, ready for Slack, email, docs, or code comments.\n\n"
-                "## The Numbers\n\n"
-                "In our beta program, users who switched from typing to voice reported:\n"
-                "- **3.2x** more words produced per session\n"
-                "- **47 %** reduction in time spent on repetitive messages\n"
-                "- **92 %** satisfaction rate\n\n"
-                "AI is only as good as its input channel. Voice is the channel that matches human thought speed."
+                "AI can draft an email in seconds. You still have to *type* the prompt.\n\n"
+                "That gap is the reason Voxylis exists. We are not going to invent a multiplier for it: how much "
+                "faster speech is than typing depends on how you type, what you are writing and how well your "
+                "microphone and provider behave. Anyone quoting a single fixed number for it is guessing.\n\n"
+                "## What the app actually does\n\n"
+                "1. **Capture.** Hold your shortcut, speak, release. The microphone is opened for exactly that window.\n"
+                "2. **Transcribe.** The audio goes to the speech provider whose key you supplied.\n"
+                "3. **Optionally rewrite.** Enhancement modes (Formal, Casual, Technical, Concise, Creative, or your "
+                "own prompt) ask an LLM to restructure the transcript. This is off by default.\n"
+                "4. **Insert.** The text is typed into the window that had focus when you started, preferring the "
+                "clipboard, then SendInput, then character-by-character typing.\n\n"
+                "## What we measure instead of marketing numbers\n\n"
+                "Latency and word counts are shown per session in your own dashboard and history, from your own "
+                "machine. We would rather you read your numbers than ours.\n\n"
+                "## Try it honestly\n\n"
+                "Dictate one real message you would otherwise have typed. If it is not faster or more comfortable, "
+                "the app has not earned a place in your workflow — and you will know within a minute."
             ),
             "read_time": "5 min read",
         },
         {
-            "slug": "voice-input-vs-typing-numbers",
-            "title": "Voice Input vs Typing: The Numbers",
+            "slug": "where-your-data-goes",
+            "title": "Where your audio and transcripts actually go",
             "date": "2026-07-22",
-            "category": "Data & Research",
-            "excerpt": "We analysed 50 000 Voxylis sessions to compare voice input speed, error rates, and user satisfaction against traditional typing.",
+            "category": "Engineering",
+            "excerpt": "A precise walkthrough of every place a recording touches disk or the network, and how to remove all of it.",
             "content": (
-                "## Methodology\n\n"
-                "We anonymised and aggregated data from 50 000 Voxylis sessions spanning July 2026. All participants were on Windows or macOS, using the standard hotkey workflow.\n\n"
-                "## Key Findings\n\n"
-                "### Speed\n"
-                "- Median voice input speed: **142 WPM** (raw, pre-enhancement)\n"
-                "- Median typing speed: **38 WPM**\n"
-                "- Ratio: **3.7x faster** with voice\n\n"
-                "### Accuracy\n"
-                "- Word Error Rate (voice, after AI enhancement): **3.2 %**\n"
-                "- Typo rate (keyboard, self-reported): **4.1 %**\n"
-                "- Voice + enhancement actually produces *fewer* errors than manual typing.\n\n"
-                "### Satisfaction (NPS)\n"
-                "- Voice input NPS: **72**\n"
-                "- Keyboard-only NPS: **41**\n\n"
-                "## Takeaways\n\n"
-                "1. Voice input is significantly faster for composing text of any length.\n"
-                "2. AI enhancement closes the accuracy gap and then some.\n"
-                "3. Users overwhelmingly prefer voice once they try it — the NPS difference is dramatic.\n\n"
-                "We'll publish the full dataset and methodology on our [GitHub](https://github.com/voxylis) by end of Q3."
+                "Privacy statements are usually vague. Here is the exact path a recording takes through Voxylis.\n\n"
+                "## On the network\n\n"
+                "One HTTP request per utterance, to the provider whose key you configured:\n\n"
+                "- **Groq** or **OpenAI** for speech-to-text;\n"
+                "- the same provider's LLM, and only if you enabled AI enhancement;\n"
+                "- nothing at all if you only use voice commands like *new line* or *clear that*.\n\n"
+                "Voxylis itself has no analytics endpoint, no telemetry and no crash-reporting service. There is no "
+                "server-side component running on your machine.\n\n"
+                "## On disk\n\n"
+                "- **Audio** is written to a temporary WAV inside your user-data folder for the duration of the "
+                "upload, then deleted. It is never appended to a recording log.\n"
+                "- **Transcripts** go into a SQLite database under `%LOCALAPPDATA%`\\Voxylis\\data, capped by a "
+                "retention setting and removable per entry.\n"
+                "- **API keys** go into the operating system credential store. They are never written to a settings "
+                "file, never included in diagnostics, and never logged.\n"
+                "- **Logs** record sizes, languages, model names and error codes. Transcript text is not logged; "
+                "that is a property of the code, not a promise.\n\n"
+                "## How to delete everything\n\n"
+                "Settings → Privacy has a single button that wipes the history database, and the data folder is one "
+                "click away so you can remove the rest yourself. Uninstalling does not need to leave anything "
+                "behind.\n\n"
+                "## What we do not claim\n\n"
+                "We do not claim the audio never leaves your machine, and we do not claim on-device transcription: "
+                "your speech provider receives it, under their retention policy, because that is how the feature works."
             ),
             "read_time": "5 min read",
         },
     ]
     cur = conn.cursor()
-    for p in posts:
+    keep = []
+    for post in posts:
+        # Upsert, so corrections to published copy reach existing databases
+        # instead of being frozen at first seed.
         cur.execute(
-            "INSERT OR IGNORE INTO blog_posts (slug, title, date, category, excerpt, content, read_time) "
-            "VALUES (:slug, :title, :date, :category, :excerpt, :content, :read_time)",
-            p,
+            "INSERT INTO blog_posts (slug, title, date, category, excerpt, content, read_time) "
+            "VALUES (:slug, :title, :date, :category, :excerpt, :content, :read_time) "
+            "ON CONFLICT(slug) DO UPDATE SET title=excluded.title, date=excluded.date, "
+            "category=excluded.category, excerpt=excluded.excerpt, content=excluded.content, "
+            "read_time=excluded.read_time",
+            post,
         )
+        keep.append(post["slug"])
+
+    # Earlier releases shipped posts containing fabricated research figures.
+    # Remove anything we no longer publish rather than leaving it served.
+    placeholders = ",".join("?" for _ in keep)
+    cur.execute(f"DELETE FROM blog_posts WHERE slug NOT IN ({placeholders})", keep)
     conn.commit()
 
 
@@ -412,7 +562,7 @@ _init_db()
 def _create_session(user_id: int) -> str:
     """Create a 30-day session and return its ID."""
     session_id = uuid.uuid4().hex
-    expires = (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = (utcnow() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     conn = _get_db()
     conn.execute(
         "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)",
@@ -435,7 +585,7 @@ def _verify_session(session_id: str):
         conn.close()
         return None
     expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S")
-    if datetime.utcnow() > expires:
+    if utcnow() > expires:
         conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
         conn.commit()
         conn.close()
@@ -444,12 +594,12 @@ def _verify_session(session_id: str):
     # Session rotation: tokens older than 24h get a fresh ID (announced via
     # X-Session-Rotated so clients can pick it up).
     created = datetime.strptime(row["created_at"], "%Y-%m-%d %H:%M:%S")
-    if datetime.utcnow() - created > timedelta(hours=24):
+    if utcnow() - created > timedelta(hours=24):
         new_id = uuid.uuid4().hex
-        new_expires = (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+        new_expires = (utcnow() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
         conn.execute(
             "UPDATE sessions SET id = ?, created_at = ?, expires_at = ? WHERE id = ?",
-            (new_id, datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"), new_expires, session_id),
+            (new_id, utcnow().strftime("%Y-%m-%d %H:%M:%S"), new_expires, session_id),
         )
         conn.commit()
         conn.close()
@@ -461,12 +611,10 @@ def _verify_session(session_id: str):
 
 
 def _set_rotated_session(new_id: str) -> None:
-    """Best-effort: stash a rotated session id on the response headers."""
+    """Record a rotated session id so ``security_headers`` can announce it."""
     try:
-        from flask import g
-
-        g._voxy_rotated_session = new_id
-    except Exception:
+        g.rotated_session_id = new_id
+    except RuntimeError:  # pragma: no cover - called outside a request context
         pass
 
 
@@ -582,15 +730,62 @@ def _sanitize(value: str) -> str:
 # Tier helpers (DB-aware, defined here to avoid circular imports with tier.py)
 # ---------------------------------------------------------------------------
 
+def is_owner(user_id=None, email=None) -> bool:
+    """True if the user is the owner (unlimited server-enforced usage)."""
+    if email and email.strip().lower() in _owner_emails():
+        return True
+    if user_id is None:
+        return False
+    try:
+        conn = _get_db()
+        row = conn.execute(
+            "SELECT is_owner, role, email_or_phone FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        conn.close()
+    except Exception:
+        return False
+    if not row:
+        return False
+    try:
+        if bool(row["is_owner"]) or (row["role"] or "").lower() == "owner":
+            return True
+    except Exception:
+        pass
+    return (row["email_or_phone"] or "").strip().lower() in _owner_emails()
+
+
+def _ensure_owner(conn, user_id: int, email: str) -> None:
+    """Promote owner email to is_owner=1, role='owner', tier='owner'."""
+    if (email or "").strip().lower() not in _owner_emails():
+        return
+    try:
+        conn.execute(
+            "UPDATE users SET is_owner = 1, role = 'owner', tier = 'owner' WHERE id = ?",
+            (user_id,),
+        )
+        conn.execute(
+            "INSERT INTO subscriptions (user_id, tier, status, current_period_start, current_period_end) "
+            "VALUES (?, 'owner', 'active', datetime('now'), datetime('now', '+365 days'))",
+            (user_id,),
+        )
+    except Exception:
+        pass
+
+
 def get_user_tier(user_id: int) -> str:
-    """Get the subscription tier for a user. Admins always get business."""
+    """Get the subscription tier for a user. Owner gets owner; admin gets business."""
+    if is_owner(user_id=user_id):
+        return TIER_OWNER
     if is_admin(user_id=user_id):
         return TIER_BUSINESS
     conn = _get_db()
     try:
-        row = conn.execute("SELECT tier FROM users WHERE id = ?", (user_id,)).fetchone()
-        if row and row["tier"]:
-            return row["tier"]
+        row = conn.execute("SELECT tier, is_owner FROM users WHERE id = ?", (user_id,)).fetchone()
+        if row:
+            if "is_owner" in row.keys() and row["is_owner"]:
+                return TIER_OWNER
+            if row["tier"]:
+                return row["tier"]
     except Exception:
         pass
     finally:
@@ -622,13 +817,47 @@ def get_monthly_transcription_count(user_id: int) -> int:
 
 def check_transcription_quota(user_id: int) -> tuple:
     """Check if user has transcription quota remaining.
-    Returns (allowed, used, limit). limit=0 means unlimited.
+    Returns (allowed, used, limit). limit=-1 means unlimited.
     """
     tier = get_user_tier(user_id)
-    if tier in (TIER_PRO, TIER_BUSINESS):
-        return True, 0, 0  # unlimited
     used = get_monthly_transcription_count(user_id)
-    return used < FREE_MONTHLY_TRANSCRIPTIONS, used, FREE_MONTHLY_TRANSCRIPTIONS
+    if is_owner(user_id=user_id) or tier == TIER_OWNER:
+        return True, used, OWNER_MONTHLY_TRANSCRIPTIONS
+    limit = TIER_QUOTAS.get(tier, FREE_MONTHLY_TRANSCRIPTIONS)
+    return (used < limit), used, limit
+
+
+def record_usage(user_id: int, feature: str, tokens: int = 0, count: int = 1, metadata: dict = None) -> None:
+    """Record a usage entry in usage_records table."""
+    try:
+        conn = _get_db()
+        conn.execute(
+            "INSERT INTO usage_records (user_id, feature, tokens, count, metadata) VALUES (?, ?, ?, ?, ?)",
+            (user_id, feature, tokens, count, json.dumps(metadata or {})),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed to record usage: %s", e)
+
+
+def get_user_entitlements(user_id: int) -> dict:
+    """Return full server-authoritative entitlements for user."""
+    tier = get_user_tier(user_id)
+    owner = is_owner(user_id=user_id) or tier == TIER_OWNER
+    limit = OWNER_MONTHLY_TRANSCRIPTIONS if owner else TIER_QUOTAS.get(tier, FREE_MONTHLY_TRANSCRIPTIONS)
+    used = get_monthly_transcription_count(user_id)
+    return {
+        "tier": tier,
+        "is_owner": owner,
+        "role": "owner" if owner else ("admin" if is_admin(user_id=user_id) else "user"),
+        "monthly_transcriptions_used": used,
+        "monthly_transcriptions_limit": limit,
+        "unlimited": owner,
+        "allowed_features": sorted(list(TIER_FEATURES.get(tier, TIER_FEATURES[TIER_FREE]))),
+        "allowed_enhancement_modes": sorted(list(TIER_ENHANCEMENT_MODES.get(tier, TIER_ENHANCEMENT_MODES[TIER_FREE]))),
+        "allowed_stt_modes": sorted(list(TIER_STT_MODES.get(tier, TIER_STT_MODES[TIER_FREE]))),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -689,7 +918,9 @@ def _password_domain_allowed(identifier: str) -> bool:
 
 
 def is_admin(user_id=None, email=None) -> bool:
-    """True if the user is a Voxylis admin (access to all features)."""
+    """True if the user is a Voxylis admin or owner (access to all features)."""
+    if is_owner(user_id=user_id, email=email):
+        return True
     if email and email.strip().lower() in _admin_emails():
         return True
     if user_id is None:
@@ -697,7 +928,7 @@ def is_admin(user_id=None, email=None) -> bool:
     try:
         conn = _get_db()
         row = conn.execute(
-            "SELECT role, email_or_phone FROM users WHERE id = ?", (user_id,)
+            "SELECT role, email_or_phone, is_owner FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         conn.close()
     except Exception:
@@ -705,16 +936,21 @@ def is_admin(user_id=None, email=None) -> bool:
     if not row:
         return False
     try:
+        if bool(row["is_owner"]):
+            return True
         role = row["role"]
     except Exception:
         role = None
-    if (role or "user").lower() == "admin":
+    if (role or "user").lower() in ("admin", "owner"):
         return True
     return (row["email_or_phone"] or "").strip().lower() in _admin_emails()
 
 
 def _ensure_admin(conn, user_id: int, email: str) -> None:
-    """Promote well-known admin emails to admin/business (idempotent)."""
+    """Promote well-known admin/owner emails (idempotent)."""
+    if (email or "").strip().lower() in _owner_emails():
+        _ensure_owner(conn, user_id, email)
+        return
     if (email or "").strip().lower() not in _admin_emails():
         return
     try:
@@ -743,7 +979,7 @@ _jwks_cache: dict = {"keys": [], "fetched_at": None}
 
 
 def _auth0_jwks(domain: str) -> dict:
-    now = datetime.utcnow()
+    now = utcnow()
     if (
         _jwks_cache["keys"]
         and _jwks_cache["fetched_at"]
@@ -863,7 +1099,8 @@ def auth_auth0():
         "name": row["name"],
         "email_or_phone": row["email_or_phone"],
         "tier": get_user_tier(user_id),
-        "role": (row["role"] or "user") if "role" in row.keys() else "user",
+        "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
+        "is_owner": is_owner(user_id=user_id),
     }), 200
 
 
@@ -892,7 +1129,7 @@ def qr_start():
     if not code:
         conn.close()
         return jsonify({"success": False, "error": "Try again"}), 500
-    expires = (datetime.utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = (utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
     conn.execute(
         "INSERT INTO qr_tickets (code, device_name, expires_at) VALUES (?, ?, ?)",
         (code, device, expires),
@@ -916,7 +1153,7 @@ def qr_status():
     if t is None:
         conn.close()
         return jsonify({"success": False, "error": "Unknown code"}), 404
-    if t["status"] == "expired" or datetime.utcnow() > datetime.strptime(
+    if t["status"] == "expired" or utcnow() > datetime.strptime(
         t["expires_at"], "%Y-%m-%d %H:%M:%S"
     ):
         conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ?", (code,))
@@ -966,7 +1203,7 @@ def qr_approve(user_id):
     if t is None:
         conn.close()
         return jsonify({"success": False, "error": "Unknown code"}), 404
-    if t["status"] != "pending" or datetime.utcnow() > datetime.strptime(
+    if t["status"] != "pending" or utcnow() > datetime.strptime(
         t["expires_at"], "%Y-%m-%d %H:%M:%S"
     ):
         conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ?", (code,))
@@ -1068,6 +1305,9 @@ def auth_signup():
         "session_id": session_id,
         "name": name,
         "email_or_phone": email_or_phone,
+        "tier": get_user_tier(user_id),
+        "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
+        "is_owner": is_owner(user_id=user_id),
         "onboarding": {
             "steps": _onboarding_steps(),
             "completed": {},
@@ -1114,6 +1354,9 @@ def auth_login():
         "session_id": session_id,
         "name": user["name"],
         "email_or_phone": email_or_phone,
+        "tier": get_user_tier(user["id"]),
+        "role": "owner" if is_owner(user_id=user["id"]) else ("admin" if is_admin(user_id=user["id"]) else "user"),
+        "is_owner": is_owner(user_id=user["id"]),
     }), 200
 
 
@@ -1140,6 +1383,9 @@ def auth_verify():
         "name": user["name"],
         "email_or_phone": user["email_or_phone"],
         "onboarding": _load_onboarding(user["onboarding"]),
+        # Present when the server rotated the session; also sent as the
+        # X-Session-Rotated header. Clients must persist the new id.
+        "session_id": getattr(g, "rotated_session_id", None) or session_id,
     }), 200
 
 
@@ -1177,7 +1423,7 @@ def forgot_password():
         return jsonify({"success": True, "message": "If an account exists, a reset link has been sent."})
 
     token = secrets.token_urlsafe(32)
-    expires = (datetime.utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = (utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
     conn.execute(
         "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)",
         (user["id"], token, expires),
@@ -1214,7 +1460,7 @@ def reset_password():
         return jsonify({"success": False, "error": "Invalid or used token"}), 400
 
     expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S")
-    if datetime.utcnow() > expires:
+    if utcnow() > expires:
         conn.close()
         return jsonify({"success": False, "error": "Token expired"}), 400
 
@@ -1246,7 +1492,7 @@ def send_verification(user_id):
         return jsonify({"success": True, "message": "Email already verified"})
 
     token = secrets.token_urlsafe(32)
-    expires = (datetime.utcnow() + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+    expires = (utcnow() + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
     conn.execute(
         "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
         (user_id, token, expires),
@@ -1278,7 +1524,7 @@ def confirm_email():
         return jsonify({"success": False, "error": "Invalid or used token"}), 400
 
     expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S")
-    if datetime.utcnow() > expires:
+    if utcnow() > expires:
         conn.close()
         return jsonify({"success": False, "error": "Token expired"}), 400
 
@@ -1338,13 +1584,9 @@ def me():
     if user is None:
         return jsonify({"success": False, "error": "Not found"}), 404
 
-    role = "user"
-    try:
-        role = user["role"] or "user"
-    except Exception:
-        pass
-    if is_admin(user_id=user_id):
-        role = "admin"
+    entitlements = get_user_entitlements(user_id)
+    role = entitlements["role"]
+    is_owner_val = entitlements["is_owner"]
 
     return jsonify({
         "success": True,
@@ -1353,8 +1595,10 @@ def me():
             "name": user["name"],
             "email_or_phone": user["email_or_phone"],
             "created_at": user["created_at"],
-            "tier": get_user_tier(user_id),
+            "tier": entitlements["tier"],
             "role": role,
+            "is_owner": is_owner_val,
+            "entitlements": entitlements,
             "onboarding": _load_onboarding(user["onboarding"]),
         },
     })
@@ -1454,7 +1698,7 @@ def get_pricing():
                 "period": "month",
                 "description": "For power users",
                 "features": [
-                    "Unlimited transcriptions",
+                    "1,000 transcriptions/month",
                     "99+ languages",
                     "All enhancement modes",
                     "Live Q&A feature",
@@ -1471,6 +1715,7 @@ def get_pricing():
                 "period": "month",
                 "description": "For teams",
                 "features": [
+                    "5,000 transcriptions/month",
                     "Everything in Pro",
                     "Team collaboration",
                     "API access",
@@ -1592,6 +1837,7 @@ def qa_endpoint():
         return jsonify({"error": "Question required"}), 400
 
     answer = _call_llm_for_qa(question)
+    record_usage(user_id, "qa", count=1)
     return jsonify({
         "status": "success",
         "question": question,
@@ -1719,13 +1965,29 @@ def enhance_endpoint():
             "upgrade_url": "/pricing",
         }), 403
 
+    # Without a provider key there is nothing to enhance with. Returning the
+    # original text as "success" would look like the feature worked.
+    if not _any_llm_key_configured():
+        return jsonify({
+            "error": "Enhancement is unavailable: no AI provider key is configured on this server."
+        }), 503
+
     enhanced = _call_llm_for_enhancement(text, mode)
+    record_usage(user_id, "enhancement", count=1)
     return jsonify({
         "status": "success",
         "original": text,
         "enhanced": enhanced,
         "mode": mode,
     })
+
+
+def _any_llm_key_configured() -> bool:
+    """True when at least one provider credential exists for enhancement/Q&A."""
+    return any(
+        (os.environ.get(name) or "").strip()
+        for name in ("MODEL_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY")
+    )
 
 
 def _call_llm_for_enhancement(text: str, mode: str) -> str:
@@ -1890,6 +2152,18 @@ def transcribe_endpoint():
                 transcript = result["transcript"]
 
             if transcript.strip():
+                try:
+                    conn = _get_db()
+                    conn.execute(
+                        "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
+                        (user_id, transcript.strip(), 0, mode, request.form.get("language", "en")),
+                    )
+                    conn.commit()
+                    conn.close()
+                    record_usage(user_id, "transcription", count=1)
+                except Exception as save_err:
+                    logger.warning("Failed to record transcription: %s", save_err)
+
                 return jsonify({
                     "status": "success",
                     "transcript": transcript.strip(),
@@ -1916,6 +2190,18 @@ def transcribe_endpoint():
             )
             transcript = resp.text if hasattr(resp, "text") else str(resp)
             if transcript.strip():
+                try:
+                    conn = _get_db()
+                    conn.execute(
+                        "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
+                        (user_id, transcript.strip(), 0, mode, request.form.get("language", "en")),
+                    )
+                    conn.commit()
+                    conn.close()
+                    record_usage(user_id, "transcription", count=1)
+                except Exception as save_err:
+                    logger.warning("Failed to record transcription: %s", save_err)
+
                 return jsonify({
                     "status": "success",
                     "transcript": transcript.strip(),
@@ -1972,33 +2258,12 @@ def history():
         return jsonify({"success": True, "message": "Transcription saved"})
 
     # GET
+    #
+    # Previously this returned three hard-coded sample transcriptions to
+    # logged-out callers, which presented fabricated data as the visitor's own
+    # history. An unauthenticated read is simply unauthorised.
     if user_id is None:
-        return jsonify({
-            "status": "success",
-            "history": [
-                {
-                    "id": 1,
-                    "text": "Hello world, this is a test transcription",
-                    "language": "English",
-                    "mode": "Formal",
-                    "timestamp": (datetime.now() - timedelta(minutes=2)).isoformat(),
-                },
-                {
-                    "id": 2,
-                    "text": "Bonjour, comment allez-vous?",
-                    "language": "French",
-                    "mode": "Casual",
-                    "timestamp": (datetime.now() - timedelta(hours=1)).isoformat(),
-                },
-                {
-                    "id": 3,
-                    "text": "Hola, ¿cómo estás?",
-                    "language": "Spanish",
-                    "mode": "Casual",
-                    "timestamp": (datetime.now() - timedelta(hours=3)).isoformat(),
-                },
-            ],
-        })
+        return jsonify({"success": False, "error": "Login required"}), 401
 
     conn = _get_db()
     rows = conn.execute(
@@ -2072,16 +2337,21 @@ def stats():
             params,
         ).fetchone()["c"]
 
+        # Text-derived metrics (word counts, languages, weekly series) are only
+        # computed for the authenticated user: an anonymous visitor must not
+        # have other people's transcripts summarised for them.
         month_filter = "created_at >= date('now', 'start of month')"
-        month_rows = conn.execute(
-            f"SELECT text, language FROM transcriptions {scope}"
-            f"{' AND' if scope else 'WHERE'} {month_filter}",
-            params,
-        ).fetchall()
-
-        all_texts = conn.execute(
-            f"SELECT text FROM transcriptions {scope}", params
-        ).fetchall()
+        if user_id is not None:
+            month_rows = conn.execute(
+                f"SELECT text, language FROM transcriptions {scope} AND {month_filter}",
+                params,
+            ).fetchall()
+            all_texts = conn.execute(
+                f"SELECT text FROM transcriptions {scope}", params
+            ).fetchall()
+        else:
+            month_rows = []
+            all_texts = []
 
         weekly_counts = []
         weekly_labels = []
@@ -2151,6 +2421,8 @@ def subscription():
     """Subscription summary. Logged-out visitors get Free-tier defaults."""
     user_id = _verify_session(_extract_session())
     if user_id is None:
+        # Logged-out visitors see the free plan only, and are told plainly that
+        # there is nothing to buy (no payment provider is wired up).
         return jsonify({
             "status": "success",
             "authenticated": False,
@@ -2165,66 +2437,79 @@ def subscription():
                     "limit": "100/month",
                     "percentage": 0,
                 },
+                "can_self_upgrade": subscription_service.self_service_upgrade_available(),
+                "checkout_available": subscription_service.payments_configured(),
             },
         })
 
-    tier = get_user_tier(user_id)
-    conn = _get_db()
-    user = conn.execute(
-        "SELECT created_at FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
-    conn.close()
+    # The plan is computed and owned by the server; the client only reads it.
+    summary = subscription_service.tier_summary(
+        user_id, get_user_tier, get_monthly_transcription_count
+    )
+    return jsonify({"status": "success", "subscription": summary})
 
-    trans_count = 0
+
+def _count_transcriptions(user_id: int) -> int:
     try:
-        conn2 = _get_db()
-        row = conn2.execute(
+        conn = _get_db()
+        row = conn.execute(
             "SELECT COUNT(*) as c FROM transcriptions WHERE user_id = ?", (user_id,)
         ).fetchone()
-        trans_count = row["c"] if row else 0
-        conn2.close()
+        conn.close()
+        return row["c"] if row else 0
     except Exception:
-        pass
-
-    tier_info = {
-        TIER_FREE: {"price": 0, "limit": "100/month", "name": "Free"},
-        TIER_PRO: {"price": 9.99, "limit": "Unlimited", "name": "Pro"},
-        TIER_BUSINESS: {"price": 29.99, "limit": "Unlimited", "name": "Business"},
-    }
-    info = tier_info.get(tier, tier_info[TIER_FREE])
-
-    return jsonify({
-        "status": "success",
-        "subscription": {
-            "plan": info["name"],
-            "tier": tier,
-            "price": info["price"],
-            "renewalDate": None,
-            "status": "active",
-            "usage": {
-                "transcriptions": trans_count,
-                "limit": info["limit"],
-                "percentage": min(trans_count, 100) if tier == TIER_FREE else 0,
-            },
-        },
-    })
+        return 0
 
 
 @app.route("/api/subscription/upgrade", methods=["POST"])
 @require_auth
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def upgrade_tier(user_id):
-    """Set user tier. In production, this would be triggered by Stripe webhook."""
-    data = request.json or {}
-    new_tier = data.get("tier", "").strip().lower()
-    if new_tier not in (TIER_FREE, TIER_PRO, TIER_BUSINESS):
-        return jsonify({"error": "Invalid tier"}), 400
+    """Manual tier change.
+
+    A client can never grant itself a paid plan. This endpoint only succeeds
+    for an administrator, or for an explicitly enabled non-production
+    development override; the real production path is a verified payment
+    webhook handled by :mod:`web.services.subscription_service`.
+    """
+    data = request.get_json(silent=True) or {}
+    new_tier = str(data.get("tier", "")).strip().lower()
+    actor_is_admin = is_admin(user_id=user_id)
+    source = subscription_service.resolve_actor_source(actor_is_admin)
+
+    if source is None:
+        return jsonify({
+            "success": False,
+            "code": "self_service_tier_change_disabled",
+            "error": (
+                "Plans cannot be changed from the app. Paid plans must be purchased through the "
+                "payment provider."
+            ),
+            "payments_configured": subscription_service.payments_configured(),
+        }), 403
 
     conn = _get_db()
-    conn.execute("UPDATE users SET tier = ? WHERE id = ?", (new_tier, user_id))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True, "tier": new_tier})
+    try:
+        result = subscription_service.apply_tier_change(
+            conn,
+            user_id=user_id,
+            new_tier=new_tier,
+            source=source,
+            actor=os.environ.get("ADMIN_EMAILS", "") if actor_is_admin else "dev-override",
+            actor_is_admin=actor_is_admin,
+            note="admin console" if actor_is_admin else "development override (ALLOW_DEV_TIER_CHANGE)",
+        )
+        conn.commit()
+    except subscription_service.TierChangeDenied as denied:
+        conn.rollback()
+        return jsonify(denied.as_dict()), denied.status
+    finally:
+        conn.close()
+
+    logger.warning(
+        "tier change applied to user %s -> %s via %s", user_id, result.tier, result.source
+    )
+    return jsonify({"success": True, **result.as_dict()})
 
 
 # ============================================
@@ -2342,12 +2627,17 @@ def newsletter_subscribe():
 # ============================================
 
 
+DEFAULT_WINDOWS_INSTALLER_URL = (
+    "https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe"
+)
+
+
 @app.route("/api/download/urls", methods=["GET"])
 def download_urls():
     return jsonify({
-        "windows": os.environ.get("DOWNLOAD_URL_WINDOWS", ""),
-        "macos": os.environ.get("DOWNLOAD_URL_MACOS", ""),
-        "linux": os.environ.get("DOWNLOAD_URL_LINUX", ""),
+        "windows": os.environ.get("DOWNLOAD_URL_WINDOWS", "").strip() or DEFAULT_WINDOWS_INSTALLER_URL,
+        "macos": os.environ.get("DOWNLOAD_URL_MACOS", "").strip() or "https://github.com/sumitagg24/Voxyai#macos-installation",
+        "linux": os.environ.get("DOWNLOAD_URL_LINUX", "").strip() or "https://github.com/sumitagg24/Voxyai#linux-installation",
     })
 
 
@@ -2369,6 +2659,12 @@ def download_detect():
 # ============================================
 # BLOG
 # ============================================
+
+#: Posts that were renamed. Old URLs keep working instead of 404-ing.
+LEGACY_BLOG_SLUGS = {
+    "introducing-voxy-2-0": "introducing-voxylis-3-0",
+    "voice-input-vs-typing-numbers": "where-your-data-goes",
+}
 
 
 @app.route("/api/blog", methods=["GET"])
@@ -2396,6 +2692,7 @@ def blog_list():
 
 @app.route("/api/blog/<slug>", methods=["GET"])
 def blog_post(slug):
+    slug = LEGACY_BLOG_SLUGS.get(slug, slug)
     conn = _get_db()
     row = conn.execute(
         "SELECT slug, title, date, category, excerpt, content, read_time "
@@ -2429,6 +2726,9 @@ def blog_post(slug):
 @app.route("/blog/<slug>")
 def blog_post_page(slug):
     """Serve the single blog post page (reads ?slug= from JS)."""
+    replacement = LEGACY_BLOG_SLUGS.get(slug)
+    if replacement:
+        return redirect(url_for("blog_post_page", slug=replacement), code=301)
     return app.send_static_file("blog-post.html")
 
 
@@ -2464,7 +2764,8 @@ def health():
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "version": "2.2.0",
+        "version": APP_VERSION,
+        "subscription_policy": subscription_service.describe_policy(),
     })
 
 
