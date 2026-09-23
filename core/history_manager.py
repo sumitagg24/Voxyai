@@ -1,54 +1,84 @@
 """
-Transcription history manager for Voxylis
-Saves every transcription to a JSON file and provides retrieval.
+Transcription history facade.
+
+``HistoryManager`` keeps the small public API the rest of the app already used
+(``add`` / ``get_all`` / ``get_recent`` / ``delete`` / ``clear`` / ``len()``)
+but now delegates to :class:`core.history_store.HistoryStore`, which persists to
+SQLite inside the user-data directory instead of a plaintext JSON file in the
+install directory.
+
+Additions over the old implementation: per-item delete, retention, export,
+import of the legacy JSON history, and a global enable/disable switch.
 """
 
-import json
-import os
-from datetime import datetime
+from __future__ import annotations
+
+from pathlib import Path
 from typing import List, Optional
-from utils.logger import log_info, log_error, log_debug
 
-HISTORY_FILE = "logs/transcription_history.json"
-MAX_DEFAULT = 100
+from utils import paths
+from utils.logger import log_debug, log_info
 
+from core.history_store import HistoryStore
 
-def _resolve_history_path() -> str:
-    try:
-        from utils.helpers import get_base_dir
-        return os.path.join(get_base_dir(), HISTORY_FILE)
-    except Exception:
-        return HISTORY_FILE
+MAX_DEFAULT = 500
+RETENTION_DEFAULT_DAYS = 0  # 0 = keep until the max_entries cap is hit
 
 
 class HistoryManager:
-    def __init__(self, max_entries: int = MAX_DEFAULT):
-        self.max_entries = max_entries
-        self._entries: List[dict] = []
-        self._history_file = _resolve_history_path()
-        self._load()
+    def __init__(
+        self,
+        max_entries: int = MAX_DEFAULT,
+        db_path: Optional[Path] = None,
+        enabled: bool = True,
+        retention_days: int = RETENTION_DEFAULT_DAYS,
+    ):
+        self.store = HistoryStore(
+            db_path=db_path,
+            max_entries=max_entries,
+            retention_days=retention_days,
+            enabled=enabled,
+        )
+        self._imported_legacy = False
+        self._import_legacy_once()
 
-    # ── persistence ───────────────────────────────────────────────────────────
+    # ── legacy migration ─────────────────────────────────────────────────────
 
-    def _load(self):
-        try:
-            if os.path.exists(self._history_file):
-                with open(self._history_file, "r", encoding="utf-8") as f:
-                    self._entries = json.load(f)
-                log_debug(f"History loaded: {len(self._entries)} entries")
-        except Exception as e:
-            log_error(f"Failed to load history: {e}")
-            self._entries = []
+    def _import_legacy_once(self) -> None:
+        if self._imported_legacy or self.store.count() > 0:
+            return
+        self._imported_legacy = True
+        candidates = [
+            paths.data_dir() / "history.legacy.json",
+            paths.user_data_root() / "logs" / "transcription_history.json",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                self.store.import_legacy(candidate)
+                break
 
-    def _save(self):
-        try:
-            os.makedirs(os.path.dirname(self._history_file), exist_ok=True)
-            with open(self._history_file, "w", encoding="utf-8") as f:
-                json.dump(self._entries, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            log_error(f"Failed to save history: {e}")
+    # ── public API ───────────────────────────────────────────────────────────
 
-    # ── public API ────────────────────────────────────────────────────────────
+    @property
+    def enabled(self) -> bool:
+        return self.store.enabled
+
+    @property
+    def max_entries(self) -> int:
+        return self.store.max_entries
+
+    @max_entries.setter
+    def max_entries(self, value: int) -> None:
+        self.store.max_entries = max(1, int(value))
+        self.store.enforce_limit()
+
+    def configure(
+        self,
+        max_entries: Optional[int] = None,
+        retention_days: Optional[int] = None,
+        enabled: Optional[bool] = None,
+    ) -> None:
+        self.store.configure(max_entries=max_entries, retention_days=retention_days, enabled=enabled)
 
     def add(
         self,
@@ -56,38 +86,61 @@ class HistoryManager:
         enhanced: Optional[str] = None,
         mode: str = "",
         language: str = "",
-    ):
-        """Add a new transcription entry."""
-        entry = {
-            "id": len(self._entries) + 1,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "raw": raw,
-            "enhanced": enhanced or raw,
-            "mode": mode,
-            "language": language,
-            "word_count": len((enhanced or raw).split()),
-        }
-        self._entries.insert(0, entry)  # newest first
-        if len(self._entries) > self.max_entries:
-            self._entries = self._entries[: self.max_entries]
-        self._save()
-        log_info(f"History: saved entry #{entry['id']} ({entry['word_count']} words)")
-        return entry
+        app_context: str = "",
+        duration_ms: int = 0,
+        injected: bool = False,
+        meta: Optional[dict] = None,
+    ) -> Optional[dict]:
+        """Add a transcription. Returns the stored entry or ``None``."""
+        if not self.store.enabled:
+            log_debug("History disabled — entry not stored")
+            return None
+        return self.store.add(
+            raw=raw,
+            enhanced=enhanced,
+            mode=mode,
+            language=language,
+            app_context=app_context,
+            duration_ms=duration_ms,
+            injected=injected,
+            meta=meta,
+        )
 
     def get_all(self) -> List[dict]:
-        return list(self._entries)
+        return self.store.get_all()
 
     def get_recent(self, n: int = 10) -> List[dict]:
-        return self._entries[:n]
+        return self.store.get_recent(n)
 
-    def delete(self, entry_id: int):
-        self._entries = [e for e in self._entries if e.get("id") != entry_id]
-        self._save()
+    def delete(self, entry_id: int) -> bool:
+        return self.store.delete(entry_id)
 
-    def clear(self):
-        self._entries = []
-        self._save()
-        log_info("History cleared")
+    def clear(self) -> bool:
+        return self.store.clear()
 
-    def __len__(self):
-        return len(self._entries)
+    def export(self, destination: Path, fmt: str = "json") -> Optional[Path]:
+        return self.store.export(destination, fmt=fmt)
+
+    def purge_older_than(self, days: int) -> int:
+        return self.store.purge_older_than(days)
+
+    def db_path(self) -> str:
+        return self.store.path()
+
+    def __len__(self) -> int:
+        return self.store.count()
+
+
+def default_history() -> HistoryManager:
+    """Build a HistoryManager from settings, if a settings dict is available."""
+    from utils.helpers import load_json
+
+    config = load_json(str(paths.settings_path()))
+    enabled = bool(config.get("history_enabled", True))
+    if not enabled:
+        log_info("History is disabled in settings")
+    return HistoryManager(
+        max_entries=int(config.get("max_history", MAX_DEFAULT)),
+        enabled=enabled,
+        retention_days=int(config.get("history_retention_days", RETENTION_DEFAULT_DAYS)),
+    )

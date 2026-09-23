@@ -109,3 +109,8 @@ class Events:
     LIVE_TEXT_UPDATED = "live_text_updated"
     STATS_UPDATED = "stats_updated"
     LANGUAGE_DETECTED = "language_detected"
+    #: Fine-grained pipeline stage for diagnostics: idle/recording/transcribing/
+    #: enhancing/injecting.  Never emitted with user content attached.
+    PIPELINE_STAGE = "pipeline_stage"
+    UPDATE_AVAILABLE = "update_available"
+    UPDATE_PROGRESS = "update_progress"

@@ -119,11 +119,12 @@ def _is_hallucination(text: str) -> bool:
     if not t:
         return True
     if len(t.split()) < _MIN_WORDS:
-        log_warning(f"Transcript too short: {repr(t)}")
+        # Length only - transcripts must never be written to logs.
+        log_warning(f"Transcript too short ({len(t)} chars) — dropped")
         return True
     for pat in _HALLUCINATION_RE:
         if pat.search(t):
-            log_warning(f"Hallucination blocked: {repr(t)}")
+            log_warning("Hallucination pattern blocked — dropped")
             return True
     return False
 
@@ -136,6 +137,9 @@ class Transcriber:
         self.backend = None
         self.model = model or None
         self._last_detected_lang = None
+        #: Last provider exception, if any. Callers use this to distinguish
+        #: "provider failed" (retry / show an error) from "silence/hallucination".
+        self.last_error = None
         self._init_client()
 
     def _init_client(self):
@@ -183,9 +187,11 @@ class Transcriber:
         """
         if self.client is None:
             log_error("No transcription client")
+            self.last_error = RuntimeError("No transcription backend configured")
             return None
 
         self._last_detected_lang = None  # reset for each call
+        self.last_error = None
 
         tmp_path = None
         try:
@@ -209,13 +215,18 @@ class Transcriber:
             if _is_hallucination(text):
                 return None
 
+            # Log the language and length only - never the transcript text.
             log_info(
                 f"Transcription OK [{self._last_detected_lang or 'auto'}]: "
-                f"{repr(text[:80])}"
+                f"{len(text)} chars, {len(text.split())} words"
             )
             return text
 
         except Exception as e:
+            # Record the provider failure so the orchestrator can classify it
+            # (bad key / rate limit / network) instead of showing a generic
+            # "transcription failed".
+            self.last_error = e
             log_error(f"Transcription error: {e}", exc_info=True)
             return None
         finally:

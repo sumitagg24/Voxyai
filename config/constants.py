@@ -3,9 +3,28 @@ Global constants and configuration for Voxylis
 """
 
 # Application metadata
-APP_NAME = "Voxylis"
-APP_VERSION = "1.0.0"
-APP_AUTHOR = "Voxylis Team"
+#
+# APP_VERSION comes from config/version.py - the single canonical source.
+# Never hard-code a version string in another module.
+from config.version import (  # noqa: F401  (re-exported for compatibility)
+    APP_DISPLAY_NAME,
+    APP_NAME,
+    COPYRIGHT as APP_COPYRIGHT,
+    PUBLISHER as APP_PUBLISHER,
+    REPO_URL as APP_REPO_URL,
+    __version__ as APP_VERSION,
+)
+
+__all__ = [
+    "APP_DISPLAY_NAME",
+    "APP_NAME",
+    "APP_COPYRIGHT",
+    "APP_PUBLISHER",
+    "APP_REPO_URL",
+    "APP_VERSION",
+]
+
+APP_AUTHOR = APP_PUBLISHER
 
 # Audio settings
 SAMPLE_RATE = 16000
@@ -24,9 +43,12 @@ WHISPER_MODEL = "whisper-1"
 GPT_MODEL = "gpt-4-turbo-preview"
 
 # UI settings
-HOTKEY_DEFAULT = "ctrl+shift+v"
-FLOATING_WIDGET_WIDTH = 200
-FLOATING_WIDGET_HEIGHT = 100
+# Default hotkey must be a combo that does not collide with a Windows
+# shortcut (see core/hotkey_listener.UNSAFE_COMBOS).
+HOTKEY_DEFAULT = "win+shift"
+MODE_HOTKEY_DEFAULTS = {"win+alt": "casual", "win+ctrl": "technical"}
+FLOATING_WIDGET_WIDTH = 260
+FLOATING_WIDGET_HEIGHT = 56
 WINDOW_OPACITY = 0.95
 
 # Enhancement modes
@@ -42,10 +64,15 @@ ENHANCEMENT_MODES = {
 LOG_LEVEL = "INFO"
 LOG_FILE = "voxylis.log"
 
-# Paths
+# Paths (names only - the writable root is resolved by utils.paths)
 CONFIG_DIR = "config"
 TEMP_DIR = "temp"
 LOGS_DIR = "logs"
+DATA_DIR = "data"
+SECRETS_DIR = "secrets"
+CACHE_DIR = "cache"
+MODELS_DIR = "models"
+UPDATES_DIR = "updates"
 
 # Timeouts
 TRANSCRIPTION_TIMEOUT = 120  # 2 minutes for long audio

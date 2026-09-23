@@ -1,43 +1,57 @@
 """
-Main application orchestrator for Voxylis
+Main application orchestrator for Voxylis.
+
+Pipeline (unchanged in shape, hardened in behaviour)::
+
+    Hotkey -> Recorder -> Speech detection -> STT -> Language detection
+           -> Voice commands -> Rich commands -> Enhancement -> Injection
+           -> History / Stats
+
+Hardening added here:
+  * credentials come from the OS-backed vault, never plaintext settings.json;
+  * transcription/enhancement failures are classified into user-facing errors;
+  * every failure path clears state, so the UI never sticks on "Processing";
+  * injection success is reported from the injector's real result;
+  * recordings record their duration and target app for history/diagnostics.
 """
 
 import os
 import threading
 import time
-import sys
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 # Add project root to path if not already there (for standalone web server)
 project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+if str(project_root) not in os.sys.path:
+    os.sys.path.insert(0, str(project_root))
 
-from audio.recorder import AudioRecorder
-from audio.audio_utils import has_speech
-from ai.transcriber import Transcriber
 from ai.enhancer import TextEnhancer
 from ai.language_detector import language_detector
-from system.injector import TextInjector
-from core.hotkey_listener import HotkeyListener
-from core.event_manager import event_manager, Events
-from core.voice_commands import VoiceCommandProcessor
+from ai.transcriber import Transcriber
+from audio.audio_utils import has_speech
+from audio.recorder import AudioRecorder
+from config.constants import HOTKEY_DEFAULT, MODE_HOTKEY_DEFAULTS
 from core.command_processor import CommandProcessor
+from core.errors import VoxylisError, classify_exception, friendly_error
+from core.event_manager import Events, event_manager
 from core.history_manager import HistoryManager
+from core.hotkey_listener import HotkeyListener
+from core.per_app_profiles import PerAppProfiles, get_active_window_info
 from core.sound_feedback import SoundFeedback
 from core.stats_tracker import StatsTracker
-from core.per_app_profiles import PerAppProfiles
-from core.startup_manager import startup_manager
-from utils.logger import log_info, log_error, log_warning, log_debug
-from utils.helpers import load_json, save_json, ensure_directories
+from core.voice_commands import VoiceCommandProcessor
+from system.injector import TextInjector
+from utils import credentials, paths
+from utils.helpers import ensure_directories, get_base_dir, load_json, save_json
+from utils.logger import log_debug, log_error, log_info, log_warning
 
 try:
     from core.wake_word import WakeWordDetector
 except ImportError:
     WakeWordDetector = None
 
-# Language label → ISO code for translation commands
+# Language label -> ISO code for translation commands
 _LANG_NAMES = {
     "english": "en",
     "hindi": "hi",
@@ -72,31 +86,34 @@ _LANG_NAMES = {
     "finnish": "fi",
 }
 
+#: Provider retry policy (network/provider hiccups only, never bad keys).
+MAX_ATTEMPTS = 3
+RETRY_BASE_DELAY = 0.6
+
 
 class AppOrchestrator:
-    def __init__(self, config_path: str = None):
+    MIN_RECORDING_SECONDS = 1.0
+
+    def __init__(self, config_path: Optional[str] = None):
         ensure_directories()
-        if config_path is None:
-            try:
-                from utils.helpers import get_base_dir
-                config_path = os.path.join(get_base_dir(), "config", "settings.json")
-            except Exception:
-                config_path = "config/settings.json"
-        self.config_path = config_path
-        self.config = self._load_config()
+        self.config_path = config_path or str(paths.settings_path())
+        self.config, self.migrated_secrets = self._load_config()
 
         self.recorder = AudioRecorder()
-        self.transcriber = None
-        self.enhancer = None
+        self.transcriber: Optional[Transcriber] = None
+        self.enhancer: Optional[TextEnhancer] = None
         self.injector = TextInjector()
-        self.hotkey_listener = None
+        self.hotkey_listener: Optional[HotkeyListener] = None
         self.wake_word_detector = None
+        self.api_keys: dict = {}
 
-        self.voice_commands = VoiceCommandProcessor(
-            self.config.get("voice_commands", {})
-        )
+        self.voice_commands = VoiceCommandProcessor(self.config.get("voice_commands", {}))
         self.command_processor = CommandProcessor()
-        self.history = HistoryManager(self.config.get("max_history", 100))
+        self.history = HistoryManager(
+            max_entries=int(self.config.get("max_history", 500)),
+            enabled=bool(self.config.get("history_enabled", True)),
+            retention_days=int(self.config.get("history_retention_days", 0)),
+        )
         self.sound = SoundFeedback(
             enabled=self.config.get("sound_feedback", True),
             volume=self.config.get("sound_volume", 0.7),
@@ -110,19 +127,18 @@ class AppOrchestrator:
         self.current_script = "latin"
         self.is_running = False
         self._mode_override: Optional[str] = None
+        self.last_transcript: Optional[str] = None
+        self.last_error: Optional[VoxylisError] = None
 
-        # Guard for active recording session across threads
+        # Guards
         self._recording_active = False
         self._recording_session_lock = threading.Lock()
-
-        # Last injected transcript — used for translation
-        self.last_transcript: Optional[str] = None
-
-        # Guard: prevent _process_audio running twice for one hotkey press
         self._processing_lock = threading.Lock()
         self._is_processing = False
-
-        # Last beep time to prevent rapid beeps
+        self._processing_stage = "idle"
+        self._recording_started_at = 0.0
+        self._recording_context = ""
+        self._cancel_processing = threading.Event()
         self._last_beep_time = 0.0
 
         self._initialize_ai_components()
@@ -133,24 +149,26 @@ class AppOrchestrator:
 
     # ── config ────────────────────────────────────────────────────────────
 
-    def _load_config(self) -> dict:
+    def _load_config(self) -> tuple:
+        """Load settings and move any plaintext credentials into the vault."""
         cfg = load_json(self.config_path)
         if not cfg:
             log_warning("Using default config")
             cfg = self._default_config()
-        return cfg
+        cleaned, migrated = credentials.migrate_config_secrets(cfg)
+        if migrated:
+            save_json(self.config_path, cleaned)
+        return cleaned, migrated
 
     def _default_config(self) -> dict:
         return {
-            "hotkey": "win+shift",
+            "hotkey": HOTKEY_DEFAULT,
             "toggle_mode": False,
-            "mode_hotkeys": {"win+alt": "casual", "win+ctrl": "technical"},
+            "mode_hotkeys": dict(MODE_HOTKEY_DEFAULTS),
             "language": "auto",
             "secondary_language": "auto",
             "enhancement_mode": "formal",
             "enable_ai_enhancement": False,
-            "groq_api_key": "",
-            "openai_api_key": "",
             "audio_device": None,
             "sample_rate": 16000,
             "auto_inject": True,
@@ -158,7 +176,9 @@ class AppOrchestrator:
             "theme": "dark",
             "startup_on_boot": False,
             "log_level": "INFO",
-            "max_history": 100,
+            "max_history": 500,
+            "history_enabled": True,
+            "history_retention_days": 0,
             "sound_feedback": True,
             "sound_volume": 0.7,
             "voice_commands": {},
@@ -168,45 +188,71 @@ class AppOrchestrator:
 
     # ── AI ────────────────────────────────────────────────────────────────
 
-    def _initialize_ai_components(self):
+    def _initialize_ai_components(self) -> None:
+        """Build provider clients from the credential vault (env as fallback)."""
         try:
-            api_key = self.config.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
-            groq_key = self.config.get("groq_api_key") or os.getenv("GROQ_API_KEY")
-            if groq_key:
-                os.environ["GROQ_API_KEY"] = groq_key
-            if api_key:
-                os.environ["OPENAI_API_KEY"] = api_key
+            self.api_keys = credentials.load_api_keys(self.config)
+            credentials.apply_to_environment(self.api_keys)
+            groq_key = self.api_keys.get("groq_api_key")
+            openai_key = self.api_keys.get("openai_api_key")
 
-            if groq_key or api_key:
-                self.transcriber = Transcriber(api_key)
-                self.enhancer = TextEnhancer(api_key)
+            if groq_key or openai_key:
+                self.transcriber = Transcriber(openai_key)
+                self.enhancer = TextEnhancer(openai_key)
                 self.enhancer.set_custom_modes(self.config.get("custom_modes", {}))
-                log_info("AI components ready")
+                log_info(
+                    "AI components ready (vault backend: %s; groq=%s openai=%s)"
+                    % (
+                        credentials.credential_store.backend_name,
+                        bool(groq_key),
+                        bool(openai_key),
+                    )
+                )
             else:
-                log_warning("No API key — AI disabled")
-        except Exception as e:
-            log_error(f"AI init error: {e}")
+                self.transcriber = None
+                self.enhancer = None
+                log_warning("No API key configured — transcription disabled until one is added")
+        except Exception as exc:
+            log_error(f"AI init error: {exc}")
+            self.transcriber = None
+            self.enhancer = None
+
+    def provider_status(self) -> dict:
+        """Redacted provider summary for the settings UI and diagnostics."""
+        keys = credentials.load_api_keys(self.config)
+        return {
+            "groq": {"configured": bool(keys.get("groq_api_key"))},
+            "openai": {"configured": bool(keys.get("openai_api_key"))},
+            "openrouter": {"configured": bool(keys.get("openrouter_api_key"))},
+            "backend": credentials.credential_store.backend_name,
+            "secure_storage": credentials.credential_store.is_secure,
+            "transcriber_ready": self.transcriber is not None,
+            "enhancer_ready": self.enhancer is not None,
+        }
 
     # ── hotkey setup ──────────────────────────────────────────────────────
 
-    def _setup_hotkey_listener(self):
+    def _setup_hotkey_listener(self) -> None:
         try:
-            hotkey = self.config.get("hotkey", "win+shift")
+            hotkey = self.config.get("hotkey", HOTKEY_DEFAULT)
             toggle_mode = self.config.get("toggle_mode", False)
             self.hotkey_listener = HotkeyListener(hotkey, toggle_mode=toggle_mode)
             self.hotkey_listener.on_hotkey_pressed = self._on_hotkey_pressed
             self.hotkey_listener.on_hotkey_released = self._on_hotkey_released
             self.hotkey_listener.on_mode_hotkey = self._on_mode_hotkey
+            self.hotkey_listener.on_listener_lost = self._on_listener_lost
 
             mode_hotkeys = self.config.get("mode_hotkeys", {})
             if mode_hotkeys:
                 self.hotkey_listener.set_mode_hotkeys(mode_hotkeys)
+            self.hotkey_listener.set_enabled(not self.config.get("global_shortcuts_disabled", False))
             log_info(f"Hotkey: {hotkey}  toggle={toggle_mode}")
-        except Exception as e:
-            log_error(f"Hotkey setup error: {e}")
+        except Exception as exc:
+            log_error(f"Hotkey setup error: {exc}")
+            self._emit_error(friendly_error("hotkey_listener_failed", detail=str(exc)))
 
-    def _setup_wake_word(self):
-        """Initialize optional wake-word detector (no-op if unavailable)."""
+    def _setup_wake_word(self) -> None:
+        """Initialize the optional wake-word detector (no-op if unavailable)."""
         try:
             if WakeWordDetector is None:
                 log_info("Wake-word detector unavailable — skipping")
@@ -214,12 +260,10 @@ class AppOrchestrator:
             if not self.config.get("wake_word_enabled", False):
                 log_info("Wake-word disabled in config — skipping")
                 return
-            self.wake_word_detector = WakeWordDetector(
-                self.config.get("wake_word", "voxy")
-            )
+            self.wake_word_detector = WakeWordDetector(self.config.get("wake_word", "voxy"))
             log_info("Wake-word detector ready")
-        except Exception as e:
-            log_error(f"Wake-word setup error: {e}")
+        except Exception as exc:
+            log_error(f"Wake-word setup error: {exc}")
             self.wake_word_detector = None
 
     # ── lifecycle ─────────────────────────────────────────────────────────
@@ -229,100 +273,194 @@ class AppOrchestrator:
             if self.is_running:
                 return False
             if not self.hotkey_listener:
-                log_error("No hotkey listener")
+                self._emit_error(friendly_error("hotkey_listener_failed", detail="listener not constructed"))
                 return False
-            if not self.hotkey_listener.start_listening():
-                log_error("Failed to start hotkey listener")
-                return False
-            self.recorder.on_audio_chunk = lambda level: event_manager.emit(
-                Events.AUDIO_LEVEL_CHANGED, level
-            )
+            started = self.hotkey_listener.start_listening()
+            if not started and not self.config.get("global_shortcuts_disabled", False):
+                self._emit_error(
+                    friendly_error("hotkey_listener_failed", detail="start_listening() returned False")
+                )
+                # Not fatal: the tray menu and main window still work.
+            self.recorder.on_audio_chunk = lambda level: event_manager.emit(Events.AUDIO_LEVEL_CHANGED, level)
             self.is_running = True
             log_info("Application started")
             return True
-        except Exception as e:
-            log_error(f"Start error: {e}", exc_info=True)
+        except Exception as exc:
+            log_error(f"Start error: {exc}", exc_info=True)
             return False
 
     def stop(self) -> bool:
         try:
-            if not self.is_running:
-                return False
             if self.recorder.is_recording:
                 self.recorder.stop_recording()
             if self.hotkey_listener:
                 self.hotkey_listener.stop_listening()
+            self._is_processing = False
+            self._processing_stage = "idle"
             self.is_running = False
             log_info("Application stopped")
             return True
-        except Exception as e:
-            log_error(f"Stop error: {e}", exc_info=True)
+        except Exception as exc:
+            log_error(f"Stop error: {exc}", exc_info=True)
             return False
+
+    # ── errors ────────────────────────────────────────────────────────────
+
+    def _emit_error(self, error: VoxylisError) -> None:
+        self.last_error = error
+        log_error(f"[{error.code}] {error.summary} ({error.detail or 'no detail'})")
+        event_manager.emit(Events.ERROR_OCCURRED, error)
+        self._set_stage("idle")
+
+    def _set_stage(self, stage: str) -> None:
+        self._processing_stage = stage
+        event_manager.emit(Events.PIPELINE_STAGE, stage)
 
     # ── hotkey callbacks ──────────────────────────────────────────────────
 
-    def _beep_start(self):
-        """Play start beep only once per press, even if called from multiple paths."""
+    def _beep_start(self) -> None:
+        """Play the start beep once per press, even across multiple paths."""
         now = time.time()
-        if now - self._last_beep_time > 0.3:  # 300 ms guard
+        if now - self._last_beep_time > 0.3:
             self._last_beep_time = now
             self.sound.on_recording_start()
 
-    def _on_hotkey_pressed(self):
-        if not self.transcriber:
-            event_manager.emit(Events.ERROR_OCCURRED, "no_api_key")
-            return
-        profile_mode = self.profiles.get_mode_for_active_window()
-        if profile_mode:
-            self._mode_override = profile_mode
-        self._beep_start()
-        event_manager.emit(Events.RECORDING_STARTED)
-        self.recorder.start_recording()
+    def _begin_recording(self, mode_override: Optional[str] = None) -> bool:
+        """Shared entry point for hotkey and tray-initiated recordings."""
+        with self._recording_session_lock:
+            if self._recording_active:
+                log_warning("Recording already in progress — ignoring duplicate start")
+                return False
+            if not self.transcriber:
+                self._emit_error(friendly_error("no_api_key"))
+                return False
+            self._recording_active = True
+            self._mode_override = mode_override
+            self._recording_context = ""
+            try:
+                self._recording_context = get_active_window_info().get("exe", "") or ""
+            except Exception:
+                self._recording_context = ""
 
-    def _on_hotkey_released(self):
+        self._beep_start()
+        self._recording_started_at = time.time()
+        event_manager.emit(Events.RECORDING_STARTED)
+        self._set_stage("recording")
+        if not self.recorder.start_recording():
+            self.sound.on_error()
+            with self._recording_session_lock:
+                self._recording_active = False
+            self._emit_error(friendly_error("mic_unavailable"))
+            event_manager.emit(Events.RECORDING_FAILED)
+            return False
+        return True
+
+    def _end_recording(self, cancel: bool = False) -> None:
+        with self._recording_session_lock:
+            if not self._recording_active:
+                return
+            self._recording_active = False
+
+        duration_ms = int((time.time() - self._recording_started_at) * 1000) if self._recording_started_at else 0
         audio_data = self.recorder.stop_recording()
         self.sound.on_recording_stop()
+
+        if cancel:
+            self._mode_override = None
+            event_manager.emit(Events.RECORDING_CANCELLED)
+            self._set_stage("idle")
+            return
+
         if audio_data is None:
             event_manager.emit(Events.RECORDING_FAILED)
+            self._emit_error(friendly_error("recording_failed"))
             return
-        event_manager.emit(Events.RECORDING_STOPPED)
-        self._spawn_process(audio_data)
 
-    def _on_mode_hotkey(self, mode: str, action: str):
+        event_manager.emit(Events.RECORDING_STOPPED)
+        self._spawn_process(audio_data, duration_ms)
+
+    def _on_hotkey_pressed(self) -> None:
+        profile_mode = self.profiles.get_mode_for_active_window()
+        self._begin_recording(profile_mode)
+
+    def _on_hotkey_released(self) -> None:
+        self._end_recording()
+
+    def _on_mode_hotkey(self, mode: str, action: str) -> None:
         if action == "press":
-            self._mode_override = mode
-            if not self.transcriber:
-                event_manager.emit(Events.ERROR_OCCURRED, "no_api_key")
-                return
-            self._beep_start()
-            event_manager.emit(Events.RECORDING_STARTED)
-            self.recorder.start_recording()
+            self._begin_recording(mode)
         elif action == "release":
-            audio_data = self.recorder.stop_recording()
-            self.sound.on_recording_stop()
-            if audio_data is None:
-                event_manager.emit(Events.RECORDING_FAILED)
-                self._mode_override = None
-                return
-            event_manager.emit(Events.RECORDING_STOPPED)
-            self._spawn_process(audio_data)
+            self._end_recording()
+
+    def _on_listener_lost(self) -> None:
+        """Called by the listener when its hook dies; try one restart, then warn."""
+        log_warning("Hotkey listener reported loss")
+        if self.config.get("global_shortcuts_disabled", False):
+            return
+        if self.hotkey_listener and self.hotkey_listener.recover():
+            log_info("Hotkey listener recovered")
+            return
+        self._emit_error(friendly_error("hotkey_listener_failed"))
+
+    # ── public actions (tray / main window) ───────────────────────────────
+
+    def start_recording(self, mode: Optional[str] = None) -> bool:
+        return self._begin_recording(mode)
+
+    def stop_recording(self) -> None:
+        self._end_recording()
+
+    def cancel_recording(self) -> None:
+        """Abort any in-flight recording or processing and return to a known state."""
+        self._cancel_processing.set()
+        if self._recording_active:
+            self._end_recording(cancel=True)
+        self._is_processing = False
+        self._set_stage("idle")
+        log_info("Cancelled current voice operation")
+
+    def toggle_recording(self) -> None:
+        if self._recording_active:
+            self._end_recording()
+        else:
+            self._begin_recording()
 
     # ── pipeline ──────────────────────────────────────────────────────────
 
-    def _spawn_process(self, audio_data):
-        """Spawn processing thread — only one at a time."""
+    def _spawn_process(self, audio_data, duration_ms: int = 0) -> None:
+        """Spawn the processing thread — only one utterance at a time."""
         with self._processing_lock:
             if self._is_processing:
                 log_warning("Already processing — skipping duplicate")
                 return
             self._is_processing = True
+        self._cancel_processing.clear()
         threading.Thread(
-            target=self._process_audio, args=(audio_data,), daemon=True
+            target=self._process_audio, args=(audio_data, duration_ms), daemon=True
         ).start()
 
-    MIN_RECORDING_SECONDS = 1.0
+    def _retry(self, fn: Callable, attempts: int = MAX_ATTEMPTS):
+        """Retry a provider call with exponential backoff.
 
-    def _process_audio(self, audio_data):
+        Returns ``(value, error)`` where exactly one is set.
+        """
+        last = None
+        for attempt in range(1, attempts + 1):
+            if self._cancel_processing.is_set():
+                return None, friendly_error("pipeline_error", cause="cancelled")
+            try:
+                return fn(), None
+            except Exception as exc:  # noqa: BLE001 - classify below
+                error = classify_exception(exc)
+                last = error
+                if not error.retryable or attempt == attempts:
+                    return None, error
+                delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                log_warning(f"[{error.code}] attempt {attempt}/{attempts} failed; retrying in {delay:.1f}s")
+                time.sleep(delay)
+        return None, last
+
+    def _process_audio(self, audio_data, duration_ms: int = 0) -> None:
         try:
             from config.constants import SAMPLE_RATE
 
@@ -330,58 +468,65 @@ class AppOrchestrator:
             min_samples = int(self.MIN_RECORDING_SECONDS * SAMPLE_RATE)
             if len(audio_data.flatten()) < min_samples:
                 log_info("Audio too short — skipping")
-                self._mode_override = None
+                self._emit_error(friendly_error("no_speech"))
                 return
 
             # ── Gate 2: silence check ─────────────────────────────────────
             if not has_speech(audio_data):
                 log_info("No speech detected — skipping")
-                self._mode_override = None
+                self._emit_error(friendly_error("no_speech"))
                 return
 
+            self._set_stage("transcribing")
             event_manager.emit(Events.TRANSCRIPTION_STARTED)
 
             lang = self.config.get("language", "auto")
-            transcript = self.transcriber.transcribe(
-                audio_data, language=None if lang == "auto" else lang, settings=self.config
-            )
+            provider = getattr(self.transcriber, "backend", "") or "the AI provider"
 
-            if not transcript:
-                event_manager.emit(Events.TRANSCRIPTION_FAILED)
+            def _transcribe():
+                text = self.transcriber.transcribe(
+                    audio_data, language=None if lang == "auto" else lang, settings=self.config
+                )
+                # The transcriber returns None for both "provider failed" and
+                # "silence/hallucination". Only surface the former as an error so
+                # we can retry it and tell the user what actually went wrong.
+                provider_error = getattr(self.transcriber, "last_error", None)
+                if text is None and provider_error is not None:
+                    raise provider_error
+                return text
+
+            transcript, error = self._retry(_transcribe)
+            if error is not None:
                 self.sound.on_error()
-                self._mode_override = None
+                event_manager.emit(Events.TRANSCRIPTION_FAILED)
+                self._emit_error(error)
+                return
+            if not transcript:
+                self.sound.on_error()
+                event_manager.emit(Events.TRANSCRIPTION_FAILED)
+                self._emit_error(friendly_error("transcription_failed", provider=provider))
                 return
 
             # ── Detect language ───────────────────────────────────────────
-            lang_code, script, confidence = language_detector.detect_from_text(
-                transcript
-            )
+            lang_code, script, confidence = language_detector.detect_from_text(transcript)
             whisper_lang = getattr(self.transcriber, "_last_detected_lang", None)
             if whisper_lang and whisper_lang != "auto":
                 lang_code = whisper_lang
                 script = "whisper_detected"
                 confidence = 1.0
-            log_debug(
-                f"Detected language: {lang_code} ({script}), "
-                f"confidence={confidence:.2f}"
-            )
+            log_debug(f"Detected language: {lang_code} ({script}), confidence={confidence:.2f}")
 
             self.current_language = lang_code
             self.current_language_name = language_detector.get_language_name(lang_code)
             self.current_script = script
-            event_manager.emit(
-                Events.LANGUAGE_DETECTED, self.current_language_name, lang_code
-            )
+            event_manager.emit(Events.LANGUAGE_DETECTED, self.current_language_name, lang_code)
 
-            # ── Check for "translate it to <language>" command ────────────
-            t_lower = transcript.lower().strip()
-            translate_target = self._detect_translate_command(t_lower)
+            # ── "translate it to <language>" ──────────────────────────────
+            translate_target = self._detect_translate_command(transcript.lower().strip())
             if translate_target:
-                self._handle_translation(translate_target)
-                self._mode_override = None
+                self._handle_translation(translate_target, duration_ms)
                 return
 
-            # ── Store transcript for future translation ───────────────────
             self.last_transcript = transcript
             event_manager.emit(Events.TRANSCRIPTION_COMPLETED, transcript)
             event_manager.emit(Events.LIVE_TEXT_UPDATED, transcript)
@@ -392,85 +537,113 @@ class AppOrchestrator:
                 self.sound.on_command()
                 self.stats.record_command()
                 event_manager.emit(Events.VOICE_COMMAND_EXECUTED, action)
-                self._mode_override = None
+                self._set_stage("idle")
                 return
 
-            # ── Rich commands (search, GitHub, email, Slack) ──────────────
+            # ── Rich commands ─────────────────────────────────────────────
             cmd_ok, cmd_msg = self.command_processor.process_command(transcript)
             if cmd_ok:
                 self.sound.on_command()
                 self.stats.record_command()
                 event_manager.emit(Events.VOICE_COMMAND_EXECUTED, cmd_msg)
                 self.last_transcript = None
-                self._mode_override = None
+                self._set_stage("idle")
                 return
 
             # ── Enhancement ───────────────────────────────────────────────
             enhanced = transcript
             mode = self._mode_override or self.config.get("enhancement_mode", "formal")
-            self._mode_override = None
 
             if self.config.get("enable_ai_enhancement") and self.enhancer:
+                self._set_stage("enhancing")
                 event_manager.emit(Events.ENHANCEMENT_STARTED)
-                result = self.enhancer.enhance(transcript, mode, settings=self.config)
-                if result:
+
+                def _enhance():
+                    return self.enhancer.enhance(transcript, mode, settings=self.config)
+
+                result, enh_error = self._retry(_enhance, attempts=2)
+                if enh_error is not None:
+                    log_warning(f"Enhancement failed, using raw transcript: {enh_error.code}")
+                    event_manager.emit(Events.ENHANCEMENT_FAILED)
+                    event_manager.emit(Events.ERROR_OCCURRED, enh_error)
+                elif result:
                     enhanced = result
                     event_manager.emit(Events.ENHANCEMENT_COMPLETED, enhanced)
+            self._mode_override = None
 
             # ── Stats + history ───────────────────────────────────────────
             self.stats.record_transcription(enhanced, self.current_language_name)
-            self.history.add(transcript, enhanced, mode, self.current_language_name)
+            entry = self.history.add(
+                transcript,
+                enhanced,
+                mode,
+                self.current_language_name,
+                app_context=self._recording_context,
+                duration_ms=duration_ms,
+            )
             event_manager.emit(Events.HISTORY_UPDATED)
             event_manager.emit(Events.STATS_UPDATED, self.stats.get_today())
 
-            # ── Inject once ───────────────────────────────────────────────
+            # ── Inject once (only after a real, reported delivery) ────────
             if self.config.get("auto_inject"):
+                self._set_stage("injecting")
                 event_manager.emit(Events.INJECTION_STARTED)
-                if self.injector.inject_text(enhanced):
+                outcome = self.injector.inject(enhanced)
+                if outcome.success:
+                    if entry:
+                        self.history.store.mark_injected(entry["id"], True)
                     self.sound.on_success()
                     event_manager.emit(Events.INJECTION_COMPLETED, enhanced)
                 else:
                     self.sound.on_error()
                     event_manager.emit(Events.INJECTION_FAILED)
+                    self._emit_error(
+                        friendly_error(
+                            "injection_failed",
+                            cause=outcome.user_message(),
+                            detail=f"{outcome.error.value}: {outcome.detail}",
+                        )
+                    )
+            self._set_stage("idle")
 
-        except Exception as e:
-            log_error(f"Pipeline error: {e}", exc_info=True)
+        except Exception as exc:
+            log_error(f"Pipeline error: {exc}", exc_info=True)
             self.sound.on_error()
-            event_manager.emit(Events.ERROR_OCCURRED, str(e))
-            self._mode_override = None
+            self._emit_error(classify_exception(exc))
         finally:
+            self._mode_override = None
             with self._processing_lock:
                 self._is_processing = False
+            if self._processing_stage != "idle":
+                self._set_stage("idle")
 
     # ── translation helpers ───────────────────────────────────────────────
 
     def _detect_translate_command(self, text_lower: str) -> Optional[str]:
-        """
-        If transcript is 'translate it to <language>' or
-        'translate to <language>', return the ISO code, else None.
-        """
+        """Return the ISO code for 'translate it to <language>', else None."""
         import re
 
-        m = re.search(r"translate(?:\s+it)?\s+to\s+(\w+)", text_lower)
-        if not m:
+        match = re.search(r"translate(?:\s+it)?\s+to\s+(\w+)", text_lower)
+        if not match:
             return None
-        lang_word = m.group(1).lower()
-        return _LANG_NAMES.get(lang_word)
+        return _LANG_NAMES.get(match.group(1).lower())
 
-    def _handle_translation(self, target_lang: str):
-        """Translate last_transcript to target_lang and inject."""
+    def _handle_translation(self, target_lang: str, duration_ms: int = 0) -> None:
+        """Translate the previous transcript and inject the result."""
         if not self.enhancer:
-            log_warning("No enhancer — cannot translate")
+            self._emit_error(friendly_error("provider_unavailable"))
             return
         text_to_translate = self.last_transcript
         if not text_to_translate:
             log_warning("No previous transcript to translate")
+            self._emit_error(friendly_error("transcription_failed", provider="translation"))
             return
 
-        log_info(f"Translating to {target_lang}: {repr(text_to_translate[:60])}")
-        translated = self.enhancer.translate(text_to_translate, target_lang)
-        if not translated:
+        log_info(f"Translating to {target_lang} ({len(text_to_translate)} chars)")
+        translated, error = self._retry(lambda: self.enhancer.translate(text_to_translate, target_lang), attempts=2)
+        if error is not None or not translated:
             self.sound.on_error()
+            self._emit_error(error or friendly_error("enhancement_failed"))
             return
 
         self.last_transcript = translated
@@ -478,23 +651,40 @@ class AppOrchestrator:
         event_manager.emit(Events.LIVE_TEXT_UPDATED, translated)
         self.current_language = target_lang
         self.current_language_name = language_detector.get_language_name(target_lang)
-        event_manager.emit(
-            Events.LANGUAGE_DETECTED, self.current_language_name, target_lang
+        event_manager.emit(Events.LANGUAGE_DETECTED, self.current_language_name, target_lang)
+
+        self.history.add(
+            text_to_translate,
+            translated,
+            "translate:" + target_lang,
+            self.current_language_name,
+            app_context=self._recording_context,
+            duration_ms=duration_ms,
         )
 
         if self.config.get("auto_inject"):
-            event_manager.emit(Events.INJECTION_STARTED)
-            if self.injector.inject_text(translated):
+            outcome = self.injector.inject(translated)
+            if outcome.success:
                 self.sound.on_success()
                 event_manager.emit(Events.INJECTION_COMPLETED, translated)
             else:
                 self.sound.on_error()
                 event_manager.emit(Events.INJECTION_FAILED)
+                self._emit_error(friendly_error("injection_failed", cause=outcome.user_message()))
+        self._set_stage("idle")
 
     # ── config updates ────────────────────────────────────────────────────
 
     def update_config(self, key: str, value) -> bool:
         try:
+            if key in credentials.SECRET_CONFIG_KEYS:
+                stored = credentials.credential_store.set(key, value if isinstance(value, str) and value else None)
+                if not stored:
+                    return False
+                self._initialize_ai_components()
+                event_manager.emit(Events.SETTINGS_CHANGED, key, "configured" if value else "")
+                return True
+
             self.config[key] = value
             if key == "hotkey" and self.hotkey_listener:
                 self.hotkey_listener.set_hotkey(value)
@@ -511,6 +701,8 @@ class AppOrchestrator:
             if key == "app_profiles":
                 self.profiles.update(value)
             if key == "startup_on_boot":
+                from core.startup_manager import startup_manager
+
                 if value:
                     startup_manager.enable_auto_startup()
                 else:
@@ -518,12 +710,21 @@ class AppOrchestrator:
             if key in ("sound_feedback", "sound_volume"):
                 self.sound.enabled = self.config.get("sound_feedback", True)
                 self.sound.volume = self.config.get("sound_volume", 0.7)
+            if key in ("history_enabled", "history_retention_days", "max_history"):
+                self.history.configure(
+                    max_entries=int(self.config.get("max_history", 500)),
+                    retention_days=int(self.config.get("history_retention_days", 0)),
+                    enabled=bool(self.config.get("history_enabled", True)),
+                )
+            if key == "global_shortcuts_disabled" and self.hotkey_listener:
+                self.hotkey_listener.set_enabled(not value)
+
             save_json(self.config_path, self.config)
             event_manager.emit(Events.SETTINGS_CHANGED, key, value)
             log_info(f"Config: {key} = {value}")
             return True
-        except Exception as e:
-            log_error(f"Config update error: {e}", exc_info=True)
+        except Exception as exc:
+            log_error(f"Config update error: {exc}", exc_info=True)
             return False
 
     def get_config(self, key=None):
@@ -533,9 +734,17 @@ class AppOrchestrator:
         return {
             "is_running": self.is_running,
             "is_recording": self.recorder.is_recording,
+            "is_processing": self._is_processing,
+            "stage": self._processing_stage,
             "last_transcript": self.last_transcript,
             "transcriber_ready": self.transcriber is not None,
             "enhancer_ready": self.enhancer is not None,
             "history_count": len(self.history),
             "today_stats": self.stats.get_today(),
+            "last_error": self.last_error.code if self.last_error else None,
         }
+
+
+def get_base_dir_compat() -> str:
+    """Kept for external callers that import this module for the data root."""
+    return get_base_dir()

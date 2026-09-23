@@ -34,8 +34,8 @@ class ClipboardManager:
             pyperclip.copy(text)
             self.last_operation_time = time.time()
 
-            log_info(f"Text copied to clipboard: {len(text)} characters")
-            log_debug(f"Clipboard content: {text[:50]}...")
+            # Never log clipboard contents — they are user transcripts.
+            log_debug(f"Text copied to clipboard: {len(text)} characters")
 
             return True
 
