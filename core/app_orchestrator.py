@@ -36,7 +36,12 @@ from core.command_processor import CommandProcessor
 from core.errors import VoxylisError, classify_exception, friendly_error
 from core.event_manager import Events, event_manager
 from core.history_manager import HistoryManager
-from core.hotkey_listener import HotkeyListener
+from core.hotkey_listener import (
+    HotkeyListener,
+    find_conflicts,
+    normalize_hotkey,
+    validate_hotkey,
+)
 from core.per_app_profiles import PerAppProfiles, get_active_window_info
 from core.sound_feedback import SoundFeedback
 from core.stats_tracker import StatsTracker
@@ -684,6 +689,35 @@ class AppOrchestrator:
                 self._initialize_ai_components()
                 event_manager.emit(Events.SETTINGS_CHANGED, key, "configured" if value else "")
                 return True
+
+            # A shortcut that Windows reserves (or that duplicates another
+            # binding) must be refused *before* it is persisted. Writing it to
+            # settings anyway would tell the user it worked and then silently
+            # fail to register on the next start.
+            if key == "hotkey":
+                ok, canonical, error = validate_hotkey(value)
+                if not ok:
+                    log_warning(f"Rejected hotkey '{value}': {error}")
+                    return False
+                value = canonical
+            if key == "mode_hotkeys":
+                mapping = {
+                    str(k).strip().lower(): str(v)
+                    for k, v in (value or {}).items()
+                    if str(k).strip()
+                }
+                # find_conflicts reports reserved combinations and duplicates
+                # inside the mapping; the main shortcut is checked separately
+                # because it is not part of this dict.
+                problems = find_conflicts(mapping)
+                main = normalize_hotkey(self.config.get("hotkey") or "")
+                for shortcut in mapping:
+                    if main and normalize_hotkey(shortcut) == main:
+                        problems.append(f"{shortcut} is already the main shortcut")
+                if problems:
+                    log_warning("Rejected mode hotkeys: " + "; ".join(problems))
+                    return False
+                value = mapping
 
             self.config[key] = value
             if key == "hotkey" and self.hotkey_listener:

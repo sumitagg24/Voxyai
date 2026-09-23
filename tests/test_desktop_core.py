@@ -316,3 +316,48 @@ def test_listener_rejects_reserved_hotkey_changes():
     assert listener.hotkey == "shift+win"
     assert listener.set_hotkey("ctrl+alt+r") is True
     assert listener.hotkey == "alt+ctrl+r"
+
+
+def _config_only_orchestrator(tmp_path):
+    """An orchestrator with just enough state to exercise config writes.
+
+    Constructing the real object starts threads, a recorder and a global
+    listener; the persistence guard does not need any of that.
+    """
+    from types import SimpleNamespace
+
+    from core.app_orchestrator import AppOrchestrator
+
+    app = object.__new__(AppOrchestrator)
+    app.config = {"hotkey": "win+shift", "mode_hotkeys": {}}
+    app.config_path = tmp_path / "settings.json"
+    app.hotkey_listener = None
+    app.enhancer = None
+    app.history = SimpleNamespace(configure=lambda **kwargs: None)
+    app.voice_commands = SimpleNamespace(update_custom=lambda value: None)
+    app.profiles = SimpleNamespace(update=lambda value: None)
+    app.sound = SimpleNamespace(enabled=True, volume=0.7)
+    return app
+
+
+def test_reserved_hotkey_is_never_persisted(tmp_path):
+    """Accepting a combo the listener refuses would lie to the user."""
+    app = _config_only_orchestrator(tmp_path)
+
+    assert app.update_config("hotkey", "alt+f4") is False
+    assert app.config["hotkey"] == "win+shift"
+    assert not app.config_path.exists()
+
+    assert app.update_config("hotkey", "ctrl+alt+d") is True
+    assert app.config["hotkey"] == "alt+ctrl+d"
+
+
+def test_mode_hotkeys_must_not_collide_or_be_reserved(tmp_path):
+    app = _config_only_orchestrator(tmp_path)
+
+    assert app.update_config("mode_hotkeys", {"win+shift": "casual"}) is False
+    assert app.update_config("mode_hotkeys", {"alt+f4": "casual"}) is False
+    assert app.config["mode_hotkeys"] == {}
+
+    assert app.update_config("mode_hotkeys", {"win+alt": "casual"}) is True
+    assert app.config["mode_hotkeys"] == {"win+alt": "casual"}
