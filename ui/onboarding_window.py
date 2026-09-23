@@ -1,250 +1,511 @@
 """
-Voxylis Desktop Onboarding - First-run wizard for new users.
+First-run onboarding for Voxylis.
+
+Goals, in order of importance for a new user:
+  1. explain what the product does in one screen;
+  2. confirm the microphone actually works (before they blame the app);
+  3. let them record a shortcut instead of typing one;
+  4. connect an AI provider - or skip it, because voice commands and local
+     settings still work without one;
+  5. end with the single instruction they need: "press your shortcut and speak".
+
+The wizard never forces an account: the local/BYOK workflow is a first-class
+path.  State is written to ``%LOCALAPPDATA%\\Voxylis\\config\\onboarding.json``
+and API keys go to the OS credential store.
 """
+
+from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QPushButton,
-    QCheckBox,
     QLineEdit,
+    QPushButton,
     QStackedWidget,
+    QVBoxLayout,
     QWidget,
-    QMessageBox,
-    QFrame,
 )
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap
 
+from config import version
+from config.constants import ENHANCEMENT_MODES, HOTKEY_DEFAULT
+from ui import theme
+from ui.pages import LANGUAGES, MicrophoneTestThread
+from ui.shortcut_recorder import ShortcutRecorder, format_hotkey
+from utils import credentials, paths
 from utils.logger import log_error, log_info
 
-
-ONBOARDING_STEPS = [
-    {
-        "id": "welcome",
-        "title": "Welcome to Voxylis!",
-        "subtitle": "Your AI-powered voice-to-text assistant",
-        "description": "Voxylis lets you speak naturally and have your words enhanced by AI before they're typed anywhere. Let's get you set up in 30 seconds.",
-    },
-    {
-        "id": "api_key",
-        "title": "Configure API Key",
-        "subtitle": "Required for transcription and AI enhancement",
-        "description": "Voxylis uses Groq (FREE) or OpenAI for transcription. Get a free Groq key at console.groq.com/keys",
-    },
-    {
-        "id": "hotkey",
-        "title": "Learn the Hotkey",
-        "subtitle": "Win+Shift to record",
-        "description": "Press and hold Win+Shift to record. Release to stop and transcribe. You can also use Win+Alt (casual) or Win+Ctrl (technical).",
-    },
-    {
-        "id": "voice_commands",
-        "title": "Voice Commands",
-        "subtitle": "Control with your voice",
-        "description": "While recording, say:\n\n• 'clear that' — undo last injection\n• 'new line' — insert a line break\n• 'undo' — undo the last action",
-    },
-    {
-        "id": "done",
-        "title": "You're All Set!",
-        "subtitle": "Start using Voxylis",
-        "description": "Press Win+Shift to make your first recording. Right-click the tray icon for settings, history, and more.",
-    },
+STEPS = [
+    ("welcome", "Welcome to Voxylis", "Speak naturally — Voxylis types it for you."),
+    ("microphone", "Check your microphone", "Record three seconds so we know Voxylis can hear you."),
+    ("shortcut", "Choose your shortcut", "Click the field and press the keys you want to use."),
+    ("provider", "Connect an AI provider", "Optional. Groq is free and fast."),
+    ("language", "Language and style", "How should your speech be transcribed and shaped?"),
+    ("done", "You're ready", "One shortcut is all you need."),
 ]
 
 
-ONBOARDING_FILE = Path(__file__).resolve().parent.parent / "config" / "onboarding.json"
+def _onboarding_file() -> Path:
+    return paths.onboarding_path()
 
 
 def _load_onboarding_state() -> dict:
     try:
-        if ONBOARDING_FILE.exists():
-            return json.loads(ONBOARDING_FILE.read_text(encoding="utf-8"))
-    except Exception:
+        path = _onboarding_file()
+        if path.exists():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        pass
+    # Legacy location (install directory) - read-only fallback for one release.
+    try:
+        legacy = Path(__file__).resolve().parent.parent / "config" / "onboarding.json"
+        if legacy.exists():
+            data = json.loads(legacy.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
         pass
     return {}
 
 
-def _save_onboarding_state(state: dict):
+def _save_onboarding_state(state: dict) -> None:
     try:
-        ONBOARDING_FILE.parent.mkdir(parents=True, exist_ok=True)
-        ONBOARDING_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    except Exception as e:
-        log_error(f"Failed to save onboarding state: {e}")
+        path = _onboarding_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except OSError as exc:
+        log_error(f"Failed to save onboarding state: {exc}")
 
 
 def has_completed_onboarding() -> bool:
-    state = _load_onboarding_state()
-    return state.get("completed", False)
+    return bool(_load_onboarding_state().get("completed", False))
+
+
+def reset_onboarding() -> None:
+    _save_onboarding_state({"completed": False})
 
 
 class OnboardingWindow(QDialog):
-    """First-run onboarding wizard."""
+    """Guided first-run wizard."""
 
     finished_signal = pyqtSignal()
+    settings_ready = pyqtSignal(dict)
+    credential_ready = pyqtSignal(str, str)
 
-    def __init__(self, config: dict, parent=None):
+    def __init__(self, config: dict, orchestrator=None, parent=None):
         super().__init__(parent)
-        self.config = config
-        self.current_step = 0
-        self._setup_ui()
-        self._update_step()
+        self.config = config or {}
+        self.orchestrator = orchestrator
+        self.step_index = 0
+        self._answered = {
+            "microphone_ok": False,
+            "shortcut": self.config.get("hotkey", HOTKEY_DEFAULT),
+            "provider_key": "",
+            "provider": "",
+            "language": self.config.get("language", "auto"),
+            "enable_enhancement": bool(self.config.get("enable_ai_enhancement", False)),
+            "mode": self.config.get("enhancement_mode", "formal"),
+        }
+        self.setWindowTitle(f"{version.APP_NAME} setup")
+        self.setStyleSheet(theme.stylesheet(self.config.get("theme", "dark")))
+        self.setFixedSize(560, 470)
+        self.setModal(True)
+        self._build_ui()
+        self._render()
 
-    def _setup_ui(self):
-        self.setWindowTitle("Voxylis Setup")
-        self.setFixedSize(520, 420)
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+    # ── UI ───────────────────────────────────────────────────────────────
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(32, 32, 32, 32)
+    def _build_ui(self) -> None:
+        root = QVBoxLayout(self)
+        root.setContentsMargins(30, 26, 30, 22)
+        root.setSpacing(14)
 
-        # Step indicator
-        self.step_label = QLabel()
-        self.step_label.setAlignment(Qt.AlignCenter)
-        self.step_label.setStyleSheet("color: #888; font-size: 12px;")
-        layout.addWidget(self.step_label)
+        self.step_label = QLabel("")
+        self.step_label.setObjectName("Hint")
+        root.addWidget(self.step_label)
 
-        # Title
-        self.title_label = QLabel()
-        self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
-        self.title_label.setStyleSheet("color: #1a1a2e;")
-        layout.addWidget(self.title_label)
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self._step_welcome())
+        self.stack.addWidget(self._step_microphone())
+        self.stack.addWidget(self._step_shortcut())
+        self.stack.addWidget(self._step_provider())
+        self.stack.addWidget(self._step_language())
+        self.stack.addWidget(self._step_done())
+        root.addWidget(self.stack, 1)
 
-        # Subtitle
-        self.subtitle_label = QLabel()
-        self.subtitle_label.setAlignment(Qt.AlignCenter)
-        self.subtitle_label.setFont(QFont("Segoe UI", 11))
-        self.subtitle_label.setStyleSheet("color: #555;")
-        layout.addWidget(self.subtitle_label)
-
-        # Description
-        self.desc_label = QLabel()
-        self.desc_label.setAlignment(Qt.AlignCenter)
-        self.desc_label.setWordWrap(True)
-        self.desc_label.setFont(QFont("Segoe UI", 10))
-        self.desc_label.setStyleSheet("color: #333; line-height: 1.5;")
-        layout.addWidget(self.desc_label)
-
-        # API key input (hidden by default)
-        self.api_key_input = QLineEdit()
-        self.api_key_input.setPlaceholderText("gsk_... (Groq) or sk-... (OpenAI)")
-        self.api_key_input.setEchoMode(QLineEdit.Password)
-        self.api_key_input.setStyleSheet(
-            "QLineEdit { padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }"
-        )
-        self.api_key_input.setVisible(False)
-        layout.addWidget(self.api_key_input)
-
-        self.show_key_cb = QCheckBox("Show key")
-        self.show_key_cb.stateChanged.connect(self._toggle_key_visibility)
-        self.show_key_cb.setVisible(False)
-        self.show_key_cb.setStyleSheet("font-size: 12px; color: #666;")
-        layout.addWidget(self.show_key_cb)
-
-        layout.addStretch()
-
-        # Navigation buttons
         nav = QHBoxLayout()
+        self.skip_button = QPushButton("Skip setup")
+        self.skip_button.setObjectName("Link")
+        self.skip_button.clicked.connect(self._finish)
+        nav.addWidget(self.skip_button)
         nav.addStretch()
 
-        self.back_btn = QPushButton("Back")
-        self.back_btn.setFixedWidth(100)
-        self.back_btn.setStyleSheet(
-            "QPushButton { padding: 8px 16px; border: 1px solid #ccc; border-radius: 6px; }"
-            "QPushButton:hover { background: #f0f0f0; }"
-        )
-        self.back_btn.clicked.connect(self._go_back)
-        nav.addWidget(self.back_btn)
+        self.back_button = QPushButton("Back")
+        self.back_button.clicked.connect(self._go_back)
+        nav.addWidget(self.back_button)
 
-        self.next_btn = QPushButton("Next")
-        self.next_btn.setFixedWidth(100)
-        self.next_btn.setStyleSheet(
-            "QPushButton { padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 6px; font-weight: bold; }"
-            "QPushButton:hover { background: #5a4bd1; }"
-        )
-        self.next_btn.clicked.connect(self._go_next)
-        nav.addWidget(self.next_btn)
+        self.next_button = QPushButton("Continue")
+        self.next_button.setObjectName("Primary")
+        self.next_button.clicked.connect(self._go_next)
+        nav.addWidget(self.next_button)
+        root.addLayout(nav)
 
-        layout.addLayout(nav)
+    def _title_block(self, title: str, subtitle: str) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        heading = QLabel(title)
+        heading.setFont(QFont("Segoe UI", 17, QFont.Bold))
+        layout.addWidget(heading)
+        body = QLabel(subtitle)
+        body.setWordWrap(True)
+        body.setObjectName("PageSubtitle")
+        layout.addWidget(body)
+        return widget
 
-        self.setStyleSheet("QDialog { background: #fafafa; }")
-
-    def _update_step(self):
-        step = ONBOARDING_STEPS[self.current_step]
-        total = len(ONBOARDING_STEPS)
-        self.step_label.setText(f"Step {self.current_step + 1} of {total}")
-        self.title_label.setText(step["title"])
-        self.subtitle_label.setText(step["subtitle"])
-        self.desc_label.setText(step["description"])
-
-        # Show/hide API key input
-        show_key = step["id"] == "api_key"
-        self.api_key_input.setVisible(show_key)
-        self.show_key_cb.setVisible(show_key)
-        if show_key:
-            existing = self.config.get("groq_api_key", "")
-            if existing:
-                self.api_key_input.setText(existing)
-
-        # Button states
-        self.back_btn.setVisible(self.current_step > 0)
-        if self.current_step == total - 1:
-            self.next_btn.setText("Finish")
-            self.next_btn.setStyleSheet(
-                "QPushButton { padding: 8px 16px; background: #00b894; color: white; border: none; border-radius: 6px; font-weight: bold; }"
-                "QPushButton:hover { background: #00a381; }"
+    def _step_welcome(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
+        layout.addWidget(
+            self._title_block(
+                "Speak, don't type",
+                "Voxylis listens while you work, transcribes your speech, optionally rewrites it with AI, "
+                "and types the result into whatever window has focus.\n\n"
+                "Setup takes about a minute, and everything stays on this machine except the audio you "
+                "choose to send to your own speech provider.",
             )
-        else:
-            self.next_btn.setText("Next")
-            self.next_btn.setStyleSheet(
-                "QPushButton { padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 6px; font-weight: bold; }"
-                "QPushButton:hover { background: #5a4bd1; }"
+        )
+        local_note = QLabel(
+            f"Version {version.__version__} · data folder: {paths.user_data_root()}"
+        )
+        local_note.setObjectName("Mono")
+        local_note.setWordWrap(True)
+        layout.addWidget(local_note)
+        layout.addStretch()
+        return widget
+
+    def _step_microphone(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
+        layout.addWidget(
+            self._title_block(
+                "Check your microphone",
+                "We will record three seconds and check that speech is detected. "
+                "Nothing is uploaded during this test.",
             )
+        )
+        row = QHBoxLayout()
+        self.mic_button = QPushButton("Test microphone")
+        self.mic_button.setObjectName("Primary")
+        self.mic_button.clicked.connect(self._test_microphone)
+        row.addWidget(self.mic_button)
+        self.mic_result = QLabel("Not tested yet")
+        self.mic_result.setObjectName("Hint")
+        self.mic_result.setWordWrap(True)
+        row.addWidget(self.mic_result, 1)
+        layout.addLayout(row)
 
-    def _toggle_key_visibility(self, state):
-        if state == Qt.Checked:
-            self.api_key_input.setEchoMode(QLineEdit.Normal)
-        else:
-            self.api_key_input.setEchoMode(QLineEdit.Password)
-
-    def _go_back(self):
-        if self.current_step > 0:
-            self.current_step -= 1
-            self._update_step()
-
-    def _go_next(self):
-        # Save API key if on that step
-        if ONBOARDING_STEPS[self.current_step]["id"] == "api_key":
-            key = self.api_key_input.text().strip()
-            if key:
-                if key.startswith("gsk_"):
-                    self.config["groq_api_key"] = key
-                elif key.startswith("sk-"):
-                    self.config["openai_api_key"] = key
-                self._save_config()
-
-        if self.current_step < len(ONBOARDING_STEPS) - 1:
-            self.current_step += 1
-            self._update_step()
-        else:
-            self._finish()
-
-    def _save_config(self):
-        config_path = Path(__file__).resolve().parent.parent / "config" / "settings.json"
+        self.mic_device = QComboBox()
+        self.mic_device.addItem("System default microphone", None)
         try:
-            config_path.write_text(json.dumps(self.config, indent=2), encoding="utf-8")
-        except Exception as e:
-            log_error(f"Failed to save config: {e}")
+            from audio.recorder import AudioRecorder
 
-    def _finish(self):
-        _save_onboarding_state({"completed": True})
+            for index, device in enumerate(AudioRecorder().list_devices()):
+                name = device.get("name") if isinstance(device, dict) else getattr(device, "name", "")
+                channels = device.get("max_input_channels", 0) if isinstance(device, dict) else 0
+                if name and channels:
+                    self.mic_device.addItem(str(name), index)
+        except Exception:
+            pass
+        self.mic_device.currentIndexChanged.connect(
+            lambda: self._answered.update({"audio_device": self.mic_device.currentData()})
+        )
+        layout.addWidget(self.mic_device)
+        layout.addStretch()
+        return widget
+
+    def _step_shortcut(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
+        layout.addWidget(
+            self._title_block(
+                "Choose your shortcut",
+                "Click the field, then press the combination you want. "
+                "Hold it to record, release it to insert the text.",
+            )
+        )
+        self.recorder = ShortcutRecorder(self._answered["shortcut"])
+        self.recorder.changed.connect(self._on_shortcut_changed)
+        self.recorder.invalid.connect(lambda reason: self._shortcut_error.setText(reason))
+        layout.addWidget(self.recorder)
+
+        self._shortcut_error = QLabel("")
+        self._shortcut_error.setObjectName("BadgeWarn")
+        self._shortcut_error.setWordWrap(True)
+        layout.addWidget(self._shortcut_error)
+
+        self.toggle_mode = QCheckBox("Toggle mode — press once to start, press again to stop")
+        layout.addWidget(self.toggle_mode)
+        self.hold_hint = QLabel("")
+        self.hold_hint.setObjectName("Hint")
+        self.hold_hint.setWordWrap(True)
+        layout.addWidget(self.hold_hint)
+        layout.addStretch()
+        return widget
+
+    def _step_provider(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
+        layout.addWidget(
+            self._title_block(
+                "Connect an AI provider",
+                "Voxylis needs a speech-to-text key to transcribe. Groq's free tier is the recommended "
+                "starting point. You can skip this and add a key later in Settings → AI Providers.",
+            )
+        )
+        link = QLabel('<a href="https://console.groq.com/keys">Open console.groq.com/keys to create a free key</a>')
+        link.setOpenExternalLinks(True)
+        layout.addWidget(link)
+
+        self.provider_key = QLineEdit()
+        self.provider_key.setEchoMode(QLineEdit.Password)
+        self.provider_key.setPlaceholderText("gsk_… (Groq) or sk-… (OpenAI)")
+        layout.addWidget(self.provider_key)
+
+        show = QCheckBox("Show key")
+        show.stateChanged.connect(
+            lambda state: self.provider_key.setEchoMode(QLineEdit.Normal if state else QLineEdit.Password)
+        )
+        layout.addWidget(show)
+        layout.addWidget(
+            QLabel(
+                f"Stored in the operating system credential store "
+                f"({credentials.credential_store.backend_name}), never in a plaintext settings file."
+            )
+        )
+        layout.addStretch()
+        return widget
+
+    def _step_language(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
+        layout.addWidget(
+            self._title_block(
+                "Language and style",
+                "Auto-detect works well for most people. Pin a language if detection keeps guessing wrong.",
+            )
+        )
+        language_row = QHBoxLayout()
+        language_row.addWidget(QLabel("Language"))
+        self.language_combo = QComboBox()
+        for label, code in LANGUAGES:
+            self.language_combo.addItem(label, code)
+        language_row.addWidget(self.language_combo, 1)
+        layout.addLayout(language_row)
+
+        mode_row = QHBoxLayout()
+        mode_row.addWidget(QLabel("Enhancement mode"))
+        self.mode_combo = QComboBox()
+        for mode in ENHANCEMENT_MODES:
+            self.mode_combo.addItem(mode.capitalize(), mode)
+        mode_row.addWidget(self.mode_combo, 1)
+        layout.addLayout(mode_row)
+
+        self.enhance_checkbox = QCheckBox("Rewrite my text with AI before inserting it")
+        layout.addWidget(self.enhance_checkbox)
+        layout.addWidget(
+            QLabel(
+                "Enhancement sends the transcript (not the audio) to the provider and can add a moment of latency."
+            )
+        )
+        layout.addStretch()
+        return widget
+
+    def _step_done(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
+        layout.addWidget(
+            self._title_block(
+                "You're ready to dictate",
+                "Voxylis now sits in the system tray. Open the main window any time from the tray menu.",
+            )
+        )
+        self.summary = QLabel("")
+        self.summary.setWordWrap(True)
+        layout.addWidget(self.summary)
+        layout.addStretch()
+        return widget
+
+    # ── flow ─────────────────────────────────────────────────────────────
+
+    def _render(self) -> None:
+        key, title, _ = STEPS[self.step_index]
+        self.step_label.setText(f"Step {self.step_index + 1} of {len(STEPS)} · {title}")
+        self.stack.setCurrentIndex(self.step_index)
+        self.back_button.setEnabled(self.step_index > 0)
+        self.next_button.setText("Finish" if self.step_index == len(STEPS) - 1 else "Continue")
+        self.skip_button.setVisible(self.step_index == 0)
+
+        if key == "language":
+            index = self.language_combo.findData(self._answered["language"])
+            self.language_combo.setCurrentIndex(max(0, index))
+            index = self.mode_combo.findData(self._answered["mode"])
+            self.mode_combo.setCurrentIndex(max(0, index))
+            self.enhance_checkbox.setChecked(self._answered["enable_enhancement"])
+        if key == "done":
+            hotkey = format_hotkey(self._answered["shortcut"])
+            provider = self._answered["provider"] or "no AI provider yet"
+            self.summary.setText(
+                f"<b>Shortcut:</b> {hotkey}<br>"
+                f"<b>Provider:</b> {provider}<br>"
+                f"<b>Microphone:</b> {'checked' if self._answered['microphone_ok'] else 'not tested'}<br><br>"
+                f"Press <b>{hotkey}</b> and start speaking."
+            )
+
+    def _go_back(self) -> None:
+        if self.step_index > 0:
+            self.step_index -= 1
+            self._render()
+
+    def _go_next(self) -> None:
+        key = STEPS[self.step_index][0]
+        if key == "provider":
+            self._capture_provider()
+        elif key == "language":
+            self._answered["language"] = self.language_combo.currentData()
+            self._answered["mode"] = self.mode_combo.currentData()
+            self._answered["enable_enhancement"] = self.enhance_checkbox.isChecked()
+        elif key == "shortcut":
+            self._answered["shortcut"] = self.recorder.value() or HOTKEY_DEFAULT
+            self._answered["toggle_mode"] = self.toggle_mode.isChecked()
+
+        if self.step_index == len(STEPS) - 1:
+            self._finish()
+            return
+        self.step_index += 1
+        self._render()
+
+    # ── step logic ───────────────────────────────────────────────────────
+
+    def _on_shortcut_changed(self, value: str) -> None:
+        self._answered["shortcut"] = value
+        self._shortcut_error.setText("")
+        self.hold_hint.setText(
+            f"Voxylis will listen while {format_hotkey(value)} is held down."
+            if value
+            else ""
+        )
+
+    def _test_microphone(self) -> None:
+        self.mic_button.setEnabled(False)
+        self.mic_result.setText("Recording three seconds — say anything…")
+        self._mic_thread = MicrophoneTestThread(self.mic_device.currentData(), seconds=3.0)
+        self._mic_thread.finished_test.connect(self._mic_test_done)
+        self._mic_thread.start()
+
+    def _mic_test_done(self, result: dict) -> None:
+        self.mic_button.setEnabled(True)
+        if result.get("ok") and result.get("speech"):
+            self._answered["microphone_ok"] = True
+            self.mic_result.setText("Microphone works and speech was detected.")
+        elif result.get("ok"):
+            self.mic_result.setText(
+                "Audio captured, but no speech detected. Move closer to the microphone and try again."
+            )
+        else:
+            self.mic_result.setText(
+                f"Could not open the microphone ({result.get('detail', 'unknown error')}). "
+                "You can continue and fix this later in Settings → Microphone."
+            )
+
+    def _capture_provider(self) -> None:
+        value = self.provider_key.text().strip()
+        if not value:
+            return
+        key_name = "groq_api_key" if value.startswith("gsk_") else "openai_api_key"
+        if credentials.credential_store.set(key_name, value):
+            self._answered["provider_key"] = value
+            self._answered["provider"] = "Groq" if key_name == "groq_api_key" else "OpenAI"
+            self.credential_ready.emit(key_name, value)
+        self.provider_key.clear()
+
+    # ── completion ───────────────────────────────────────────────────────
+
+    def _finish(self) -> None:
+        payload = {k: v for k, v in self._answered.items() if k != "provider_key"}
+        payload["hotkey"] = self._answered["shortcut"] or HOTKEY_DEFAULT
+        if payload.get("enable_enhancement") and not self._answered.get("provider"):
+            # Enhancement without a provider key would silently do nothing.
+            payload["enable_ai_enhancement"] = False
+        else:
+            payload["enable_ai_enhancement"] = bool(self._answered.get("enable_enhancement"))
+
+        try:
+            _persist_settings(payload)
+        except Exception as exc:
+            log_error(f"Onboarding could not persist settings: {exc}")
+
+        _save_onboarding_state(
+            {
+                "completed": True,
+                "completed_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+                "version": version.__version__,
+                "microphone_checked": bool(self._answered.get("microphone_ok")),
+            }
+        )
         log_info("Onboarding completed")
+        self.settings_ready.emit(payload)
         self.finished_signal.emit()
         self.accept()
+
+    def closeEvent(self, event):  # noqa: N802
+        # Closing the wizard counts as completing it; we never nag on next start.
+        if not has_completed_onboarding():
+            _save_onboarding_state({"completed": True, "skipped": True})
+        super().closeEvent(event)
+
+
+def _persist_settings(payload: dict) -> None:
+    """Persist onboarding answers into settings.json (no secrets)."""
+    from utils.helpers import load_json
+    from utils.helpers import save_json as write_json
+
+    path = paths.settings_path()
+    current = load_json(str(path))
+    mapping = {
+        "hotkey": "hotkey",
+        "toggle_mode": "toggle_mode",
+        "audio_device": "audio_device",
+        "language": "language",
+        "mode": "enhancement_mode",
+        "enable_enhancement": "enable_ai_enhancement",
+    }
+    for source, target in mapping.items():
+        if source in payload:
+            current[target] = payload[source]
+    if payload.get("enable_enhancement"):
+        current["enable_ai_enhancement"] = True
+    current.pop("onboarding", None)
+    write_json(str(path), current)
+
+
+def run_onboarding(config: dict, orchestrator=None, parent=None) -> Optional[dict]:
+    """Convenience helper used by the app when onboarding is skipped."""
+    dialog = OnboardingWindow(config, orchestrator=orchestrator, parent=parent)
+    dialog.exec_()
+    return dialog._answered
