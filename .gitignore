@@ -47,9 +47,11 @@ tmp/
 *.tmp
 *.bak
 
-# Configuration (local — contains API keys)
+# Configuration (local — user data; real secrets live in the OS credential store)
+# Nothing under the user-data root (%LOCALAPPDATA%\Voxylis) is ever committed.
 config/settings.json
 config/settings.json.local
+config/onboarding.json
 config/sessions.json
 config/users.json
 web/config/*.json
@@ -58,6 +60,7 @@ web/data/
 *.db-wal
 *.db-shm
 *.sqlite3
+*.vault
 .env
 .env.local
 
@@ -96,3 +99,12 @@ landing-verify.png
 
 # Release bundles (hosted on Backblaze B2, not in git)
 *.zip
+
+# Installer build output
+installer/output/
+installer/*.exe
+
+# Verification artefacts and tool metadata
+screenshots/
+landing-verify.png
+.freebuff/
