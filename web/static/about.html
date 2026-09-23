@@ -100,34 +100,28 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 
 <section class="mission">
   <div class="wrap">
-    <h2>Typing is a bottleneck. Voice is the answer.</h2>
-    <p>Every day, millions of people lose hours to typing — correcting typos, switching languages, and fighting autocorrect. Voxylis exists to remove that friction entirely. We built an AI voice model that listens, understands, and types for you — in 99+ languages, with confidence you can trust.</p>
-    <p style="margin-top:16px">Our mission is to make voice the default input method for modern software. Not a fallback. Not an accessibility feature. The primary way people interact with their computers.</p>
+    <h2>Typing is a bottleneck. Voice is often faster.</h2>
+    <p>Voxylis is a small Windows dictation app. It listens while you hold a shortcut, sends the audio to the speech provider you configured, optionally asks a language model to tidy the result, and types the text into whatever window already has focus.</p>
+    <p style="margin-top:16px">It is deliberately not a subscription lock-in: bring your own Groq or OpenAI key, or use the browser dictation on the dashboard. Your transcripts live in a local database you control.</p>
   </div>
 </section>
 
 <section class="team">
   <div class="wrap">
-    <div class="section-label">The team</div>
-    <h2>Building the voice layer</h2>
+    <div class="section-label">Who builds this</div>
+    <h2>An open project, not a mock-up</h2>
     <div class="team-grid">
       <div class="team-card">
-        <div class="avatar">AR</div>
-        <h3>Anika Rao</h3>
-        <div class="role">Co-founder &amp; CEO</div>
-        <p>Former ML engineer at a major speech recognition lab. Obsessed with making voice input feel invisible.</p>
+        <div class="avatar">SA</div>
+        <h3>Sumit Aggarwal</h3>
+        <div class="role">Maintainer</div>
+        <p>Builds and maintains Voxylis. The desktop app, backend and website are all in one public repository.</p>
       </div>
       <div class="team-card">
-        <div class="avatar">MK</div>
-        <h3>Marcus Kim</h3>
-        <div class="role">Co-founder &amp; CTO</div>
-        <p>Systems engineer who built real-time pipelines at scale. Believes every word deserves a confidence score.</p>
-      </div>
-      <div class="team-card">
-        <div class="avatar">LP</div>
-        <h3>Lena Petrova</h3>
-        <div class="role">Head of Design</div>
-        <p>Designs interfaces that stay out of your way. The Voxylis orb? That's her work.</p>
+        <div class="avatar" style="font-size:14px">OSS</div>
+        <h3>Contributors</h3>
+        <div class="role">Community</div>
+        <p>Bug reports, translations and pull requests are welcome. The project is MIT licensed.</p>
       </div>
     </div>
   </div>
@@ -145,18 +139,18 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
       </div>
       <div class="value-card">
         <div class="num">02</div>
-        <h3>Confidence matters</h3>
-        <p>Every output needs a trust signal. We score every word so you know exactly what you're getting.</p>
+        <h3>Honest limits</h3>
+        <p>If a feature is not built yet, we say so. No invented user counts, ratings or accuracy figures.</p>
       </div>
       <div class="value-card">
         <div class="num">03</div>
         <h3>Privacy by default</h3>
-        <p>Your recordings stay local. AI features only run when you explicitly enable them.</p>
+        <p>Audio goes only to the provider you configured. Transcripts stay in a local database, API keys live in the OS credential store, and history can be switched off or deleted at any time.</p>
       </div>
       <div class="value-card">
         <div class="num">04</div>
         <h3>Ship, learn, repeat</h3>
-        <p>We ship weekly, listen to users daily, and let real usage drive our roadmap.</p>
+        <p>The roadmap follows real bug reports and real usage. Releases are tagged in the public repository.</p>
       </div>
     </div>
   </div>

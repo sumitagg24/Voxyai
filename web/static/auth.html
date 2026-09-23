@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -47,6 +47,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 }
 .auth-btn:disabled{opacity:.5;cursor:not-allowed}
 .msg-error{padding:12px;border:1px solid var(--pink-d);border-radius:6px;background:rgba(240,96,128,.06);color:var(--pink-d);font-size:13px;font-weight:500;margin-top:12px;display:none}
+.msg-success{padding:12px;border:1px solid var(--green);border-radius:6px;background:rgba(3,170,92,.06);color:var(--green);font-size:13px;font-weight:500;margin-top:12px;display:none}
 .auth-footer{margin-top:32px;text-align:center;font-size:14px;color:var(--muted)}
 .auth-footer a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .auth-footer a:hover{opacity:.7}
@@ -100,7 +101,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
       </button>
       <div class="msg-error" id="social-error"></div>
       <div class="divider-row"><span>or continue with email</span></div>
-      <div class="auth-tabs">
+      <div class="auth-tabs" id="auth-tabs-bar">
         <button class="auth-tab active" data-tab="login">Sign In</button>
         <button class="auth-tab" data-tab="signup">Sign Up</button>
       </div>
@@ -111,7 +112,10 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
           <input type="text" id="login-identifier" placeholder="you@example.com" required autocomplete="username">
         </div>
         <div class="form-group">
-          <label for="login-password">Password</label>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label for="login-password" style="margin-bottom:0">Password</label>
+            <button type="button" id="forgot-toggle-btn" style="background:none;border:none;font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0">Forgot?</button>
+          </div>
           <input type="password" id="login-password" placeholder="Your password" required autocomplete="current-password">
         </div>
         <button type="submit" class="auth-btn" id="login-btn">Sign In</button>
@@ -134,6 +138,30 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         </div>
         <button type="submit" class="auth-btn" id="signup-btn">Create Account</button>
         <div class="msg-error" id="signup-error"></div>
+      </form>
+
+      <form class="auth-form" id="forgot-form" autocomplete="on">
+        <div class="form-group">
+          <label for="forgot-email">Account Email</label>
+          <input type="email" id="forgot-email" placeholder="you@example.com" required autocomplete="email">
+          <div class="domain-hint">Enter your email address to receive password reset instructions.</div>
+        </div>
+        <button type="submit" class="auth-btn" id="forgot-btn">Send Reset Link</button>
+        <button type="button" class="auth-btn" id="forgot-back-btn" style="background:transparent;color:var(--ink);border:1px solid var(--line2);margin-top:8px">Back to Sign In</button>
+        <div class="msg-error" id="forgot-error"></div>
+        <div class="msg-success" id="forgot-success"></div>
+      </form>
+
+      <form class="auth-form" id="reset-form" autocomplete="on">
+        <div class="form-group">
+          <label for="reset-password">New Password</label>
+          <input type="password" id="reset-password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
+          <div class="domain-hint">Enter your new secure password.</div>
+        </div>
+        <button type="submit" class="auth-btn" id="reset-btn">Update Password</button>
+        <button type="button" class="auth-btn" id="reset-back-btn" style="background:transparent;color:var(--ink);border:1px solid var(--line2);margin-top:8px">Back to Sign In</button>
+        <div class="msg-error" id="reset-error"></div>
+        <div class="msg-success" id="reset-success"></div>
       </form>
 
       <div class="auth-footer">
@@ -185,6 +213,120 @@ function showError(id, msg) {
   el.textContent = msg;
   el.style.display = 'block';
 }
+
+function showSuccess(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function switchToTab(tabName) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  const targetTab = document.querySelector(`.auth-tab[data-tab="${tabName}"]`);
+  if (targetTab) targetTab.classList.add('active');
+  const targetForm = document.getElementById(tabName + '-form');
+  if (targetForm) targetForm.classList.add('active');
+  document.querySelectorAll('.msg-error').forEach(e => e.style.display = 'none');
+  document.querySelectorAll('.msg-success').forEach(e => e.style.display = 'none');
+}
+
+// Forgot Password toggle
+document.getElementById('forgot-toggle-btn').addEventListener('click', () => {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  document.getElementById('forgot-form').classList.add('active');
+  document.querySelectorAll('.msg-error').forEach(e => e.style.display = 'none');
+  document.querySelectorAll('.msg-success').forEach(e => e.style.display = 'none');
+  const idVal = document.getElementById('login-identifier').value.trim();
+  if (idVal && idVal.includes('@')) {
+    document.getElementById('forgot-email').value = idVal;
+  }
+});
+
+document.getElementById('forgot-back-btn').addEventListener('click', () => {
+  switchToTab('login');
+});
+
+document.getElementById('reset-back-btn').addEventListener('click', () => {
+  switchToTab('login');
+});
+
+// Forgot Password submit
+document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('forgot-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  document.getElementById('forgot-error').style.display = 'none';
+  document.getElementById('forgot-success').style.display = 'none';
+
+  try {
+    const res = await voxyFetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('forgot-email').value.trim() })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showSuccess('forgot-success', data.message || 'If an account exists, a reset link has been sent.');
+    } else {
+      showError('forgot-error', data.error || data.message || 'Could not send reset link.');
+    }
+  } catch (err) {
+    showError('forgot-error', 'Network error. Please try again later.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+  }
+});
+
+// Reset Password submit
+let currentResetToken = '';
+try {
+  const p = new URLSearchParams(location.search);
+  currentResetToken = p.get('token') || p.get('reset_token') || '';
+} catch (e) {}
+
+if (currentResetToken) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+  document.getElementById('reset-form').classList.add('active');
+}
+
+document.getElementById('reset-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+  document.getElementById('reset-error').style.display = 'none';
+  document.getElementById('reset-success').style.display = 'none';
+
+  try {
+    const res = await voxyFetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: currentResetToken,
+        password: document.getElementById('reset-password').value
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showSuccess('reset-success', 'Password reset successfully! Redirecting to sign in...');
+      setTimeout(() => {
+        switchToTab('login');
+      }, 2000);
+    } else {
+      showError('reset-error', data.error || data.message || 'Failed to reset password.');
+    }
+  } catch (err) {
+    showError('reset-error', 'Network error. Please try again later.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update Password';
+  }
+});
 
 // Login
 document.getElementById('login-form').addEventListener('submit', async (e) => {

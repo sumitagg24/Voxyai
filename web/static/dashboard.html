@@ -102,9 +102,11 @@
                     <input class="search-input" type="search" placeholder="Search transcriptions…" />
                     <select class="filter-select">
                         <option value="">All languages</option>
-                        <option value="english">English</option>
-                        <option value="french">French</option>
-                        <option value="spanish">Spanish</option>
+                        <option value="en">English (en)</option>
+                        <option value="es">Spanish (es)</option>
+                        <option value="fr">French (fr)</option>
+                        <option value="de">German (de)</option>
+                        <option value="hi">Hindi (hi)</option>
                     </select>
                 </div>
                 <div class="history-list" id="historyList"></div>
@@ -168,12 +170,18 @@
 
             <section id="wakeword" class="section">
                 <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S6 · Wake Word</div>
-                <h2>Wake Word</h2>
+                <h2>Wake Word <span style="font-size:.6em;font-weight:600;color:var(--muted)">browser preview</span></h2>
+                <p class="help-text" style="margin-bottom:12px">
+                    This section uses your browser's built-in speech recognition and is a preview only.
+                    It does <b>not</b> start recordings in the desktop app — hands-free wake-word
+                    detection is not implemented in the Windows build yet. The desktop app uses your
+                    global shortcut.
+                </p>
                 <div class="wake-word-config">
                     <div class="form-group">
                         <label for="wakeWordInput">Wake word</label>
                         <input type="text" id="wakeWordInput" value="Voxy" />
-                        <p class="help-text">Say this word to start recording hands-free.</p>
+                        <p class="help-text">Saved to your account for future use; testable in this browser tab only.</p>
                     </div>
                     <button class="btn btn-primary" type="button">Save wake word</button>
                 </div>

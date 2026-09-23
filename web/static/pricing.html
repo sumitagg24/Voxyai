@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -100,7 +100,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
   <div class="wrap">
     <div class="eyebrow">Voxylis / Pricing</div>
     <h1>Simple, transparent pricing</h1>
-    <p>Start free and upgrade when you need more. No hidden fees, no surprises.</p>
+    <p>Start free. Paid plans are described below but are <b>not purchasable yet</b> — there is no payment provider connected to this deployment, and no card details are collected.</p>
   </div>
 </header>
 
@@ -109,44 +109,42 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
     <div class="pricing-card">
       <div class="tier">Free</div>
       <div class="price">$0<span>/mo</span></div>
-      <div class="desc">Perfect for trying Voxylis and personal use.</div>
+      <div class="desc">Everything you need to dictate on your own machine.</div>
       <ul class="features">
-        <li>100 transcriptions per month</li>
-        <li>5 languages</li>
-        <li>Basic text enhancement</li>
-        <li>Hotkey and click activation</li>
-        <li>Community support</li>
+        <li>100 browser transcriptions per month</li>
+        <li>Unlimited desktop dictation with your own API key</li>
+        <li>Formal enhancement mode</li>
+        <li>Global shortcut and tray controls</li>
+        <li>Local history, exportable and deletable</li>
       </ul>
-      <a href="/auth" class="card-btn outline">Get Started Free</a>
+      <a href="/auth" class="card-btn outline">Create a free account</a>
     </div>
     <div class="pricing-card popular">
-      <div class="badge">Popular</div>
+      <div class="badge">Planned</div>
       <div class="tier">Pro</div>
       <div class="price">$9.99<span>/mo</span></div>
-      <div class="desc">For power users who live in their voice.</div>
+      <div class="desc">For people who dictate all day. Not purchasable yet.</div>
       <ul class="features">
-        <li>Unlimited transcriptions</li>
-        <li>99+ languages</li>
-        <li>All 5 AI enhancement modes</li>
-        <li>Live Q&amp;A built in</li>
-        <li>Wake word activation</li>
-        <li>Priority support</li>
+        <li>1,000 browser transcriptions per month</li>
+        <li>All five enhancement modes</li>
+        <li>Q&amp;A in the web dashboard</li>
+        <li>Advanced speech modes</li>
+        <li>Everything in Free</li>
       </ul>
-      <a href="/auth" class="card-btn">Start Pro Trial</a>
+      <a href="/contact" class="card-btn">Ask to be notified</a>
     </div>
     <div class="pricing-card">
       <div class="tier">Business</div>
       <div class="price">$29.99<span>/mo</span></div>
-      <div class="desc">For teams and organizations.</div>
+      <div class="desc">For teams. Not purchasable yet.</div>
       <ul class="features">
+        <li>5,000 browser transcriptions per month</li>
         <li>Everything in Pro</li>
-        <li>Team collaboration</li>
         <li>API access</li>
+        <li>Team features</li>
         <li>Custom integrations</li>
-        <li>Admin dashboard</li>
-        <li>Dedicated support</li>
       </ul>
-      <a href="/contact" class="card-btn outline">Contact Sales</a>
+      <a href="/contact" class="card-btn outline">Talk to us</a>
     </div>
   </div>
 </section>
@@ -156,11 +154,11 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
     <div class="label">Pricing FAQ</div>
     <h2>Questions about pricing</h2>
     <div class="faq-list">
-      <div class="faq-item open"><button class="faq-q" type="button"><span>Can I try Pro for free?</span><span class="plus">+</span></button><div class="faq-a">Yes. Every Pro plan starts with a 14-day free trial. No credit card required.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>What happens when I hit the Free limit?</span><span class="plus">+</span></button><div class="faq-a">Your transcriptions pause until the next billing cycle. Upgrade to Pro for unlimited usage.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>Can I switch plans anytime?</span><span class="plus">+</span></button><div class="faq-a">Yes. Upgrade or downgrade from your dashboard. Changes take effect on your next billing date.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>Do you offer annual billing?</span><span class="plus">+</span></button><div class="faq-a">Yes. Annual plans save 20% compared to monthly billing.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>What payment methods do you accept?</span><span class="plus">+</span></button><div class="faq-a">We accept all major credit cards, debit cards, and PayPal.</div></div>
+      <div class="faq-item open"><button class="faq-q" type="button"><span>Can I buy Pro right now?</span><span class="plus">+</span></button><div class="faq-a">Not yet. No payment provider is connected, so no paid plan can be purchased and no card details are collected. Creating a free account is unlimited in time, and desktop dictation with your own API key is never metered.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>What happens when I hit the free limit?</span><span class="plus">+</span></button><div class="faq-a">Browser transcription in the dashboard pauses until the next calendar month. The desktop app is unaffected: it uses the API key you supply, so your only limit is whatever your provider allows.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Can I change my plan myself?</span><span class="plus">+</span></button><div class="faq-a">No. Plans are decided by the Voxylis server and cannot be changed from the app or the website. When payments go live, a verified provider webhook will be the only thing that changes a plan.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Do I need an account at all?</span><span class="plus">+</span></button><div class="faq-a">For desktop dictation, no. An account is only needed for the hosted web dashboard features.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>What do you do with my data?</span><span class="plus">+</span></button><div class="faq-a">Audio is forwarded to the speech provider you configured and is not retained by Voxylis. Transcripts are stored in your local database, API keys in your OS credential store, and both can be removed at any time.</div></div>
     </div>
   </div>
 </section>
@@ -168,7 +166,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 <section class="cta-section">
   <div class="wrap">
     <h2>Ready to start?</h2>
-    <p>Join thousands of users who think faster than they type.</p>
+    <p>Start dictating in a couple of minutes with your own API key.</p>
     <div class="cta-row">
       <a href="/auth" class="btn">Get Started Free</a>
       <a href="/contact" class="btn ghost">Talk to Sales</a>

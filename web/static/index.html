@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Voxylis — Voice That Writes Itself</title>
-<!-- v2.1.1 -->
-<meta name="description" content="Voxylis is an AI voice model that types for you. Speak naturally and get text in 99+ languages.">
+<!-- Version is rendered from /version.json (see config/version.py) -->
+<meta name="description" content="Voxylis is a Windows dictation app. Hold a shortcut, speak, and clean text is typed into any application using your own speech-to-text provider.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -243,7 +243,7 @@ button{font-family:inherit;cursor:pointer}
 <!-- HERO -->
 <header class="hero">
   <div class="wrap">
-    <div class="eyebrow">Voxylis · Voice Model v2.1 · The opposite of typing</div>
+    <div class="eyebrow">Voxylis · <span data-voxylis-version>v3.0.0</span> · The opposite of typing</div>
     <h1>The First Voice Model<br>That <em>Types</em> For You</h1>
     <div class="hero-cta">
       <a href="/download" class="btn">Download Voxylis</a>
@@ -251,12 +251,18 @@ button{font-family:inherit;cursor:pointer}
       <span class="sep"></span>
       <a href="/pricing" class="plain">Pricing</a>
     </div>
+    <!-- Hero numbers are either verifiable product facts or live values
+         fetched from /api/stats/public. No invented traction figures. -->
     <div class="hero-stats">
-      <div class="stat"><div class="num tnum">99+</div><div class="lbl">Languages</div></div>
-      <div class="stat"><div class="num tnum">3s</div><div class="lbl">Voice to text</div></div>
-      <div class="stat"><div class="num tnum">12k+</div><div class="lbl">Users</div></div>
-      <div class="stat"><div class="num tnum">4.8/5</div><div class="lbl">Rating</div></div>
+      <div class="stat"><div class="num tnum">99+</div><div class="lbl">Languages recognised by the speech model</div></div>
+      <div class="stat"><div class="num tnum">38</div><div class="lbl">Languages you can pin</div></div>
+      <div class="stat"><div class="num tnum" id="statUsers">—</div><div class="lbl">Accounts on this deployment</div></div>
+      <div class="stat"><div class="num tnum">5</div><div class="lbl">Enhancement modes</div></div>
     </div>
+    <p class="hero-note" style="margin-top:18px;font-family:var(--mono);font-size:12px;color:var(--muted)">
+      Live figures are read from this deployment's own database. We publish no ratings or usage
+      numbers we cannot measure.
+    </p>
   </div>
 </header>
 
@@ -264,17 +270,17 @@ button{font-family:inherit;cursor:pointer}
 <div class="newsbox">
   <div class="newsbox-inner">
     <span class="tag">VX.0S1</span>
-    <span class="body"><b>Voxylis announces Voxy 2.0</b> — real-time voice dictation, now with calibrated confidence.</span>
-    <a href="/blog/introducing-voxy-2-0">Read more</a>
+    <span class="body"><b>Voxylis 3.0</b> — a real desktop app, encrypted API keys and local SQLite history.</span>
+    <a href="/blog/introducing-voxylis-3-0">Read more</a>
   </div>
 </div>
 
 <!-- INTRO -->
 <section class="intro">
   <div class="wrap">
-    <div class="kicker">Introducing Voxy ..... Intelligence beyond typing</div>
+    <div class="kicker">Voxylis ..... Intelligence beyond typing</div>
     <h2>Speak naturally.<br>Voxylis writes it down.</h2>
-    <p>Voxylis is an AI voice model built for people who think faster than they type. Press a hotkey, say what you mean, and get clean text in 99+ languages — with confidence you can trust.</p>
+    <p>Voxylis is a dictation app for people who think faster than they type. Hold your shortcut, say what you mean, and clean text is inserted into the window you are already in — in any of the languages your speech provider recognises.</p>
   </div>
 </section>
 
@@ -311,7 +317,7 @@ button{font-family:inherit;cursor:pointer}
   <div class="wrap">
     <div class="head">
       <h2>Voxylis turns your voice into text that is literally off the charts.</h2>
-      <div class="side">VX.0S1 · Real-time pipeline<br>Measured on 12,000+ sessions</div>
+      <div class="side">Pipeline shape, not a benchmark<br>Latency depends on your provider and network</div>
     </div>
     <div class="chart-canvas">
       <svg viewBox="0 0 1000 340" preserveAspectRatio="none" aria-hidden="true">
@@ -327,14 +333,13 @@ button{font-family:inherit;cursor:pointer}
         <path d="M0,300 L100,280 L200,260 L300,220 L400,200 L500,150 L600,120 L700,80 L800,55 L900,35 L1000,20 L1000,340 L0,340 Z" fill="url(#fill)"/>
         <path d="M0,300 L100,280 L200,260 L300,220 L400,200 L500,150 L600,120 L700,80 L800,55 L900,35 L1000,20" fill="none" stroke="#f386a1" stroke-width="4" stroke-linecap="round"/>
         <g fill="#f386a1"><circle cx="100" cy="280" r="5"/><circle cx="300" cy="220" r="5"/><circle cx="500" cy="150" r="5"/><circle cx="700" cy="80" r="5"/><circle cx="900" cy="35" r="5"/></g>
-        <text x="16" y="34" font-family="JetBrains Mono, monospace" font-size="15" fill="#1e1e1e">99.2%</text>
-        <text x="16" y="320" font-family="JetBrains Mono, monospace" font-size="12" fill="#858585">0s</text>
-        <text x="930" y="320" font-family="JetBrains Mono, monospace" font-size="12" fill="#858585">3s</text>
+        <text x="16" y="320" font-family="JetBrains Mono, monospace" font-size="12" fill="#858585">press</text>
+        <text x="900" y="320" font-family="JetBrains Mono, monospace" font-size="12" fill="#858585">release</text>
       </svg>
     </div>
     <div class="chart-stats">
-      <div class="c"><div class="big tnum">10x</div><div class="sub">Faster than typing</div><div class="desc">From voice to text in seconds, so your ideas arrive before they fade.</div></div>
-      <div class="c"><div class="big tnum">99+</div><div class="sub">Languages</div><div class="desc">English, Hindi, Punjabi, Urdu, Farsi, Spanish, Bengali, Gujarati and 90+ more.</div></div>
+      <div class="c"><div class="big tnum">One key</div><div class="sub">Hold, speak, release</div><div class="desc">From voice to inserted text without leaving the window you are working in.</div></div>
+      <div class="c"><div class="big tnum">99+</div><div class="sub">Languages</div><div class="desc">English, Hindi, Punjabi, Urdu, Bengali, Gujarati, Spanish and more — as recognised by the speech model you connect.</div></div>
     </div>
   </div>
 </section>
@@ -346,7 +351,7 @@ button{font-family:inherit;cursor:pointer}
       <div>
         <div class="label" style="font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;opacity:.7;margin-bottom:16px">Come build with us</div>
         <h2>Voice that works like code.</h2>
-        <p>Voxylis gives every idea a typed output. Set thresholds, choose enhancement modes, and let your software act with confidence — or ask Voxy anything along the way.</p>
+        <p>Voxylis gives every idea a typed output. Choose an enhancement mode, add your own prompt, and the result is inserted where you are working.</p>
         <div class="build-cta">
           <a href="#download" class="btn">Get Voxylis</a>
           <a href="#docs" class="btn ghost">Read the docs</a>
@@ -356,13 +361,13 @@ button{font-family:inherit;cursor:pointer}
         <div class="newsbox-inner" style="display:block;width:100%;padding:24px">
           <div class="mono" style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.7">VX.0S1 · System</div>
           <div style="font-size:20px;font-weight:700;margin-top:12px">Voice → text → action</div>
-          <p style="font-size:14px;color:var(--ink2);margin-top:12px;line-height:1.6">Hotkey, wake word, or click. Voxylis captures, transcribes, enhances, and types — while you stay in flow.</p>
-          <div class="mono" style="margin-top:20px;font-size:12px;opacity:.7">Win + Shift &nbsp;·&nbsp; Voxy &nbsp;·&nbsp; Click</div>
+          <p style="font-size:14px;color:var(--ink2);margin-top:12px;line-height:1.6">Hold the shortcut, speak, release. Voxylis captures, transcribes, optionally enhances, and inserts the text — while you stay in flow.</p>
+          <div class="mono" style="margin-top:20px;font-size:12px;opacity:.7">Win + Shift &nbsp;·&nbsp; tray menu &nbsp;·&nbsp; main window</div>
         </div>
       </div>
     </div>
     <div class="blog-row">
-      <article class="blog-card"><div class="src">Voxylis News</div><h4>Introducing Voxy 2.0</h4><p>Real-time transcription, calibrated confidence, and five AI enhancement modes in one clean release.</p><a class="more" href="/blog/introducing-voxy-2-0">Read more →</a></article>
+      <article class="blog-card"><div class="src">Voxylis News</div><h4>Introducing Voxylis 3.0</h4><p>A real desktop window, encrypted API keys, and local SQLite history.</p><a class="more" href="/blog/introducing-voxylis-3-0">Read more →</a></article>
       <article class="blog-card"><div class="src">Engineering</div><h4>The bitterest lesson in voice AI</h4><p>Accuracy comes from better pipelines and feedback loops — not just bigger models.</p><a class="more" href="/blog/bitterest-lesson-voice-ai">Read more →</a></article>
       <article class="blog-card"><div class="src">Product</div><h4>AI: too good to be true, too bad to type</h4><p>Why voice is the missing input layer for software, and how Voxylis makes it reliable.</p><a class="more" href="/blog/ai-too-good-to-be-true">Read more →</a></article>
     </div>
@@ -377,15 +382,15 @@ button{font-family:inherit;cursor:pointer}
         <div class="label">We give a FAQ</div>
         <h2>What is Voxylis?</h2>
       </div>
-      <div class="faq-side"><span class="big">Voice in.<br>Text out.</span>Voxylis is an AI-powered voice assistant that turns speech into text across 99+ languages, with hotkeys, wake words, AI enhancement, and Q&amp;A built in.</div>
+      <div class="faq-side"><span class="big">Voice in.<br>Text out.</span>Voxylis is a Windows desktop app that turns speech into text using your own speech-to-text provider, with global shortcuts and optional AI enhancement.</div>
     </div>
     <div class="faq-list" style="margin-top:64px">
-      <div class="faq-item open"><button class="faq-q" type="button"><span>What is Voxylis?</span><span class="plus">+</span></button><div class="faq-a">Voxylis is an AI voice model that transcribes your speech into text in 99+ languages. It works with hotkeys, wake words, and clicks — and can enhance, copy, save, or ask questions about your text.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>How do I start recording?</span><span class="plus">+</span></button><div class="faq-a">Press Win + Shift, say “Voxy”, or click the Voxylis orb. Speak naturally, then release the hotkey or wait three seconds.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>Which languages are supported?</span><span class="plus">+</span></button><div class="faq-a">Voxylis supports 99+ languages including English, Hindi, Punjabi, Urdu, Farsi, Spanish, Bengali, Gujarati, French, German, Japanese, and Chinese.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>What are the enhancement modes?</span><span class="plus">+</span></button><div class="faq-a">Choose Formal, Casual, Technical, Concise, or Creative. Voxylis improves grammar, punctuation, clarity, and tone while preserving your meaning.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>Can Voxylis answer questions?</span><span class="plus">+</span></button><div class="faq-a">Yes. Ask Voxy a question and get an instant answer powered by advanced AI. Perfect for quick lookups, definitions, and explanations.</div></div>
-      <div class="faq-item"><button class="faq-q" type="button"><span>Is my data private?</span><span class="plus">+</span></button><div class="faq-a">Your recordings are stored locally by default. AI features use your configured providers only when you enable them.</div></div>
+      <div class="faq-item open"><button class="faq-q" type="button"><span>What is Voxylis?</span><span class="plus">+</span></button><div class="faq-a">A Windows desktop app that transcribes your speech and types it into the application you are using. You connect your own Groq or OpenAI key, or the web dashboard's browser microphone.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>How do I start recording?</span><span class="plus">+</span></button><div class="faq-a">Hold your shortcut (Win + Shift by default) and speak, then release to insert the text. You can also start or stop from the tray menu and the main window.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Which languages are supported?</span><span class="plus">+</span></button><div class="faq-a">It depends on the speech model you connect, not on Voxylis. Whisper on Groq or OpenAI recognises roughly 99 languages; Voxylis lets you pin any of 38 of them and auto-detects otherwise.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>What are the enhancement modes?</span><span class="plus">+</span></button><div class="faq-a">Formal, Casual, Technical, Concise and Creative, plus your own custom prompts. Enhancement is off by default and asks your configured LLM to rewrite the transcript.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Is my speech sent anywhere?</span><span class="plus">+</span></button><div class="faq-a">Yes, to the provider whose key you configured — that is how transcription works. Audio is sent for the request and not stored by Voxylis. Transcripts are saved only in a local SQLite database, which you can disable or clear.</div></div>
+      <div class="faq-item"><button class="faq-q" type="button"><span>Where are my API keys stored?</span><span class="plus">+</span></button><div class="faq-a">In the operating system credential store (Windows DPAPI or your keyring), never in a plaintext settings file. Settings only record whether a provider is configured.</div></div>
     </div>
   </div>
 </section>
@@ -495,11 +500,18 @@ function subscribeNewsletter(e){
 }
 
 // Fetch live stats
+// Live, verifiable numbers from this deployment only.
 fetch((window.VOXY_API_BASE||'')+'/api/stats/public').then(function(r){return r.json()}).then(function(d){
-  if(d.status==='success'){
-    var nums=document.querySelectorAll('.hero-stats .num');
-    if(nums[2]&&d.stats)nums[2].textContent=d.stats.users||'12k+';
+  if(d.status==='success'&&d.stats){
+    var el=document.getElementById('statUsers');
+    if(el&&typeof d.stats.total_users==='number')el.textContent=d.stats.total_users.toLocaleString();
   }
+}).catch(function(){});
+
+// Version comes from the single canonical source, never hard-coded in copy.
+fetch('/version.json').then(function(r){return r.json()}).then(function(d){
+  if(!d||!d.version)return;
+  document.querySelectorAll('[data-voxylis-version]').forEach(function(el){el.textContent='v'+d.version});
 }).catch(function(){});
 </script>
 </body>

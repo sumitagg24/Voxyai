@@ -12,16 +12,20 @@ class TierManager {
         this.enhancementModes = {
             free: ['formal'],
             pro: ['formal', 'casual', 'technical', 'concise', 'creative'],
-            business: ['formal', 'casual', 'technical', 'concise', 'creative']
+            business: ['formal', 'casual', 'technical', 'concise', 'creative'],
+            owner: ['formal', 'casual', 'technical', 'concise', 'creative']
         };
         this.fetchTier();
     }
 
     async fetchTier() {
         try {
-            const r = await voxyFetch('/api/me');
-            if (r && r.success && r.user && r.user.tier) {
-                this.tier = r.user.tier;
+            const resp = await voxyFetch('/api/me');
+            if (resp && resp.ok) {
+                const r = await resp.json();
+                if (r && r.success && r.user && r.user.tier) {
+                    this.tier = r.user.tier;
+                }
             }
         } catch (e) {
             // default to free
@@ -35,7 +39,8 @@ class TierManager {
         const features = {
             free: ['transcription', 'enhancement_basic', 'history', 'settings', 'hotkeys'],
             pro: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'history', 'settings', 'hotkeys'],
-            business: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys']
+            business: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys'],
+            owner: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys', 'unlimited']
         };
         return feature in (features[this.tier] || features.free);
     }
@@ -100,26 +105,34 @@ const tierManager = new TierManager();
 // Load subscription data into the plan section
 async function loadSubscriptionData() {
     try {
-        const r = await voxyFetch('/api/subscription');
-        if (r && r.success && r.subscription) {
-            const s = r.subscription;
-            const planEl = document.getElementById('planName');
-            const renewalEl = document.getElementById('planRenewal');
-            const countEl = document.getElementById('usageCount');
-            const barEl = document.getElementById('usageBar');
-            const badgeEl = document.getElementById('subscriptionTierBadge');
-            if (planEl) planEl.textContent = s.plan || 'Free';
-            if (renewalEl) renewalEl.textContent = s.renewalDate ? 'Renews ' + s.renewalDate : '';
-            if (countEl) countEl.textContent = s.usage ? s.usage.transcriptions + '/' + s.usage.limit : '–';
-            if (barEl) barEl.style.width = s.usage ? s.usage.percentage + '%' : '0%';
-            if (badgeEl) {
-                badgeEl.textContent = s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Free';
-                badgeEl.className = 'tier-badge tier-' + (s.tier || 'free');
-            }
-            // Update manage button
-            const btn = document.getElementById('managePlanBtn');
-            if (btn && s.tier !== 'free') {
-                btn.textContent = 'Manage Plan';
+        const resp = await voxyFetch('/api/subscription');
+        if (resp && resp.ok) {
+            const r = await resp.json();
+            if (r && r.subscription) {
+                const s = r.subscription;
+                const planEl = document.getElementById('planName');
+                const renewalEl = document.getElementById('planRenewal');
+                const countEl = document.getElementById('usageCount');
+                const barEl = document.getElementById('usageBar');
+                const badgeEl = document.getElementById('subscriptionTierBadge');
+                if (planEl) planEl.textContent = s.plan || (s.tier === 'owner' ? 'Owner (Unlimited)' : 'Free');
+                if (renewalEl) renewalEl.textContent = s.renewalDate ? 'Renews ' + s.renewalDate : (s.tier === 'owner' ? 'Lifetime Access' : '');
+                if (countEl) countEl.textContent = s.usage ? s.usage.transcriptions + ' / ' + s.usage.limit : '–';
+                if (barEl) barEl.style.width = s.usage ? s.usage.percentage + '%' : '0%';
+                if (badgeEl) {
+                    badgeEl.textContent = s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Free';
+                    badgeEl.className = 'tier-badge tier-' + (s.tier || 'free');
+                }
+                // Update manage button
+                const btn = document.getElementById('managePlanBtn');
+                if (btn && s.tier === 'owner') {
+                    btn.textContent = 'Owner Access';
+                    btn.removeAttribute('href');
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.7';
+                } else if (btn && s.tier !== 'free') {
+                    btn.textContent = 'Manage Plan';
+                }
             }
         }
     } catch (e) {}
@@ -445,13 +458,15 @@ function initializeHistory() {
 
 function filterHistory(searchTerm, language) {
     const historyItems = document.querySelectorAll('.history-item');
+    const term = (searchTerm || '').trim().toLowerCase();
+    const lang = (language || '').trim().toLowerCase();
     
     historyItems.forEach(item => {
-        const text = item.querySelector('.history-text').textContent.toLowerCase();
-        const meta = item.querySelector('.history-meta').textContent.toLowerCase();
+        const text = (item.querySelector('.history-text')?.textContent || '').toLowerCase();
+        const meta = (item.querySelector('.history-meta')?.textContent || '').toLowerCase();
         
-        const matchesSearch = text.includes(searchTerm.toLowerCase());
-        const matchesLanguage = !language || meta.includes(language);
+        const matchesSearch = !term || text.includes(term);
+        const matchesLanguage = !lang || meta.includes(lang);
         
         item.style.display = (matchesSearch && matchesLanguage) ? 'flex' : 'none';
     });
@@ -466,7 +481,7 @@ function initializeSubscription() {
     
     if (upgradeBtn) {
         upgradeBtn.addEventListener('click', () => {
-            window.location.href = 'index.html#pricing';
+            window.location.href = '/pricing';
         });
     }
 }
@@ -524,5 +539,3 @@ function importData(file) {
     };
     reader.readAsText(file);
 }
-
-console.log('Dashboard initialized successfully');
