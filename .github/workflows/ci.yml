@@ -6,21 +6,57 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject committed credentials
+        run: |
+          set -euo pipefail
+          # Fail on private keys, common API key shapes and committed .env files.
+          patterns='BEGIN (RSA|EC|OPENSSH|PGP) PRIVATE KEY|gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}'
+          if git grep -nEI "$patterns" -- . ':!*.md' ':!*.example' ':!tests/*'; then
+            echo "::error::Possible credential committed. Remove it and rotate the key."
+            exit 1
+          fi
+          echo "No credential patterns found."
+      - name: Reject committed user data / build output
+        run: |
+          set -euo pipefail
+          bad=$(git ls-files | grep -E '(^|/)(data/.*\.(db|sqlite3)|.*\.vault)$|^config/(users|sessions)\.json$|^dist/|^build/|\.zip$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::Tracked files that must not be committed:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "Working tree contains no user data or build output."
+
   lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install flake8 black
-      - run: black --check web/ ai/ audio/ core/ config/ utils/ system/
-      - run: flake8 web/ ai/ audio/ core/ config/ utils/ system/ --max-line-length 120
+      - run: pip install "black==24.4.2" "flake8>=7.0.0"
+      - name: black
+        run: black --check --diff .
+      - name: flake8
+        run: flake8 . --max-line-length 120 --extend-ignore E203,W503
 
   test:
+    name: Tests (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
@@ -28,13 +64,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -r requirements.txt
-      - run: pip install pytest pytest-cov
-      - run: pytest tests/ -v --cov=web --cov-report=xml || true
-      - name: Test web app imports
+      - name: Install backend + test dependencies
+        # Deliberately not the full requirements.txt: desktop audio/GUI wheels
+        # need system libraries that are irrelevant to these tests.
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            "flask>=3.0.0" "flask-cors>=4.0.0" "flask-caching>=2.1.0" \
+            "flask-limiter>=3.5.0" "werkzeug>=3.0.0" "requests>=2.31.0" \
+            "python-dotenv>=1.0.0" "pytest>=7.4.3" "pytest-cov>=4.1.0"
+      - name: Run test suite
+        run: pytest tests -v --cov=web --cov=core --cov=utils --cov-report=xml
+      - name: Flask app imports
         run: python -c "from web.app import app; print('Flask app loads OK')"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      - name: Audit pinned dependencies
+        # Blocking on purpose: a known-vulnerable dependency must be triaged
+        # (upgrade, or add a justified --ignore-vuln with a tracked issue).
+        run: pip-audit -r requirements.txt --strict
 
   build-desktop:
+    name: Build Windows EXE + installer
     runs-on: windows-latest
     needs: [lint, test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -43,20 +108,51 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Read canonical version
+        id: version
+        shell: pwsh
+        run: |
+          $v = python -c "from config.version import __version__; print(__version__)"
+          "value=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
       - run: pip install -r requirements.txt
-      - run: pyinstaller voxylis.spec
+      - run: python -m config.version --sync
+      - run: pyinstaller voxylis.spec --clean --noconfirm
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.value }} installer\voxylis.iss
+      - name: Verify no credentials in the build
+        shell: pwsh
+        run: |
+          $hits = Select-String -Path "dist\Voxylis\*","dist\Voxylis\_internal\*" -Pattern "gsk_[A-Za-z0-9]{20,}","sk-[A-Za-z0-9]{20,}" -List -ErrorAction SilentlyContinue
+          if ($hits) { Write-Error "Credential pattern found in build output"; exit 1 }
+      - name: Inspect EXE version metadata
+        shell: pwsh
+        run: |
+          $info = (Get-Item "dist\Voxylis\Voxylis.exe").VersionInfo
+          Write-Host "ProductVersion: $($info.ProductVersion)"
+          if ($info.ProductVersion -ne "${{ steps.version.outputs.value }}") {
+            Write-Error "EXE metadata ($($info.ProductVersion)) does not match the canonical version"
+            exit 1
+          }
       - uses: actions/upload-artifact@v4
         with:
-          name: Voxylis-Windows
-          path: dist/Voxylis.exe
+          name: Voxylis-Windows-${{ steps.version.outputs.value }}
+          path: |
+            dist/Voxylis/**
+            installer/output/*.exe
 
   deploy-web:
+    name: Deploy website
     runs-on: ubuntu-latest
     needs: [lint, test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}

@@ -4,18 +4,57 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v3.0.0)"
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
-  build-windows:
+  version-check:
+    name: Version matches the tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare config/version.py with the tag
+        run: |
+          set -euo pipefail
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          py=$(python - <<'PY'
+          import re, pathlib
+          text = pathlib.Path("config/version.py").read_text(encoding="utf-8")
+          print(re.search(r'__version__\s*=\s*"([^"]+)"', text).group(1))
+          PY
+          )
+          echo "tag=$tag version=$py"
+          if [ "v$py" != "$tag" ]; then
+            echo "::error::Tag $tag does not match config/version.py ($py). Bump the version or retag."
+            exit 1
+          fi
+
+  release-windows:
+    name: Windows installer
     runs-on: windows-latest
+    needs: [version-check]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Read canonical version
+        id: version
+        shell: pwsh
+        run: |
+          $v = python -c "from config.version import __version__; print(__version__)"
+          "value=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
       - run: pip install -r requirements.txt
-      - run: pyinstaller voxylis.spec
-      - name: Sign executable (skipped unless WINDOWS_CERT_BASE64 secret is set)
+      - run: python -m config.version --sync
+      - name: Build the executable
+        run: pyinstaller voxylis.spec --clean --noconfirm
+      - name: Sign the executable
         if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
         shell: pwsh
         run: |
@@ -24,17 +63,88 @@ jobs:
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
           & $signtool sign /f $pfx /p '${{ secrets.WINDOWS_CERT_PASSWORD }}' /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/Voxylis/Voxylis.exe
-      - name: Create ZIP
-        run: Compress-Archive -Path dist/Voxylis -DestinationPath Voxylis-Windows-${{ github.ref_name }}.zip
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.value }} installer\voxylis.iss
+      - name: Sign the installer
+        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $pfx = "$env:RUNNER_TEMP\voxylis-cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String('${{ secrets.WINDOWS_CERT_BASE64 }}'))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          & $signtool sign /f $pfx /p '${{ secrets.WINDOWS_CERT_PASSWORD }}' /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "installer/output/Voxylis-Setup-${{ steps.version.outputs.value }}.exe"
+      - name: Verify signatures
+        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
+          & $signtool verify /pa /v "installer/output/Voxylis-Setup-${{ steps.version.outputs.value }}.exe"
+      - name: Inspect EXE metadata
+        shell: pwsh
+        run: |
+          $info = (Get-Item "dist\Voxylis\Voxylis.exe").VersionInfo
+          if ($info.ProductVersion -ne "${{ steps.version.outputs.value }}") {
+            Write-Error "EXE ProductVersion '$($info.ProductVersion)' != '${{ steps.version.outputs.value }}'"
+            exit 1
+          }
+      - name: Build checksums and the update manifest
+        shell: pwsh
+        run: |
+          $setup = "installer/output/Voxylis-Setup-${{ steps.version.outputs.value }}.exe"
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item $setup).Length
+          # The updater only applies a download whose size and SHA-256 match.
+          $manifest = @{
+            version = "${{ steps.version.outputs.value }}"
+            channel = "stable"
+            notes   = "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+            installers = @{
+              windows = @{
+                url    = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Voxylis-Setup-${{ steps.version.outputs.value }}.exe"
+                sha256 = $hash
+                size   = $size
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          $manifest | Out-File -Encoding utf8 update-manifest.json
+          "$hash  Voxylis-Setup-${{ steps.version.outputs.value }}.exe" | Out-File -Encoding ascii SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
-          files: Voxylis-Windows-${{ github.ref_name }}.zip
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: |
+            installer/output/*.exe
+            update-manifest.json
+            SHA256SUMS.txt
+          generate_release_notes: true
+          body: |
+            ## Voxylis ${{ steps.version.outputs.value }}
+
+            Download and run `Voxylis-Setup-${{ steps.version.outputs.value }}.exe`.
+
+            Verify your download (optional but recommended):
+
+            ```
+            certutil -hashfile Voxylis-Setup-${{ steps.version.outputs.value }}.exe SHA256
+            ```
+
+            The hash must match `SHA256SUMS.txt`.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-web:
+    name: Website
     runs-on: ubuntu-latest
+    needs: [version-check]
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Vercel
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
