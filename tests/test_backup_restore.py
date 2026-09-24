@@ -150,9 +150,7 @@ def test_restore_with_force_replaces_the_live_database(scratch_db, tmp_path):
 
 
 def test_restore_refuses_a_corrupt_backup(scratch_db, tmp_path):
-    saved = Path(
-        backup_mod.backup(backup_dir=tmp_path / "b", db_path=scratch_db)["file"]
-    )
+    saved = Path(backup_mod.backup(backup_dir=tmp_path / "b", db_path=scratch_db)["file"])
     # Corrupt the copy by truncating it to half its pages: the header then
     # promises pages that are not in the file.
     raw = saved.read_bytes()
@@ -167,9 +165,7 @@ def test_restore_refuses_a_corrupt_backup(scratch_db, tmp_path):
 
 def test_restore_removes_stale_wal_sidecars(scratch_db, tmp_path):
     """Old WAL frames must never be replayed into a restored database."""
-    saved = Path(
-        backup_mod.backup(backup_dir=tmp_path / "b", db_path=scratch_db)["file"]
-    )
+    saved = Path(backup_mod.backup(backup_dir=tmp_path / "b", db_path=scratch_db)["file"])
 
     live = tmp_path / "live4.db"
     con = sqlite3.connect(str(live))

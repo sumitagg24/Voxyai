@@ -202,8 +202,7 @@ def restore(
     live_is_empty = (not db_path.exists()) or db_path.stat().st_size == 0
     if not force and not live_is_empty:
         result["error"] = (
-            f"live database {db_path} exists and is non-empty; "
-            "pass --force to overwrite it (stop the app first)"
+            f"live database {db_path} exists and is non-empty; " "pass --force to overwrite it (stop the app first)"
         )
         return result
 

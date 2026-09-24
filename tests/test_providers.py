@@ -64,35 +64,26 @@ def _fake_module(name: str, **attrs):
 class _RecordingClient:
     """Stands in for openai.OpenAI / groq.Groq and records constructor args."""
 
-    calls: list = []          # constructor kwargs (api_key, base_url)
-    create_calls: list = []   # chat.completions.create kwargs (model, messages)
+    calls: list = []  # constructor kwargs (api_key, base_url)
+    create_calls: list = []  # chat.completions.create kwargs (model, messages)
     text: str = "stub answer"
     error: Exception | None = None  # fail every client when set
-    fail_keys: tuple = ()           # ... or only clients built with these api keys
+    fail_keys: tuple = ()  # ... or only clients built with these api keys
 
     def __init__(self, **kwargs):
         type(self).calls.append(kwargs)
-        self._fail = type(self).error is not None or (
-            kwargs.get("api_key", "") in type(self).fail_keys
-        )
-        self.chat = SimpleNamespace(
-            completions=SimpleNamespace(create=self._create)
-        )
-        self.audio = SimpleNamespace(
-            transcriptions=SimpleNamespace(create=self._create)
-        )
+        self._fail = type(self).error is not None or (kwargs.get("api_key", "") in type(self).fail_keys)
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+        self.audio = SimpleNamespace(transcriptions=SimpleNamespace(create=self._create))
 
     def _create(self, **kwargs):
         type(self).create_calls.append(kwargs)
         if self._fail:
             raise type(self).error or RuntimeError("simulated provider failure")
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=type(self).text))]
-        )
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=type(self).text))])
 
     @classmethod
-    def reset(cls, text: str = "stub answer", error: Exception | None = None,
-              fail_keys: tuple = ()):
+    def reset(cls, text: str = "stub answer", error: Exception | None = None, fail_keys: tuple = ()):
         cls.calls = []
         cls.create_calls = []
         cls.text = text
@@ -201,16 +192,12 @@ def test_qa_openai_fallback_sends_no_base_url(app_client, monkeypatch):
     assert _RecordingClient.create_calls[0]["model"] == "gpt-4o-mini"
 
 
-def test_enhancement_is_refused_with_503_when_no_provider_is_configured(
-    app_client, monkeypatch
-):
+def test_enhancement_is_refused_with_503_when_no_provider_is_configured(app_client, monkeypatch):
     client, web_app = app_client
     _clear_provider_keys(monkeypatch)
     user = ApiUser(client, "nokeys@gmail.com")
 
-    response = client.post(
-        "/api/enhance", json={"text": "hello world", "mode": "formal"}, headers=user.headers
-    )
+    response = client.post("/api/enhance", json={"text": "hello world", "mode": "formal"}, headers=user.headers)
     assert response.status_code == 503
     assert "no AI provider key" in response.get_json()["error"]
     # Q&A degrades to the honest apology string, never a fabricated answer.
@@ -332,9 +319,7 @@ def test_transcribe_muse_failure_falls_through_to_groq(app_client, monkeypatch):
         @property
         def audio(self):
             return SimpleNamespace(
-                transcriptions=SimpleNamespace(
-                    create=lambda **kw: SimpleNamespace(text="groq heard this")
-                )
+                transcriptions=SimpleNamespace(create=lambda **kw: SimpleNamespace(text="groq heard this"))
             )
 
     with _fake_module("groq", Groq=_WhisperClient):
@@ -377,9 +362,7 @@ def test_desktop_environment_is_a_fallback_not_an_override(isolated_home, monkey
     assert "or_from_environment" not in repr(store.describe())
 
 
-def test_desktop_transcriber_selects_groq_from_the_environment(
-    isolated_home, monkeypatch
-):
+def test_desktop_transcriber_selects_groq_from_the_environment(isolated_home, monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "gsk_desktop_env")
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
@@ -408,8 +391,7 @@ def test_no_provider_key_or_scheme_reaches_the_client_bundle():
     for path in (REPO / "web" / "static").rglob("*"):
         if path.is_file() and path.suffix in {".html", ".js", ".css"}:
             text = path.read_text(encoding="utf-8", errors="ignore")
-            for needle in ("MODEL_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY",
-                           "OPENAI_API_KEY", "gsk_", "sk-proj-"):
+            for needle in ("MODEL_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY", "gsk_", "sk-proj-"):
                 if needle in text:
                     offenders.append(f"{path.name}: {needle}")
     assert offenders == []
