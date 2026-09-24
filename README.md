@@ -96,6 +96,11 @@ store** (DPAPI at user scope, falling back to `keyring`), never in
 `config/settings.json` are migrated automatically: the secret moves into the
 vault and is removed from the file.
 
+There is no analytics and no usage tracking. Crash reports are **off by default**
+and only leave the machine if you enable them in Settings → Privacy; what a
+report contains (and what it never contains) is listed in
+[docs/PRIVACY.md](docs/PRIVACY.md).
+
 Details: [docs/PRIVACY.md](docs/PRIVACY.md) · [docs/SECURITY.md](docs/SECURITY.md)
 
 ## Configuration
@@ -109,7 +114,7 @@ All preferences are in the app: **Settings** in the sidebar (or the tray menu).
 | Microphone | Device picker, live level meter, record/playback test, toggle mode, language |
 | AI Providers | Groq / OpenAI keys (stored in the credential vault), enhancement on/off, default mode, custom modes |
 | Shortcuts | Record shortcuts (default + per-mode), hold/toggle mode, reserved-key and duplicate validation, disable global shortcuts, reset |
-| Privacy | Retention, diagnostics export, local data deletion |
+| Privacy | Retention, crash-report opt-in, diagnostics export, local data deletion |
 | Account | Optional sign-in for the web dashboard |
 | Diagnostics | Pipeline state, paths, recent errors, redacted support bundle |
 | About | Version, licences, links |
@@ -227,7 +232,8 @@ docker compose up -d
 gunicorn --bind 0.0.0.0:5000 --workers 4 web.app:app
 ```
 
-Environment (see [.env.example](.env.example)):
+Environment (see [.env.example](.env.example) for the full list and
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for how to obtain each value):
 
 - `SECRET_KEY` — required in production; the app refuses to start with a missing
   or weak value.
@@ -237,6 +243,17 @@ Environment (see [.env.example](.env.example)):
 - `VOXYLIS_DB_PATH` — SQLite location; defaults to `web/data/voxylis.db`.
 - `ALLOW_DEV_TIER_CHANGE` — development-only tier override. It is ignored in
   production; never enable it on a deployed host.
+- `EMAIL_PROVIDER` + `EMAIL_API_KEY` (or `SMTP_HOST`) + `FRONTEND_URL` — needed
+  for verification and password-reset mail. Without them the app runs with the
+  `console` provider: nothing is delivered and startup logs an error.
+- `SENTRY_DSN` / `SENTRY_DSN_BROWSER` — optional error monitoring for the API
+  and the website. Unset means monitoring is off and the app is unaffected.
+- `DOWNLOAD_URL_WINDOWS` — set only once the matching release artifact exists;
+  an empty value makes the download page point at the releases page and say the
+  installer is not published yet.
+
+`GET /api/health` reports `email` and `monitoring` status, so a deployment can
+see whether those two are actually configured.
 
 The backend is designed for a single instance with SQLite. Rate limits are
 in-memory, so limiting stops being meaningful if you run several workers across
@@ -263,6 +280,7 @@ exist) sign the Windows artifacts.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — process, pipeline, storage, ownership
 - [docs/PRIVACY.md](docs/PRIVACY.md) — exact data flows and deletion
 - [docs/SECURITY.md](docs/SECURITY.md) — trust boundaries, controls, limitations
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — every environment variable and the manual work it needs
 - [docs/RELEASE.md](docs/RELEASE.md) — versioning, signing, release gate
 - [docs/API.md](docs/API.md) — endpoint reference
 - [CHANGELOG.md](CHANGELOG.md) — release history

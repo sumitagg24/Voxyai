@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contact — Voxylis</title>
 <meta name="description" content="Get in touch with the Voxylis team.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://voxylis.com/contact">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Voxylis">
+<meta property="og:title" content="Contact — Voxylis">
+<meta property="og:description" content="Get in touch with the Voxylis team.">
+<meta property="og:url" content="https://voxylis.com/contact">
+<meta property="og:image" content="https://voxylis.com/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -161,6 +170,8 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 </footer>
 
 <script src="/static/js/api.js"></script>
+<!-- Error monitoring: no-op unless a browser DSN is configured. -->
+<script src="/static/js/sentry-init.js" defer></script>
 <script>
 document.getElementById('contact-form').addEventListener('submit', async function(e) {
   e.preventDefault();

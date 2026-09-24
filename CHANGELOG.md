@@ -3,6 +3,76 @@
 All notable changes to Voxylis. The canonical version lives in
 `config/version.py`; see `docs/RELEASE.md` for the release procedure.
 
+## Unreleased — email, monitoring and repository hygiene
+
+### Email (new)
+
+* **Transactional email actually sends.** Verification and password-reset
+  endpoints previously minted tokens, stored them, and delivered nothing while
+  reporting success. A provider abstraction now sits behind every message:
+  Resend over HTTP, SMTP (stdlib), or a `console` provider for development that
+  records instead of sending and warns loudly at startup in production.
+* **Ten templates** (welcome, verify, reset, password-changed, security alert,
+  plan change, usage warning, usage limit, account deleted, product update) with
+  text and HTML bodies, all built from `FRONTEND_URL` so a hosted deployment
+  cannot mail a `localhost` link.
+* **Account security mail**: a password change signs out every other session and
+  notifies the account; requesting a new verification or reset link retires the
+  previous one; reset links are single use and expire in an hour.
+* **Marketing consent is separate.** Product news requires an explicit opt-in and
+  carries a signed unsubscribe link; absence of a preference row means "no".
+* **Account deletion** (`POST /api/account/delete`) requires the password and a
+  typed confirmation, refuses the owner account, and cascades every related row.
+
+### Monitoring (new)
+
+* **Sentry for the API, the website and the desktop app**, all optional: with no
+  DSN the app runs exactly as before. Request bodies are never attached, frame
+  locals are dropped, and headers, cookies, query strings, session ids and
+  user-content fields are scrubbed before an event leaves the process.
+* **Desktop reporting is opt-in** (Settings → Privacy) and off by default; a
+  local crash report is still written either way.
+* `/api/public-config` exposes only the public browser DSN; `SENTRY_DSN` never
+  reaches the frontend.
+
+### Security and correctness
+
+* **Startup crash fixed.** `AppOrchestrator.get_config()` accepted only a key,
+  but the whole UI calls it with a default (`get_config("theme", "dark")`).
+  Every such call raised `TypeError`, so the packaged app died immediately after
+  startup; the test double already had the two-argument form, which is why the
+  unit suite never noticed. Found by launching the frozen build.
+* `load_dotenv()` ran *after* `SECRET_KEY` and `CORS_ORIGINS` were resolved, so a
+  `.env` file was ignored for the two values that matter most.
+* `POST /api/transcribe` now requires a confirmed email address (owner and admin
+  exempt), so an unverified throwaway address cannot consume the monthly quota.
+* Cross-origin credentials are no longer advertised by default (`X-Session-Id`
+  header auth, no cookies); `CORS_SUPPORTS_CREDENTIALS` opts back in.
+* Password changes through `update-profile` sign out other devices and send a
+  notice.
+* Application logs now have a real handler, so email and monitoring messages are
+  not silently discarded by the host. Recipients are masked; bodies and tokens
+  are never logged.
+
+### Website and releases
+
+* The download page no longer advertises an installer that was never published:
+  `/api/download/urls` reports per-platform `available` flags and links to the
+  releases page when no artifact is configured.
+* Removed a stale duplicate download page (`web/downloads/`) that linked to
+  `.exe`, `.dmg`, `.deb`, `.rpm` and AppImage builds that do not exist, and the
+  second `version.json` mirror that only drifted.
+* `pyproject.toml` pins black to the project's 120-column style so the CI format
+  check can actually pass.
+
+### Repository hygiene
+
+* `config/users.json` and `config/sessions.json` are no longer tracked; both were
+  already gitignored, and their presence made the CI secret scan fail.
+* `.gitignore` covers `.env` (with `!.env.example`), private keys, vaults,
+  SQLite files and runtime directories; `.env.example` documents only variables
+  the code actually reads, with no values.
+
 ## 3.0.0 — production release (hardening)
 
 > Release note: the `v3.0.0` tag currently points at the commit *before* this

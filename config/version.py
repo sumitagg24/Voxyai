@@ -110,13 +110,13 @@ def sync() -> list:
         "released": UPDATE_CHANNEL,
         "releases_url": RELEASES_URL,
     }
-    for target in (
-        root / "web" / "static" / "version.json",
-        root / "web" / "downloads" / "version.json",
-    ):
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        written.append(str(target))
+    # One served mirror is enough: web/static/version.json is what the deployed
+    # site (Vercel outputDirectory web/static) and the Flask /version.json route
+    # both use. A second copy under web/downloads only drifted.
+    target = root / "web" / "static" / "version.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    written.append(str(target))
 
     return written
 

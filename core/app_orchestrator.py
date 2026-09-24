@@ -49,6 +49,7 @@ from core.voice_commands import VoiceCommandProcessor
 from system.injector import TextInjector
 from utils import credentials, paths
 from utils.helpers import ensure_directories, get_base_dir, load_json, save_json
+from utils import observability
 from utils.logger import log_debug, log_error, log_info, log_warning
 
 try:
@@ -103,6 +104,13 @@ class AppOrchestrator:
         ensure_directories()
         self.config_path = config_path or str(paths.settings_path())
         self.config, self.migrated_secrets = self._load_config()
+        # Crash reporting is opt-in (Settings → Privacy). Starting it here means
+        # every failure below — recording, provider, injection, updater — can be
+        # reported through one place instead of a second logging path.
+        try:
+            observability.init_observability(self.config)
+        except Exception as exc:  # pragma: no cover - never block startup
+            log_warning(f"Crash reporting unavailable: {type(exc).__name__}")
 
         self.recorder = AudioRecorder()
         self.transcriber: Optional[Transcriber] = None
@@ -189,6 +197,9 @@ class AppOrchestrator:
             "voice_commands": {},
             "custom_modes": {},
             "app_profiles": {},
+            # Off unless the user turns it on in Settings → Privacy. No install
+            # ping, no analytics: a failure report is the only thing we ever send.
+            "share_crash_reports": False,
         }
 
     # ── AI ────────────────────────────────────────────────────────────────
@@ -311,9 +322,12 @@ class AppOrchestrator:
 
     # ── errors ────────────────────────────────────────────────────────────
 
-    def _emit_error(self, error: VoxylisError) -> None:
+    def _emit_error(self, error: VoxylisError, category: str = "pipeline") -> None:
         self.last_error = error
         log_error(f"[{error.code}] {error.summary} ({error.detail or 'no detail'})")
+        # One funnel for user-facing failures: classified code, no transcript,
+        # no key, no clipboard. A no-op unless the user opted in.
+        observability.capture_error(error, category=category)
         event_manager.emit(Events.ERROR_OCCURRED, error)
         self._set_stage("idle")
 
@@ -614,7 +628,9 @@ class AppOrchestrator:
         except Exception as exc:
             log_error(f"Pipeline error: {exc}", exc_info=True)
             self.sound.on_error()
-            self._emit_error(classify_exception(exc))
+            classified = classify_exception(exc)
+            observability.capture_exception(exc, category="pipeline", error_code=classified.code)
+            self._emit_error(classified)
         finally:
             self._mode_override = None
             with self._processing_lock:
@@ -761,8 +777,17 @@ class AppOrchestrator:
             log_error(f"Config update error: {exc}", exc_info=True)
             return False
 
-    def get_config(self, key=None):
-        return self.config.get(key) if key else self.config
+    def get_config(self, key=None, default=None):
+        """Return one config value (falling back to ``default``) or all of it.
+
+        The ``default`` argument is not optional sugar: the whole UI reads
+        settings as ``get_config("theme", "dark")``. Without it every such call
+        raised ``TypeError`` and the app died during startup, which the source
+        test suite never caught because it stubs the orchestrator.
+        """
+        if key is None:
+            return self.config
+        return self.config.get(key, default)
 
     def get_status(self) -> dict:
         return {

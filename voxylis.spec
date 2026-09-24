@@ -93,6 +93,10 @@ hiddenimports = [
     "utils.credentials",
     "utils.helpers",
     "utils.logger",
+    # Optional crash reporting. Imported lazily inside utils.observability, so it
+    # is collected only when sentry-sdk is installed at build time — the app runs
+    # normally without it, and reporting stays off unless the user opts in.
+    "utils.observability",
     "config.constants",
 ]
 

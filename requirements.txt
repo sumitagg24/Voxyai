@@ -36,6 +36,11 @@ werkzeug>=3.0.0
 # Production WSGI Server
 gunicorn>=21.2.0
 
+# Optional error monitoring. Used by web/observability.py (server), the browser
+# bundle and utils/observability.py (desktop, opt-in). Every integration
+# degrades to a no-op when this is absent, so it is never a hard requirement.
+sentry-sdk>=2.0.0
+
 # Utilities
 python-dotenv>=1.0.0
 requests>=2.31.0

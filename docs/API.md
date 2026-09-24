@@ -155,7 +155,7 @@ Reset password using a token.
 ---
 
 ### POST /api/auth/verify-email
-Send email verification (requires auth).
+Send (or resend) the email verification link (requires auth).
 
 **Headers:** `X-Session-Id: <session_id>`
 
@@ -163,16 +163,30 @@ Send email verification (requires auth).
 ```json
 {
   "success": true,
-  "message": "Verification email sent"
+  "message": "Verification email sent. The link expires in 24 hours."
 }
 ```
+
+**Response (503)** when the deployment has no email provider, so the link cannot
+be delivered:
+```json
+{
+  "success": false,
+  "code": "email_delivery_unavailable",
+  "error": "We could not send the verification email. This deployment has no email provider configured — contact support."
+}
+```
+
+Requesting a new link retires the previous one. The token never appears in the
+response and is never logged.
 
 **Rate Limit:** 5 per hour
 
 ---
 
 ### POST /api/auth/confirm-email
-Confirm email with token.
+Confirm an address with the token from the email. The only way an account
+becomes verified: there is no request body or field a client can set to do it.
 
 **Request:**
 ```json
@@ -185,9 +199,46 @@ Confirm email with token.
 ```json
 {
   "success": true,
-  "message": "Email verified successfully"
+  "email_verified": true,
+  "message": "Email verified successfully. Thanks for confirming."
 }
 ```
+
+**Response (400)** for an unknown, expired or already-used token.
+
+---
+
+### POST /api/account/delete
+Delete the account and every server-side row attached to it (requires auth).
+Requires the account password **and** the literal confirmation word.
+
+**Headers:** `X-Session-Id: <session_id>`
+
+**Request:**
+```json
+{
+  "password": "your-password",
+  "confirm": "DELETE"
+}
+```
+
+**Response (200):** `{"success": true, "message": "Your account has been deleted."}`
+
+**Errors:** `400 confirmation_required` (missing/incorrect word or password),
+`401` (wrong password), `403 owner_protected` (the owner account cannot be
+deleted from the app). Sessions, transcriptions, tokens, usage records and email
+preferences are removed by cascade; a final confirmation email is sent.
+
+---
+
+### GET /unsubscribe?token=…
+One-click opt-out of product news from a link in an email. The token is signed
+with `SECRET_KEY` and bound to the address it was issued for, so it works
+without a session and cannot be edited to opt out somebody else.
+
+Returns HTML by default, or JSON with `&format=json` (or a JSON POST body).
+Invalid or tampered links return `400` and change nothing. Transactional mail
+(verification, reset, security notices, plan and usage notices) is unaffected.
 
 ---
 
@@ -407,9 +458,49 @@ controls are separated from production controls rather than shipped.
 
 ---
 
+## Transcription
+
+### POST /api/transcribe
+Server-side speech-to-text for the website. The desktop app does not use this
+endpoint — it calls the provider directly with your own key.
+
+**Headers:** `X-Session-Id: <session_id>` (the session must belong to an account
+with a confirmed email address; see the email verification gate below)
+
+**Request:** `multipart/form-data`
+
+| Field | Type | Notes |
+|---|---|---|
+| `audio` | file | required, ≤ 32 MB |
+| `mode` | string | `PUSH_TO_TALK` (free), `ENDPOINTING` / `DIARIZATION` (paid plans only) |
+| `language` | string | optional language hint, defaults to `en` |
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "transcript": "the recognised text",
+  "provider": "muse-voice-transcribe",
+  "mode": "PUSH_TO_TALK"
+}
+```
+
+`provider` is `groq-whisper` when the primary provider failed and the fallback
+succeeded, so a silent degradation is visible to the caller.
+
+**Errors:** `401` (no session), `403 "code": "email_not_verified"`, `400` (no or
+empty audio), `403` (monthly quota reached, with `used`/`limit`/`upgrade_url`),
+`413` (over 32 MB), `503` when neither `MODEL_API_KEY` nor `GROQ_API_KEY` is
+configured on the server.
+
+**Rate Limit:** 20 per minute
+
+---
+
 ## Q&A
 
 ### POST /api/qa
+
 Ask Voxy a question.
 
 **Request:**
@@ -492,24 +583,93 @@ Health check endpoint.
     "payments_configured": false,
     "dev_tier_change_enabled": false,
     "self_service_upgrade_available": false
-  }
+  },
+  "email": {"provider": "console", "configured": false, "from": "…", "frontend_url": "…"},
+  "monitoring": {"enabled": false, "reason": "SENTRY_DSN is not set", "release": "voxylis@3.0.0", "browser_dsn_configured": false}
 }
 ```
 
 `version` is read from `config/version.py`, so it cannot drift from the desktop
-build, the installer or the website. `subscription_policy` never contains a
-secret and is safe to expose.
+build, the installer or the website. `subscription_policy`, `email` and
+`monitoring` never contain a secret and are safe to expose — `email.configured`
+and `monitoring.enabled` are the two settings deployments most often forget.
+
+---
+
+### GET /api/public-config
+Non-secret runtime configuration for the browser bundle: `version`,
+`environment`, `sentry_dsn` (the **browser** DSN only) and `sentry_release`. The
+server DSN is never returned.
 
 ---
 
 ### GET /api/download/urls
-Returns download URLs for all platforms.
+Returns download URLs for all platforms, plus an `available` map.
+
+```json
+{
+  "windows": "https://github.com/sumitagg24/Voxyai/releases",
+  "macos": "…",
+  "linux": "…",
+  "available": {"windows": false, "macos": false, "linux": false},
+  "releases_url": "https://github.com/sumitagg24/Voxyai/releases"
+}
+```
+
+A platform URL is only a direct artifact link when the corresponding
+`DOWNLOAD_URL_*` variable is configured; otherwise the page links to the
+releases page and tells the visitor the installer is not published yet.
+Advertise an artifact only once it exists.
 
 ### GET /api/download/detect
 Detects OS from User-Agent header.
 
 ### POST /api/download/track
 Tracks a download click.
+
+---
+
+## Email verification gate
+
+`POST /api/transcribe` is the one endpoint that requires a **confirmed email
+address**, because it spends provider credit and writes a server-side record.
+An unconfirmed account receives:
+
+```json
+{
+  "success": false,
+  "code": "email_not_verified",
+  "error": "Confirm your email address before using this feature. Open the link we emailed you, or request a new one.",
+  "resend_endpoint": "/api/auth/verify-email"
+}
+```
+
+Owner and admin accounts are exempt, as are accounts signed in through Auth0
+(the identity provider has already verified the address). Everything else —
+dictation with your own key in the desktop app, history, settings, Q&A — works
+without a confirmed address.
+
+---
+
+## Email sent by the API
+
+| Template | Trigger | Notes |
+|---|---|---|
+| `welcome` | signup | Includes the verification link |
+| `verify_email` | `POST /api/auth/verify-email` | 24-hour single-use link |
+| `password_reset` | `POST /api/auth/forgot-password` | 1-hour single-use link |
+| `password_changed` | successful reset, or a password change in `update-profile` | Signs out other sessions |
+| `security_alert` | reserved for security-relevant account events | |
+| `subscription_changed` | an applied tier change | Sent to the account owner |
+| `usage_warning` | 80% of the monthly allowance | At most once per month |
+| `usage_limit_reached` | 100% of the monthly allowance | At most once per month |
+| `account_deleted` | `POST /api/account/delete` | Last message to that address |
+| `contact_notification` | `POST /api/contact` | Goes to `SUPPORT_EMAIL` |
+| `product_update` | manual | Marketing only: requires recorded consent and carries an unsubscribe link |
+
+Recipients are masked in logs (`s***@gmail.com`); subjects, bodies and tokens are
+never logged. Configure a provider per [DEPLOYMENT.md](DEPLOYMENT.md) § E, or
+nothing is delivered.
 
 ---
 
@@ -529,6 +689,8 @@ Tracks a download click.
 | Hotkeys | 30/min |
 | History | 30/min |
 | Q&A | 30/min |
+| Transcribe | 20/min |
+| Account delete | 5/hr |
 | Contact | 10/hr |
 | Newsletter | 10/hr |
 | Download track | 60/min |

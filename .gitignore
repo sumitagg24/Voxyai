@@ -13,7 +13,9 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-downloads/
+# NOTE: only the *root* downloads/ directory is build output. web/downloads/ is
+# an intentional part of the website and must stay tracked.
+/downloads/
 eggs/
 .eggs/
 lib/
@@ -47,8 +49,34 @@ tmp/
 *.tmp
 *.bak
 
-# Configuration (local — user data; real secrets live in the OS credential store)
-# Nothing under the user-data root (%LOCALAPPDATA%\Voxylis) is ever committed.
+# ---------------------------------------------------------------------------
+# Secrets — must never be committed
+#
+# Real secrets live in environment variables (server) and the OS credential
+# store (desktop). .env.example is the only environment file in the repo and it
+# contains variable NAMES with no usable values.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.der
+*.jks
+*.keystore
+credentials/
+secrets/
+vault/
+runtime/
+sessions/
+sentry.properties
+.sentryclirc
+
+# User data / local databases (never committed)
 config/settings.json
 config/settings.json.local
 config/onboarding.json
@@ -59,10 +87,9 @@ web/data/
 *.db
 *.db-wal
 *.db-shm
+*.sqlite
 *.sqlite3
 *.vault
-.env
-.env.local
 
 # Build artifacts
 dist/
@@ -97,7 +124,7 @@ htmlcov/
 # One-off verification screenshots
 landing-verify.png
 
-# Release bundles (hosted on Backblaze B2, not in git)
+# Release bundles (hosted on the release page / B2, not in git)
 *.zip
 
 # Installer build output

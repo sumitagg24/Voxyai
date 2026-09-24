@@ -27,6 +27,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from config.version import (
     APP_NAME,
     ENGINE_NAME,
+    REPO_URL as REPOSITORY_URL,
     RELEASES_URL,
     __version__ as APP_VERSION,
 )
@@ -36,9 +37,31 @@ from web.tier import (
     FREE_MONTHLY_TRANSCRIPTIONS, OWNER_MONTHLY_TRANSCRIPTIONS,
     TIER_QUOTAS,
 )
-from web.services import subscription_service
+from web.services import email_preferences, email_service, subscription_service
+from web import observability
 
 logger = logging.getLogger(__name__)
+
+# Give the application logger a real output handler. Without this, INFO records
+# from the app (email delivery, quota notices, pipeline fallbacks) are dropped by
+# Python's logging-of-last-resort, which only prints warnings and above — so the
+# container log would show nothing at all about a failed verification email.
+# ``basicConfig`` is a no-op when a runner (gunicorn) already configured root.
+logging.basicConfig(
+    level=getattr(logging, (os.environ.get("LOG_LEVEL") or "INFO").upper(), logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
+# Load .env *before* anything reads the environment.
+# This used to run after SECRET_KEY and CORS_ORIGINS were resolved, so a .env
+# file was silently ignored for exactly the values that matter most: the
+# signing key and the allowed origins.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
 
 # ---------------------------------------------------------------------------
 # App bootstrap
@@ -64,7 +87,18 @@ _cors_origins = [
     ).split(",")
     if o.strip()
 ]
-CORS(app, origins=_cors_origins, supports_credentials=True)
+# The API authenticates with an explicit `X-Session-Id` header, not with
+# cookies, so the browser never needs to attach credentials to a cross-origin
+# request. Leaving `Access-Control-Allow-Credentials` off removes a whole class
+# of ambient-authority mistakes; set CORS_SUPPORTS_CREDENTIALS=true only if a
+# cookie-based client is introduced deliberately.
+_cors_credentials = (os.environ.get("CORS_SUPPORTS_CREDENTIALS") or "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+CORS(app, origins=_cors_origins, supports_credentials=_cors_credentials)
 
 cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300}
 cache = Cache(app, config=cache_config)
@@ -75,28 +109,6 @@ limiter = Limiter(
     app=app,
     default_limits=["240 per hour", "60 per minute"],
 )
-
-
-def _get_user_key():
-    """Rate limit key: use user_id if authenticated, fallback to IP."""
-    session_id = request.headers.get("X-Session-Id", "")
-    if not session_id:
-        data = request.get_json(silent=True) or {}
-        session_id = data.get("session_id", "")
-    if session_id:
-        try:
-            conn = sqlite3.connect(str(DB_PATH))
-            conn.row_factory = sqlite3.Row
-            row = conn.execute(
-                "SELECT user_id FROM sessions WHERE id = ? AND expires_at > datetime('now')",
-                (session_id,),
-            ).fetchone()
-            conn.close()
-            if row:
-                return f"user:{row['user_id']}"
-        except Exception:
-            pass
-    return get_remote_address()
 
 
 app.config["JSON_SORT_KEYS"] = False
@@ -147,12 +159,12 @@ def _resolve_secret_key() -> str:
 
 app.config["SECRET_KEY"] = _resolve_secret_key()
 
-# Load .env if present
-try:
-    from dotenv import load_dotenv
-    load_dotenv(BASE_DIR.parent / ".env")
-except ImportError:
-    pass
+# Error monitoring. No DSN (or no SDK) simply means monitoring is off: the API
+# must never depend on a third-party service being reachable.
+observability.init_sentry(app)
+# Say plainly, once, when mail cannot be delivered. A silently misconfigured
+# email provider means every verification and password reset is lost.
+email_service.warn_if_unconfigured()
 
 # ---------------------------------------------------------------------------
 # Time helpers
@@ -174,6 +186,22 @@ def utcnow() -> datetime:
 # ---------------------------------------------------------------------------
 
 
+@app.before_request
+def attach_monitoring_context():
+    """Tag the Sentry scope with the internal user id (never the email)."""
+    if not observability.is_enabled():
+        return None
+    try:
+        session_id = request.headers.get("X-Session-Id", "")
+        if session_id:
+            user_id = _verify_session(session_id)
+            if user_id is not None:
+                observability.set_user(user_id, get_user_tier(user_id))
+    except Exception:
+        pass
+    return None
+
+
 @app.after_request
 def security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
@@ -182,13 +210,16 @@ def security_headers(resp):
     resp.headers["Permissions-Policy"] = "microphone=(self), clipboard-read=(self), clipboard-write=(self)"
     resp.headers["X-XSS-Protection"] = "1; mode=block"
     resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    # Sentry ingest endpoints are allowed for browser error reporting; without
+    # them the browser SDK could not report anything under this policy.
     resp.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
-        "connect-src 'self'; "
+        "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io "
+        "https://*.ingest.de.sentry.io; "
         "frame-ancestors 'self'"
     )
     # A session older than 24h is transparently rotated inside _verify_session().
@@ -343,6 +374,15 @@ def _init_db() -> None:
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
+        CREATE TABLE IF NOT EXISTS notification_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind       TEXT    NOT NULL,
+            period     TEXT    NOT NULL,
+            created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(user_id, kind, period)
+        );
+
         CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
         CREATE INDEX IF NOT EXISTS idx_transcriptions_user_id ON transcriptions(user_id);
         CREATE INDEX IF NOT EXISTS idx_transcriptions_created ON transcriptions(created_at);
@@ -381,10 +421,15 @@ def _init_db() -> None:
         conn.commit()
 
     for owner_email in _owner_emails():
+        # Same verified-address rule as _ensure_owner(): the startup sweep must
+        # not promote an unverified claim on the owner address either.
         cur.execute(
-            "UPDATE users SET is_owner = 1, role = 'owner', tier = 'owner' WHERE LOWER(email_or_phone) = ?",
+            "UPDATE users SET is_owner = 1, role = 'owner', tier = 'owner' "
+            "WHERE LOWER(email_or_phone) = ? AND email_verified = 1",
             (owner_email.lower(),),
         )
+    # Marketing consent lives in its own table: absence of a row means "no".
+    email_preferences.ensure_schema(conn)
     conn.commit()
 
     # Blog content is seeded/updated on every start so corrections to copy are
@@ -645,6 +690,138 @@ def require_auth(f):
 
 
 # ---------------------------------------------------------------------------
+# Email verification helpers
+# ---------------------------------------------------------------------------
+
+
+def _issue_email_token(user_id: int, hours: int = 24) -> str:
+    """Mint a single-use email verification token, retiring older ones."""
+    token = secrets.token_urlsafe(32)
+    expires = (utcnow() + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+    conn = _get_db()
+    conn.execute(
+        "UPDATE email_verifications SET used = 1 WHERE user_id = ? AND used = 0", (user_id,)
+    )
+    conn.execute(
+        "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
+        (user_id, token, expires),
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def is_email_verified(user_id: int) -> bool:
+    """True when the account's address has been confirmed.
+
+    Owner and admin accounts are treated as verified: they are provisioned out
+    of band, and locking the operator out of their own deployment is worse than
+    the marginal gain.
+    """
+    if is_owner(user_id=user_id) or is_admin(user_id=user_id):
+        return True
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT email_verified FROM users WHERE id = ?", (user_id,)).fetchone()
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+    if row is None:
+        return False
+    try:
+        return bool(row["email_verified"])
+    except (IndexError, KeyError):
+        return False
+
+
+def require_verified_email(f):
+    """Decorator: the session must belong to a confirmed address.
+
+    Applied to features that cost money or create server-side records, so an
+    unverified throwaway address cannot consume quota.
+    """
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        session_id = _extract_session()
+        user_id = _verify_session(session_id)
+        if user_id is None:
+            return jsonify({"success": False, "error": "Unauthorized"}), 401
+        if not is_email_verified(user_id):
+            return jsonify({
+                "success": False,
+                "code": "email_not_verified",
+                "error": (
+                    "Confirm your email address before using this feature. "
+                    "Open the link we emailed you, or request a new one."
+                ),
+                "resend_endpoint": "/api/auth/verify-email",
+            }), 403
+        return f(user_id=user_id, *args, **kwargs)
+    return wrapper
+
+
+def _notify_usage_threshold(user_id: int) -> None:
+    """Email once per month when an account crosses 80% and 100% of quota.
+
+    ``notification_log`` has a UNIQUE(user_id, kind, period) constraint, so the
+    insert itself is the de-duplication: a second call in the same month fails
+    the constraint and nothing is sent.
+    """
+    try:
+        tier = get_user_tier(user_id)
+        if is_owner(user_id=user_id) or tier == TIER_OWNER:
+            return
+        limit = TIER_QUOTAS.get(tier, FREE_MONTHLY_TRANSCRIPTIONS)
+        if not isinstance(limit, int) or limit <= 0:
+            return
+        used = get_monthly_transcription_count(user_id)
+        percent = int(round(used * 100.0 / limit))
+        if percent >= 100:
+            pending = [("usage_limit_reached", percent, used, limit)]
+        elif percent >= 80:
+            pending = [("usage_warning", percent, used, limit)]
+        else:
+            return
+
+        period = utcnow().strftime("%Y-%m")
+        conn = _get_db()
+        try:
+            row = conn.execute(
+                "SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if row is None:
+                return
+            address = row["email_or_phone"]
+            if "@" not in (address or ""):
+                return
+            for kind, pct, used_now, limit_now in pending:
+                try:
+                    conn.execute(
+                        "INSERT INTO notification_log (user_id, kind, period) VALUES (?, ?, ?)",
+                        (user_id, kind, period),
+                    )
+                    conn.commit()
+                except sqlite3.IntegrityError:
+                    continue  # already notified this month
+                email_service.send_transactional(
+                    kind,
+                    address,
+                    {
+                        "name": row["name"],
+                        "used": used_now,
+                        "limit": limit_now,
+                        "percent": min(100, pct),
+                        "dashboard_url": f"{email_service.site_base_url()}/dashboard",
+                    },
+                )
+        finally:
+            conn.close()
+    except Exception as exc:  # pragma: no cover - notification must never fail a request
+        logger.warning("Usage notification skipped: %s", type(exc).__name__)
+
+
+# ---------------------------------------------------------------------------
 # Static page routes
 # ---------------------------------------------------------------------------
 
@@ -686,6 +863,18 @@ def download_page():
 @app.route("/dashboard")
 def dashboard():
     return app.send_static_file("dashboard.html")
+
+
+@app.route("/favicon.ico")
+def favicon():
+    """Browsers request /favicon.ico by convention; the file lives in static/."""
+    return app.send_static_file("favicon.ico")
+
+
+@app.route("/og-image.png")
+def og_image():
+    """Open Graph images are referenced from the site root; serve it there."""
+    return app.send_static_file("og-image.png")
 
 
 @app.route("/docs/<page>")
@@ -731,12 +920,50 @@ def _sanitize(value: str) -> str:
     return str(escape(value))
 
 
+def _text(value) -> str:
+    """Coerce an untrusted JSON field to a string; anything that is not a
+    string (number, object, array, null) becomes empty.
+
+    Endpoints previously called ``.strip()`` straight on ``data.get(...)``, so
+    a type-confused body (``{"name": {"$gt": ""}}``) raised AttributeError
+    and turned into a 500 — noisy in logs, and in one case (history) it even
+    accepted the bogus value. Coerce first, validate after.
+    """
+    return value.strip() if isinstance(value, str) else ""
+
+
 # ---------------------------------------------------------------------------
 # Tier helpers (DB-aware, defined here to avoid circular imports with tier.py)
 # ---------------------------------------------------------------------------
 
+def _email_verified_flag(user_id) -> bool:
+    """Trusted email_verified flag for the account, tolerant of old schemas."""
+    try:
+        conn = _get_db()
+        row = conn.execute(
+            "SELECT email_verified FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        conn.close()
+    except Exception:
+        return False
+    if row is None:
+        return False
+    try:
+        return bool(row["email_verified"])
+    except (IndexError, KeyError):
+        return False
+
+
 def is_owner(user_id=None, email=None) -> bool:
-    """True if the user is the owner (unlimited server-enforced usage)."""
+    """True if the user is the owner (unlimited server-enforced usage).
+
+    The trusted ``OWNER_EMAILS`` list decides *who may be* the owner; a row's
+    ``email_verified`` flag decides whether the claim has been proven. Without
+    the verification gate, anyone could sign up with the owner's address and
+    immediately hold unlimited entitlement. A row explicitly promoted in the
+    database (``is_owner``/``role``) is always honoured: provisioning is a
+    server-side act that already implies the address was trusted.
+    """
     if email and email.strip().lower() in _owner_emails():
         return True
     if user_id is None:
@@ -756,14 +983,33 @@ def is_owner(user_id=None, email=None) -> bool:
             return True
     except Exception:
         pass
-    return (row["email_or_phone"] or "").strip().lower() in _owner_emails()
+    # Email fallback: only for a proven address. Unverified claims get none of
+    # the owner's privileges — the promotion pass upgrades them once verified.
+    if (row["email_or_phone"] or "").strip().lower() in _owner_emails():
+        return _email_verified_flag(user_id)
+    return False
 
 
 def _ensure_owner(conn, user_id: int, email: str) -> None:
-    """Promote owner email to is_owner=1, role='owner', tier='owner'."""
+    """Promote owner email to is_owner=1, role='owner', tier='owner'.
+
+    Owner privileges are only granted to a **verified** address. A password
+    signup claims an address it has not proven control of, so promoting it
+    here would hand unlimited entitlement to whoever typed the owner email
+    first. Once the address is confirmed (verification link, or an Auth0 ID
+    token carrying ``email_verified``), promotion happens on the next
+    signup/login/startup sweep — and :func:`is_owner` additionally falls back
+    to the trusted ``OWNER_EMAILS`` list, so a verified owner never loses
+    access because a promotion pass simply has not run yet.
+    """
     if (email or "").strip().lower() not in _owner_emails():
         return
     try:
+        verified = conn.execute(
+            "SELECT email_verified FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if verified is not None and not bool(verified["email_verified"]):
+            return
         conn.execute(
             "UPDATE users SET is_owner = 1, role = 'owner', tier = 'owner' WHERE id = ?",
             (user_id,),
@@ -948,7 +1194,10 @@ def is_admin(user_id=None, email=None) -> bool:
         role = None
     if (role or "user").lower() in ("admin", "owner"):
         return True
-    return (row["email_or_phone"] or "").strip().lower() in _admin_emails()
+    # Email fallback: only for a proven address, same rule as is_owner().
+    if (row["email_or_phone"] or "").strip().lower() in _admin_emails():
+        return _email_verified_flag(user_id)
+    return False
 
 
 def _ensure_admin(conn, user_id: int, email: str) -> None:
@@ -1058,6 +1307,13 @@ def auth_auth0():
     email = (claims.get("email") or "").strip().lower()
     if not email or "@" not in email:
         return jsonify({"success": False, "error": "No email in Auth0 profile"}), 400
+    # Identity linking is only safe when the IdP has actually verified the
+    # address. Without this check, a malicious IdP tenant could hand out a
+    # token claiming someone else's (possibly privileged) email and inherit
+    # that account — including the designated owner's.
+    if not claims.get("email_verified"):
+        logger.warning("Auth0 login refused: email in the ID token is not verified")
+        return jsonify({"success": False, "error": "Auth0 account email is not verified"}), 403
     sub = claims.get("sub", "") or ""
     name = ((claims.get("name") or email.split("@")[0]).strip()[:80]) or "Voxy User"
 
@@ -1198,7 +1454,7 @@ def qr_status():
 def qr_approve(user_id):
     """Approve a QR login from the logged-in phone. Logs the other device in as you."""
     data = request.json or {}
-    code = (data.get("code", "") or "").upper().strip()
+    code = _text(data.get("code")).upper()
     if not code:
         return jsonify({"success": False, "error": "Missing code"}), 400
     conn = _get_db()
@@ -1255,9 +1511,9 @@ def admin_users(user_id):
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def auth_signup():
     data = request.json or {}
-    name = data.get("name", "").strip()
-    email_or_phone = data.get("email_or_phone", "").strip()
-    password = data.get("password", "").strip()
+    name = _text(data.get("name"))
+    email_or_phone = _text(data.get("email_or_phone"))
+    password = _text(data.get("password"))
 
     if not name or not email_or_phone or not password:
         return jsonify({"success": False, "error": "Missing required fields"}), 400
@@ -1303,7 +1559,32 @@ def auth_signup():
     conn.commit()
     conn.close()
 
+    # Marketing consent is explicit and separate from the account itself.
+    try:
+        prefs_conn = _get_db()
+        email_preferences.set_marketing_opt_in(
+            prefs_conn,
+            user_id,
+            bool(data.get("marketing_opt_in")),
+            source="signup",
+        )
+        prefs_conn.commit()
+        prefs_conn.close()
+    except Exception as exc:
+        logger.warning("Could not store email preferences for new user: %s", type(exc).__name__)
+
+    # Verification is an email flow, not a client-side flag: the token is
+    # minted here and only the emailed link can set `email_verified`.
+    verify_token = _issue_email_token(user_id, hours=24)
     session_id = _create_session(user_id)
+    email_service.send_transactional(
+        "welcome",
+        email_or_phone,
+        {
+            "name": name,
+            "verify_url": email_service.build_link("verify_email", verify_token) if verify_token else "",
+        },
+    )
     return jsonify({
         "success": True,
         "user_id": user_id,
@@ -1313,6 +1594,8 @@ def auth_signup():
         "tier": get_user_tier(user_id),
         "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
         "is_owner": is_owner(user_id=user_id),
+        "email_verified": False,
+        "verification_email_sent": email_service.email_configured(),
         "onboarding": {
             "steps": _onboarding_steps(),
             "completed": {},
@@ -1324,8 +1607,8 @@ def auth_signup():
 @limiter.limit("10 per 15 minutes", key_func=get_remote_address)
 def auth_login():
     data = request.json or {}
-    email_or_phone = data.get("email_or_phone", "").strip()
-    password = data.get("password", "").strip()
+    email_or_phone = _text(data.get("email_or_phone"))
+    password = _text(data.get("password"))
 
     if not email_or_phone or not password:
         return jsonify({"success": False, "error": "Missing required fields"}), 400
@@ -1378,7 +1661,7 @@ def auth_verify():
 
     conn = _get_db()
     user = conn.execute(
-        "SELECT id, name, email_or_phone, onboarding FROM users WHERE id = ?", (user_id,)
+        "SELECT id, name, email_or_phone, onboarding, email_verified FROM users WHERE id = ?", (user_id,)
     ).fetchone()
     conn.close()
 
@@ -1387,6 +1670,7 @@ def auth_verify():
         "user_id": user["id"],
         "name": user["name"],
         "email_or_phone": user["email_or_phone"],
+        "email_verified": bool(user["email_verified"]),
         "onboarding": _load_onboarding(user["onboarding"]),
         # Present when the server rotated the session; also sent as the
         # X-Session-Rotated header. Clients must persist the new id.
@@ -1417,7 +1701,7 @@ def auth_logout():
 @limiter.limit("5 per hour", key_func=get_remote_address)
 def forgot_password():
     data = request.json or {}
-    email = data.get("email", "").strip().lower()
+    email = _text(data.get("email")).lower()
     if not email or not _EMAIL_RE.match(email):
         return jsonify({"success": False, "error": "Valid email required"}), 400
 
@@ -1429,6 +1713,8 @@ def forgot_password():
 
     token = secrets.token_urlsafe(32)
     expires = (utcnow() + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
+    # A new request invalidates every outstanding link for this account.
+    conn.execute("UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0", (user["id"],))
     conn.execute(
         "INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)",
         (user["id"], token, expires),
@@ -1436,8 +1722,14 @@ def forgot_password():
     conn.commit()
     conn.close()
 
-    # In production, send email here. For now, return the token for testing.
-    logger.debug("Password reset token for %s generated", email)
+    # The token goes into the email only. It is never logged and never returned:
+    # a reset link in a log file or an API response is a working credential.
+    email_service.send_transactional(
+        "password_reset",
+        email,
+        {"reset_url": email_service.build_link("password_reset", token), "expires_in": "1 hour"},
+    )
+    # Deliberately identical whether or not the address exists.
     return jsonify({
         "success": True,
         "message": "If an account exists, a reset link has been sent.",
@@ -1448,8 +1740,8 @@ def forgot_password():
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def reset_password():
     data = request.json or {}
-    token = data.get("token", "").strip()
-    new_password = data.get("password", "").strip()
+    token = _text(data.get("token"))
+    new_password = _text(data.get("password"))
 
     if not token or not new_password:
         return jsonify({"success": False, "error": "Token and password required"}), 400
@@ -1471,11 +1763,29 @@ def reset_password():
 
     pw_hash = _hash_password(new_password)
     conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, row["user_id"]))
-    conn.execute("UPDATE password_resets SET used = 1 WHERE id = ?", (row["id"],))
+    # Single use: every other outstanding link for this account is retired too.
+    conn.execute("UPDATE password_resets SET used = 1 WHERE user_id = ?", (row["user_id"],))
+    # A password change signs out every device, including the attacker's.
     conn.execute("DELETE FROM sessions WHERE user_id = ?", (row["user_id"],))
+    account = conn.execute(
+        "SELECT name, email_or_phone FROM users WHERE id = ?", (row["user_id"],)
+    ).fetchone()
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "Password reset successful"})
+
+    if account is not None:
+        email_service.send_transactional(
+            "password_changed",
+            account["email_or_phone"],
+            {
+                "name": account["name"],
+                "changed_at": utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            },
+        )
+    return jsonify({
+        "success": True,
+        "message": "Password reset successful. Sign in again with your new password.",
+    })
 
 
 # ============================================
@@ -1496,19 +1806,33 @@ def send_verification(user_id):
         conn.close()
         return jsonify({"success": True, "message": "Email already verified"})
 
-    token = secrets.token_urlsafe(32)
-    expires = (utcnow() + timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
-    conn.execute(
-        "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
-        (user_id, token, expires),
-    )
-    conn.commit()
+    address = user["email_or_phone"]
     conn.close()
+    if "@" not in (address or ""):
+        return jsonify({
+            "success": False,
+            "error": "This account has no email address to verify.",
+        }), 400
 
-    logger.debug("Email verification token generated for user %s", user_id)
+    token = _issue_email_token(user_id, hours=24)
+    delivered = email_service.send_transactional(
+        "verify_email",
+        address,
+        {"verify_url": email_service.build_link("verify_email", token), "expires_in": "24 hours"},
+    )
+    if delivered is None:
+        # Be explicit instead of claiming an email went out that did not.
+        return jsonify({
+            "success": False,
+            "code": "email_delivery_unavailable",
+            "error": (
+                "We could not send the verification email. This deployment has no email "
+                "provider configured — contact support."
+            ),
+        }), 503
     return jsonify({
         "success": True,
-        "message": "Verification email sent",
+        "message": "Verification email sent. The link expires in 24 hours.",
     })
 
 
@@ -1516,7 +1840,7 @@ def send_verification(user_id):
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def confirm_email():
     data = request.json or {}
-    token = data.get("token", "").strip()
+    token = _text(data.get("token"))
     if not token:
         return jsonify({"success": False, "error": "Token required"}), 400
 
@@ -1537,7 +1861,11 @@ def confirm_email():
     conn.execute("UPDATE email_verifications SET used = 1 WHERE id = ?", (row["id"],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "Email verified successfully"})
+    return jsonify({
+        "success": True,
+        "email_verified": True,
+        "message": "Email verified successfully. Thanks for confirming.",
+    })
 
 
 # ============================================
@@ -1581,7 +1909,7 @@ def me():
 
     conn = _get_db()
     user = conn.execute(
-        "SELECT id, name, email_or_phone, onboarding, created_at, tier, role "
+        "SELECT id, name, email_or_phone, onboarding, created_at, tier, role, email_verified "
         "FROM users WHERE id = ?",
         (user_id,),
     ).fetchone()
@@ -1603,6 +1931,7 @@ def me():
             "tier": entitlements["tier"],
             "role": role,
             "is_owner": is_owner_val,
+            "email_verified": bool(user["email_verified"]) if "email_verified" in user.keys() else False,
             "entitlements": entitlements,
             "onboarding": _load_onboarding(user["onboarding"]),
         },
@@ -1630,7 +1959,7 @@ def onboarding():
 
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
-        step_id = (data.get("step") or "").strip()
+        step_id = _text(data.get("step"))
         valid_ids = {s["id"] for s in _ONBOARDING_STEPS}
         if step_id not in valid_ids:
             conn.close()
@@ -1668,8 +1997,8 @@ def get_features():
             {"id": 3, "name": "Wake Word", "description": "Custom activation word", "icon": "\U0001f5e3\ufe0f"},
             {"id": 4, "name": "Q&A Feature", "description": "Instant answers", "icon": "\U0001f916"},
             {"id": 5, "name": "Custom Hotkeys", "description": "Personalized shortcuts", "icon": "\u2328\ufe0f"},
-            {"id": 6, "name": "Multi-Language", "description": "99+ languages", "icon": "\U0001f30d"},
-            {"id": 7, "name": "Cloud Sync", "description": "Sync across devices", "icon": "\u2601\ufe0f"},
+            {"id": 6, "name": "Multi-Language", "description": "Recognises the languages your speech provider supports", "icon": "\U0001f30d"},
+            {"id": 7, "name": "Local History", "description": "Export and delete your transcripts anytime", "icon": "\U0001f4c4"},
             {"id": 8, "name": "Privacy First", "description": "Your data, your control", "icon": "\U0001f512"},
         ],
     })
@@ -1689,8 +2018,8 @@ def get_pricing():
                 "description": "Perfect for getting started",
                 "features": [
                     "100 transcriptions/month",
-                    "5 languages",
-                    "Basic enhancement",
+                    "Languages your speech provider supports",
+                    "Formal enhancement mode",
                     "Community support",
                 ],
                 "cta": "Get Started",
@@ -1704,8 +2033,8 @@ def get_pricing():
                 "description": "For power users",
                 "features": [
                     "1,000 transcriptions/month",
-                    "99+ languages",
-                    "All enhancement modes",
+                    "Languages your speech provider supports",
+                    "All five enhancement modes",
                     "Live Q&A feature",
                     "Custom wake word",
                     "Priority support",
@@ -1837,7 +2166,7 @@ def qa_endpoint():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON body"}), 400
-    question = data.get("question", "").strip()
+    question = _text(data.get("question"))
     if not question:
         return jsonify({"error": "Question required"}), 400
 
@@ -1953,8 +2282,8 @@ def enhance_endpoint():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON body"}), 400
-    text = data.get("text", "").strip()
-    mode = data.get("mode", "formal").strip().lower()
+    text = _text(data.get("text"))
+    mode = (_text(data.get("mode")) or "formal").lower()
     if not text:
         return jsonify({"error": "Text required"}), 400
     if mode not in _MODE_PROMPTS:
@@ -2080,14 +2409,15 @@ def _call_llm_for_enhancement(text: str, mode: str) -> str:
 
 
 @app.route("/api/transcribe", methods=["POST"])
+@require_verified_email
 @limiter.limit("20 per minute", key_func=get_remote_address)
-def transcribe_endpoint():
-    """Transcribe uploaded audio: Muse Voice Transcribe -> Groq Whisper (fallback chain)."""
-    session_id = _extract_session()
-    user_id = _verify_session(session_id)
-    if user_id is None:
-        return jsonify({"error": "Login required for transcription"}), 401
+def transcribe_endpoint(user_id):
+    """Transcribe uploaded audio: Muse Voice Transcribe -> Groq Whisper (fallback chain).
 
+    Requires a confirmed email address: this endpoint spends provider credit and
+    writes a server-side record, so an unverified throwaway address must not be
+    able to consume the monthly allowance.
+    """
     allowed, used, limit = check_transcription_quota(user_id)
     if not allowed:
         return jsonify({
@@ -2166,6 +2496,7 @@ def transcribe_endpoint():
                     conn.commit()
                     conn.close()
                     record_usage(user_id, "transcription", count=1)
+                    _notify_usage_threshold(user_id)
                 except Exception as save_err:
                     logger.warning("Failed to record transcription: %s", save_err)
 
@@ -2177,6 +2508,7 @@ def transcribe_endpoint():
                 })
         except Exception as e:
             logger.warning("Muse Voice Transcribe failed, falling back to Groq: %s", e)
+            observability.capture_pipeline_failure("transcribe", e, provider="muse-voice-transcribe")
 
     # --- Groq Whisper (fallback) ---
     groq_key = os.environ.get("GROQ_API_KEY", "")
@@ -2204,6 +2536,7 @@ def transcribe_endpoint():
                     conn.commit()
                     conn.close()
                     record_usage(user_id, "transcription", count=1)
+                    _notify_usage_threshold(user_id)
                 except Exception as save_err:
                     logger.warning("Failed to record transcription: %s", save_err)
 
@@ -2215,6 +2548,7 @@ def transcribe_endpoint():
                 })
         except Exception as e:
             logger.warning("Groq Whisper failed: %s", e)
+            observability.capture_pipeline_failure("transcribe", e, provider="groq-whisper")
 
     return jsonify({"error": "Transcription unavailable. Configure MODEL_API_KEY or GROQ_API_KEY."}), 503
 
@@ -2243,7 +2577,7 @@ def history():
         if user_id is None:
             return jsonify({"success": False, "error": "Unauthorized"}), 401
 
-        text = data.get("text", "")
+        text = _text(data.get("text"))
         if not text:
             return jsonify({"success": False, "error": "Text is required"}), 400
 
@@ -2478,7 +2812,7 @@ def upgrade_tier(user_id):
     webhook handled by :mod:`web.services.subscription_service`.
     """
     data = request.get_json(silent=True) or {}
-    new_tier = str(data.get("tier", "")).strip().lower()
+    new_tier = _text(data.get("tier")).lower()
     actor_is_admin = is_admin(user_id=user_id)
     source = subscription_service.resolve_actor_source(actor_is_admin)
 
@@ -2514,6 +2848,31 @@ def upgrade_tier(user_id):
     logger.warning(
         "tier change applied to user %s -> %s via %s", user_id, result.tier, result.source
     )
+    # The plan owner is told, even when an admin made the change.
+    try:
+        notify_conn = _get_db()
+        account = notify_conn.execute(
+            "SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        notify_conn.close()
+        if account is not None and "@" in (account["email_or_phone"] or ""):
+            email_service.send_transactional(
+                "subscription_changed",
+                account["email_or_phone"],
+                {
+                    "name": account["name"],
+                    "plan": result.tier.capitalize(),
+                    "limit": (
+                        "Unlimited"
+                        if result.tier == TIER_OWNER
+                        else f"{TIER_QUOTAS.get(result.tier, FREE_MONTHLY_TRANSCRIPTIONS)}/month"
+                    ),
+                    "dashboard_url": f"{email_service.site_base_url()}/dashboard",
+                    "note": f"Changed by {result.source}.",
+                },
+            )
+    except Exception as exc:
+        logger.warning("Plan-change email skipped: %s", type(exc).__name__)
     return jsonify({"success": True, **result.as_dict()})
 
 
@@ -2527,9 +2886,12 @@ def upgrade_tier(user_id):
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def update_profile(user_id):
     data = request.json or {}
-    name = data.get("name", "").strip()
-    current_password = data.get("current_password", "").strip()
-    new_password = data.get("new_password", "").strip()
+    if "name" in data and not isinstance(data["name"], str):
+        # Fail closed rather than silently ignoring a type-confused field.
+        return jsonify({"success": False, "error": "Invalid name"}), 400
+    name = _text(data.get("name"))
+    current_password = _text(data.get("current_password"))
+    new_password = _text(data.get("new_password"))
 
     conn = _get_db()
     user = conn.execute("SELECT password_hash FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -2549,6 +2911,13 @@ def update_profile(user_id):
             return jsonify({"success": False, "error": "New password must be 8-128 characters"}), 400
         pw_hash = _hash_password(new_password)
         conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user_id))
+        # A password change signs out every *other* device and keeps this one.
+        conn.execute(
+            "DELETE FROM sessions WHERE user_id = ? AND id != ?", (user_id, _extract_session())
+        )
+        password_changed = True
+    else:
+        password_changed = False
 
     if name:
         if not _valid_name(name):
@@ -2556,9 +2925,84 @@ def update_profile(user_id):
             return jsonify({"success": False, "error": "Name must be 2-80 characters"}), 400
         conn.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
 
+    account = conn.execute(
+        "SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
     conn.commit()
     conn.close()
+
+    if password_changed and account is not None:
+        email_service.send_transactional(
+            "password_changed",
+            account["email_or_phone"],
+            {
+                "name": account["name"],
+                "changed_at": utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            },
+        )
     return jsonify({"success": True, "message": "Profile updated"})
+
+
+# ============================================
+# ACCOUNT DELETION
+# ============================================
+
+
+@app.route("/api/account/delete", methods=["POST"])
+@require_auth
+@limiter.limit("5 per hour", key_func=get_remote_address)
+def delete_account(user_id):
+    """Delete the account and everything the server holds for it.
+
+    Requires the account password, not just a session: deleting an account is
+    irreversible, and a stolen unlocked laptop should not be enough. Every
+    related row goes with the user through ``ON DELETE CASCADE`` (sessions,
+    transcriptions, usage, tokens, preferences); the confirmation email is sent
+    last, after the address has been captured.
+    """
+    data = request.get_json(silent=True) or {}
+    password = _text(data.get("password"))
+    confirm = _text(data.get("confirm")).upper()
+
+    if not password:
+        return jsonify({"success": False, "error": "Password required"}), 400
+    if confirm != "DELETE":
+        return jsonify({
+            "success": False,
+            "error": 'Type DELETE to confirm account deletion.',
+            "code": "confirmation_required",
+        }), 400
+
+    conn = _get_db()
+    user = conn.execute(
+        "SELECT name, email_or_phone, password_hash, is_owner FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    if user is None:
+        conn.close()
+        return jsonify({"success": False, "error": "User not found"}), 404
+    if bool(user["is_owner"]) or is_owner(user_id=user_id):
+        # Guard against locking the operator out of their own deployment.
+        conn.close()
+        return jsonify({
+            "success": False,
+            "error": "The owner account cannot be deleted from the app.",
+            "code": "owner_protected",
+        }), 403
+    if not _check_password(user["password_hash"], password):
+        conn.close()
+        return jsonify({"success": False, "error": "Incorrect password"}), 401
+
+    name = user["name"]
+    address = user["email_or_phone"]
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    # Sent after the row is gone: this is the last message that address receives.
+    if address and "@" in address:
+        email_service.send_transactional("account_deleted", address, {"name": name})
+    logger.info("account deleted for user %s", user_id)
+    return jsonify({"success": True, "message": "Your account has been deleted."})
 
 
 # ============================================
@@ -2570,10 +3014,10 @@ def update_profile(user_id):
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def contact_submit():
     data = request.json or {}
-    name = data.get("name", "").strip()
-    email = data.get("email", "").strip()
-    subject = data.get("subject", "").strip()
-    message = data.get("message", "").strip()
+    name = _text(data.get("name"))
+    email = _text(data.get("email"))
+    subject = _text(data.get("subject"))
+    message = _text(data.get("message"))
 
     if not name or not email or not message:
         return jsonify({
@@ -2592,6 +3036,19 @@ def contact_submit():
     conn.commit()
     conn.close()
 
+    # The database is the source of truth; the email is a convenience copy so a
+    # message is not missed when nobody opens the admin console.
+    email_service.send_transactional(
+        "contact_notification",
+        email_service.support_address(),
+        {
+            "name": _sanitize(name),
+            "from_email": email,
+            "subject": _sanitize(subject),
+            "message": _sanitize(message),
+        },
+    )
+
     return jsonify({"success": True, "message": "Message received. We'll get back to you shortly."})
 
 
@@ -2604,7 +3061,7 @@ def contact_submit():
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def newsletter_subscribe():
     data = request.json or {}
-    email = data.get("email", "").strip()
+    email = _text(data.get("email"))
 
     if not email:
         return jsonify({"success": False, "error": "Email is required"}), 400
@@ -2632,17 +3089,34 @@ def newsletter_subscribe():
 # ============================================
 
 
-DEFAULT_WINDOWS_INSTALLER_URL = (
-    "https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe"
-)
+#: Where visitors are sent when no packaged artifact has been published yet.
+RELEASES_PAGE_URL = RELEASES_URL
 
 
 @app.route("/api/download/urls", methods=["GET"])
 def download_urls():
+    """Resolve real download targets, and say plainly which ones exist.
+
+    The previous build hard-coded
+    ``releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe``. That release was never
+    published, so the site pointed every Windows visitor at a 404 while the page
+    claimed an installer was available. A URL is now advertised only when it has
+    been configured, and ``available`` lets the page tell the truth instead of
+    guessing.
+    """
+    windows = (os.environ.get("DOWNLOAD_URL_WINDOWS") or "").strip()
+    macos = (os.environ.get("DOWNLOAD_URL_MACOS") or "").strip()
+    linux = (os.environ.get("DOWNLOAD_URL_LINUX") or "").strip()
     return jsonify({
-        "windows": os.environ.get("DOWNLOAD_URL_WINDOWS", "").strip() or DEFAULT_WINDOWS_INSTALLER_URL,
-        "macos": os.environ.get("DOWNLOAD_URL_MACOS", "").strip() or "https://github.com/sumitagg24/Voxyai#macos-installation",
-        "linux": os.environ.get("DOWNLOAD_URL_LINUX", "").strip() or "https://github.com/sumitagg24/Voxyai#linux-installation",
+        "windows": windows or RELEASES_PAGE_URL,
+        "macos": macos or f"{REPOSITORY_URL}#macos-installation",
+        "linux": linux or f"{REPOSITORY_URL}#linux-installation",
+        "available": {
+            "windows": bool(windows),
+            "macos": bool(macos),
+            "linux": bool(linux),
+        },
+        "releases_url": RELEASES_PAGE_URL,
     })
 
 
@@ -2730,10 +3204,23 @@ def blog_post(slug):
 
 @app.route("/blog/<slug>")
 def blog_post_page(slug):
-    """Serve the single blog post page (reads ?slug= from JS)."""
+    """Serve the single blog post page, or a real 404 for unknown slugs.
+
+    The page used to render for any slug and let JS reveal a not-found state,
+    which returned HTTP 200 for misspelled URLs (a soft 404 for crawlers).
+    """
     replacement = LEGACY_BLOG_SLUGS.get(slug)
     if replacement:
         return redirect(url_for("blog_post_page", slug=replacement), code=301)
+    conn = _get_db()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM blog_posts WHERE slug = ?", (slug,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return app.send_static_file("404.html"), 404
     return app.send_static_file("blog-post.html")
 
 
@@ -2782,6 +3269,21 @@ def version_json():
     })
 
 
+@app.route("/api/public-config", methods=["GET"])
+def public_config():
+    """Non-secret runtime configuration for the browser bundle.
+
+    Only values that are safe to publish are returned. The Sentry *browser* DSN
+    is public by design; the server DSN and every credential stay server-side.
+    """
+    return jsonify({
+        "version": APP_VERSION,
+        "environment": subscription_service.environment(),
+        "sentry_dsn": observability.browser_dsn(),
+        "sentry_release": observability.release_name(),
+    })
+
+
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({
@@ -2789,7 +3291,50 @@ def health():
         "timestamp": datetime.now().isoformat(),
         "version": APP_VERSION,
         "subscription_policy": subscription_service.describe_policy(),
+        "email": email_service.describe_configuration(),
+        "monitoring": observability.status(),
     })
+
+
+@app.route("/unsubscribe", methods=["GET", "POST"])
+def unsubscribe():
+    """One-click opt-out of product news from a link in an email.
+
+    Signed, so it works without a session; invalid or edited links are refused
+    rather than silently opting somebody out.
+    """
+    token = (request.args.get("token") or "").strip()
+    if not token and request.is_json:
+        token = ((request.get_json(silent=True) or {}).get("token") or "").strip()
+
+    masked = None
+    conn = _get_db()
+    try:
+        masked = email_preferences.opt_out_by_token(conn, token)
+        if masked is not None:
+            conn.commit()
+    finally:
+        conn.close()
+
+    if request.args.get("format") == "json" or request.is_json:
+        if masked is None:
+            return jsonify({
+                "success": False,
+                "error": "This unsubscribe link is invalid or has expired.",
+            }), 400
+        return jsonify({"success": True, "message": "You will no longer receive product news."})
+
+    if masked is None:
+        body = (
+            "<h1>Link not valid</h1><p>This unsubscribe link is invalid or has expired. "
+            "Reply to any Voxylis email and we will remove you manually.</p>"
+        )
+        return body, 400
+    return (
+        "<h1>Unsubscribed</h1>"
+        f"<p>{masked} will no longer receive Voxylis product news. "
+        "Account and security messages are unaffected.</p>"
+    ), 200
 
 
 # ============================================
@@ -2799,11 +3344,29 @@ def health():
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({"error": "Not found"}), 404
+    """HTML 404 page for site navigations, JSON for API paths.
+
+    API clients (and tests) keep getting structured JSON; a visitor who follows
+    a dead link gets a real page instead of a bare JSON string.
+    """
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Not found"}), 404
+    return app.send_static_file("404.html"), 404
 
 
 @app.errorhandler(500)
 def server_error(error):
+    """Return a plain message and keep the traceback out of the response.
+
+    The detail is already captured by the logs and by Sentry; leaking it to the
+    caller would hand an attacker the file layout and dependency versions.
+    """
+    try:
+        observability.capture_exception(
+            getattr(error, "original_exception", None) or error, category="http_500"
+        )
+    except Exception:
+        pass
     return jsonify({"error": "Server error"}), 500
 
 

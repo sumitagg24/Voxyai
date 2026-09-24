@@ -17,9 +17,9 @@ python -m config.version --sync         # regenerates version_info.txt, version.
 ```
 
 Generated from `config/version.py`: EXE metadata (`packaging/version_info.txt`),
-`web/static/version.json`, `web/downloads/version.json`, the installer
-(`/DAppVersion=`), `/api/health`, the About dialog and the download page. If two
-of them disagree, the version-mirror test fails.
+`web/static/version.json`, the installer (`/DAppVersion=`), `/api/health`, the
+About dialog and the download page. If two of them disagree, the version-mirror
+test fails, and a second `version.json` anywhere in the tree fails it too.
 
 ## 2. Verify before building
 
@@ -27,6 +27,13 @@ of them disagree, the version-mirror test fails.
 python -m flake8 .                                  # lint policy: setup.cfg
 python -m pytest tests -q                           # unit + API + site tests
 python -m pip-audit -r requirements.txt             # dependency scan
+```
+
+Match the formatter version to the pin in `requirements.txt` before trusting a
+format check; a newer local black reports unrelated reformatting:
+
+```bash
+python -m pip install "black==24.4.2" && python -m black --check .   # line-length: pyproject.toml
 ```
 
 Secret scan over the working tree (must return nothing):
@@ -89,6 +96,11 @@ manifest is refused by the updater — never publish an unverifiable entry.
 ## 5. Release gate
 
 - [ ] Lint and full test suite pass on the tagged commit
+- [ ] `SENTRY_DSN` (and `SENTRY_DSN_BROWSER`) set if error monitoring is wanted;
+      `EMAIL_PROVIDER` + `EMAIL_API_KEY` set so verification and reset mail is
+      actually delivered; `python -m web.app` logs no email warning on startup
+- [ ] `DOWNLOAD_URL_WINDOWS` set **only** once the matching release artifact
+      exists, so the site does not link to a 404
 - [ ] Version mirrors synced; no stale version string anywhere
 - [ ] Fresh-clone build (no local `settings.json`, `.env`, database or cache in the tree)
 - [ ] Artifact inspected: no keys, tokens, `.env`, personal paths, dev URLs or local DB
@@ -111,3 +123,14 @@ manifest is refused by the updater — never publish an unverifiable entry.
   flow that cannot complete.
 
 Both are configuration gaps, not missing code; do not fake either one.
+
+* **Transactional email** needs a provider key (`EMAIL_API_KEY` for Resend, or
+  `SMTP_HOST`). Until one is set the app runs with the `console` provider: no
+  verification or reset mail is delivered and startup logs an error. See
+  [DEPLOYMENT.md](DEPLOYMENT.md) § E.
+* **Error monitoring** needs `SENTRY_DSN` (server) and `SENTRY_DSN_BROWSER`
+  (website). Both are optional; with neither set the app runs normally and
+  reports nothing. The desktop app additionally requires the user to opt in.
+* **No release has been published**, so the download page points at the
+  releases page and marks the Windows card as not published yet. Publish the
+  installer, then set `DOWNLOAD_URL_WINDOWS` to its URL.

@@ -4,7 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Download Voxylis — Voice to Text for Every Platform</title>
-<meta name="description" content="Download Voxylis for Windows, macOS, or Linux. Voice-to-text transcription in 99+ languages with AI enhancement.">
+<meta name="description" content="Download Voxylis for Windows, macOS, or Linux. Voice-to-text transcription in any language your speech provider recognises, with AI enhancement.">
+<link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://voxylis.com/download">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Voxylis">
+<meta property="og:title" content="Download Voxylis — Voice to Text for Every Platform">
+<meta property="og:description" content="Download Voxylis for Windows, macOS, or Linux. Voice-to-text transcription in any language your speech provider recognises, with AI enhancement.">
+<meta property="og:url" content="https://voxylis.com/download">
+<meta property="og:image" content="https://voxylis.com/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -164,7 +173,7 @@ button{font-family:inherit;cursor:pointer}
         </div>
         <h3>Windows</h3>
         <div class="version">Windows 10+ · <span data-voxylis-version>latest release</span></div>
-        <div class="size">Installer (.exe) — the supported release</div>
+        <div class="size" id="dl-win-note">Installer (.exe) — the supported release</div>
         <a href="https://github.com/sumitagg24/Voxyai/releases/latest" class="btn download-lg" id="dl-win" onclick="trackDownload('windows')">⬇ Download for Windows</a>
         <ul class="features">
           <li>System-wide hotkey</li>
@@ -279,6 +288,8 @@ button{font-family:inherit;cursor:pointer}
 </footer>
 
 <script src="/static/js/api.js"></script>
+<!-- Error monitoring: no-op unless a browser DSN is configured. -->
+<script src="/static/js/sentry-init.js" defer></script>
 <script>
 // OS auto-detection: highlight matching card
 (function(){
@@ -306,12 +317,23 @@ button{font-family:inherit;cursor:pointer}
   }
 })();
 
-// Load download URLs from API
-fetch((window.VOXY_API_BASE||'')+'/api/download/urls').then(function(r){return r.json()}).then(function(d){
-  if(d.windows)document.getElementById('dl-win').href=d.windows;
-  if(d.macos)document.getElementById('dl-macos').href=d.macos;
-  if(d.linux)document.getElementById('dl-linux').href=d.linux;
-}).catch(function(){});
+// Load download URLs from API. A platform link is only re-pointed when the
+// artifact actually exists; otherwise the button stays on the releases page and
+// the card says so, instead of promising a file nobody published.
+function applyDownloadUrls(d) {
+  var avail = d.available || {};
+  if (d.windows && avail.windows !== false) document.getElementById('dl-win').href = d.windows;
+  if (d.macos && avail.macos !== false) document.getElementById('dl-macos').href = d.macos;
+  if (d.linux && avail.linux !== false) document.getElementById('dl-linux').href = d.linux;
+  var note = document.getElementById('dl-win-note');
+  if (note && avail.windows === false) {
+    note.textContent = 'Not published yet — the releases page has the build instructions';
+  }
+}
+fetch((window.VOXY_API_BASE||'')+'/api/download/urls')
+  .then(function(r){return r.json()})
+  .then(applyDownloadUrls)
+  .catch(function(){});
 
 // Version is read from the single canonical source, never hard-coded.
 fetch('/version.json').then(function(r){return r.json()}).then(function(d){

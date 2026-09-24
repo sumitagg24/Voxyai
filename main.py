@@ -39,7 +39,7 @@ from ui.error_dialog import build_diagnostics_text, show_error
 from ui.main_window import MainWindow, app_icon
 from ui.overlay import FloatingWidget
 from ui.shortcut_recorder import format_hotkey
-from utils import paths
+from utils import observability, paths
 from utils.helpers import ensure_directories
 from utils.logger import configure_root_logger, log_error, log_info
 
@@ -481,7 +481,12 @@ class VoxylisApp:
                 )
 
     def _write_crash_report(self, exc: BaseException) -> None:
-        """Persist a redacted crash report; never includes transcripts or keys."""
+        """Persist a redacted crash report; never includes transcripts or keys.
+
+        The local file is the primary artefact — it works offline and the user
+        can read it. Remote reporting (opt-in, Settings → Privacy) is a second,
+        clearly separate channel handled by ``utils.observability``.
+        """
         try:
             report = paths.crash_dir() / f"crash-{os.getpid()}.log"
             report.write_text(
@@ -493,6 +498,7 @@ class VoxylisApp:
             log_error(f"Crash report written to {report}")
         except Exception:
             pass
+        observability.capture_startup_failure(exc)
 
     def exit_app(self) -> None:
         if self._quitting:
@@ -525,6 +531,9 @@ def main() -> int:
         return app.run()
     except Exception as exc:
         log_error(f"Fatal error: {exc}", exc_info=True)
+        # A startup failure happens before any window exists, so this is the
+        # only place the user can be told and the only place it can be reported.
+        observability.capture_startup_failure(exc)
         QMessageBox.critical(None, "Voxylis", f"Voxylis could not start.\n\n{exc}")
         return 1
     finally:

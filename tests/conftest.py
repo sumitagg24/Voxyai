@@ -88,9 +88,21 @@ def user(app_client):
 
 @pytest.fixture
 def admin_user(app_client, monkeypatch):
+    """An admin whose address has been verified (trusted-promotion precondition)."""
     monkeypatch.setenv("ADMIN_EMAILS", "admin@gmail.com")
     client, _ = app_client
-    return ApiUser(client, "admin@gmail.com")
+    user = ApiUser(client, "admin@gmail.com")
+    conn = __import__("web.app", fromlist=["_get_db"])._get_db()
+    conn.execute("UPDATE users SET email_verified = 1 WHERE id = ?", (user.user_id,))
+    conn.commit()
+    conn.close()
+    # Re-login so the response metadata reflects the promoted role.
+    login(client, "admin@gmail.com")
+    user.session_id = client.post(
+        "/api/auth/login",
+        json={"email_or_phone": "admin@gmail.com", "password": user.password},
+    ).get_json()["session_id"]
+    return user
 
 
 os.environ.setdefault("PYTHONDONTWRITEBYTECODE", "1")

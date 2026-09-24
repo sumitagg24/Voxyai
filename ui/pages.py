@@ -1049,6 +1049,20 @@ class PrivacyPage(BasePage):
         layout.addWidget(self.storage_info)
         self.body.addWidget(box)
 
+        reports = QGroupBox("Crash reports")
+        reports_layout = QVBoxLayout(reports)
+        self.crash_reports = QCheckBox("Send a diagnostic report when Voxylis fails")
+        reports_layout.addWidget(self.crash_reports)
+        reports_note = QLabel(
+            "Off by default. When it is on, a failure sends the error type, a stack trace, "
+            "the app version, your OS and the provider name — never your transcripts, "
+            "clipboard, API keys or account email. Turning it off stops reporting immediately."
+        )
+        reports_note.setWordWrap(True)
+        reports_note.setObjectName("Muted")
+        reports_layout.addWidget(reports_note)
+        self.body.addWidget(reports)
+
         facts = QGroupBox("What Voxylis does with your data")
         facts_layout = QVBoxLayout(facts)
         for line in [
@@ -1057,6 +1071,8 @@ class PrivacyPage(BasePage):
             "API keys live in the operating system credential store, not in a settings file.",
             "Diagnostics you copy never include transcripts, keys, tokens or email addresses.",
             "Disabling history stops new recordings from being stored at all.",
+            "There is no analytics or usage tracking: the only outbound report is the crash "
+            "report above, and only when you enable it.",
         ]:
             bullet = QLabel(f"•  {line}")
             bullet.setWordWrap(True)
@@ -1068,6 +1084,7 @@ class PrivacyPage(BasePage):
         self.enabled.stateChanged.connect(self._save)
         self.retention.valueChanged.connect(self._save)
         self.max_entries.valueChanged.connect(self._save)
+        self.crash_reports.stateChanged.connect(self._save_crash_reports)
         self.refresh()
 
     def refresh(self) -> None:
@@ -1083,6 +1100,9 @@ class PrivacyPage(BasePage):
         blocked = self.max_entries.blockSignals(True)
         self.max_entries.setValue(int(config.get("max_history", 500)))
         self.max_entries.blockSignals(blocked)
+        blocked = self.crash_reports.blockSignals(True)
+        self.crash_reports.setChecked(bool(config.get("share_crash_reports", False)))
+        self.crash_reports.blockSignals(blocked)
 
         from utils import paths
 
@@ -1097,6 +1117,29 @@ class PrivacyPage(BasePage):
         self.orchestrator.update_config("history_retention_days", self.retention.value())
         self.orchestrator.update_config("max_history", self.max_entries.value())
         self.storage_info.setText(self.storage_info.text())
+
+    def _save_crash_reports(self) -> None:
+        """Persist the opt-in and apply it to the running process immediately."""
+        chosen = self.crash_reports.isChecked()
+        self.orchestrator.update_config("share_crash_reports", chosen)
+        from utils import observability
+
+        started = observability.set_consent(chosen, self.orchestrator.get_config())
+        status = observability.status()
+        if chosen and not status["dsn_configured"]:
+            QMessageBox.information(
+                self,
+                "Crash reports",
+                "Your choice is saved. This build has no reporting endpoint baked in, so "
+                "nothing will be sent.",
+            )
+        elif chosen and not started:
+            QMessageBox.information(
+                self,
+                "Crash reports",
+                "Your choice is saved, but reports could not start on this system. "
+                f"Reason: {status['reason']}.",
+            )
 
     def _export(self) -> None:
         path, selected = QFileDialog.getSaveFileName(

@@ -170,8 +170,24 @@ def test_policy_report_is_exposed_in_health(app_client):
 
 
 def test_owner_account_has_unlimited_entitlements(app_client):
+    """A *verified* owner address receives server-derived unlimited entitlement."""
     client, web_app = app_client
     owner = ApiUser(client, "sumitagg24@gmail.com")
+    # An unverified claim is an ordinary free user: no privileges yet.
+    conn = web_app._get_db()
+    verified = conn.execute(
+        "SELECT email_verified FROM users WHERE id = ?", (owner.user_id,)
+    ).fetchone()["email_verified"]
+    conn.close()
+    if not verified:
+        conn = web_app._get_db()
+        conn.execute("UPDATE users SET email_verified = 1 WHERE id = ?", (owner.user_id,))
+        conn.commit()
+        conn.close()
+        client.post(
+            "/api/auth/login",
+            json={"email_or_phone": "sumitagg24@gmail.com", "password": owner.password},
+        )
     res = client.get("/api/me", headers=owner.headers)
     assert res.status_code == 200
     user_data = res.get_json()["user"]

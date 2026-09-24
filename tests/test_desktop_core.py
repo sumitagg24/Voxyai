@@ -186,6 +186,37 @@ def test_legacy_json_history_is_imported(tmp_path):
     assert [row["raw"] for row in store.get_all()] == ["newer", "older"]
 
 
+# ── orchestrator config access ───────────────────────────────────────────────
+
+
+def test_get_config_accepts_a_default(isolated_home):
+    """The UI reads settings as ``get_config("theme", "dark")``.
+
+    The real method used to take only ``key``, so every such call raised
+    TypeError and the frozen app died during startup — while the test double,
+    which already had the two-argument form, hid the mismatch.
+    """
+    from core.app_orchestrator import AppOrchestrator
+
+    orchestrator = AppOrchestrator()
+    assert isinstance(orchestrator.get_config(), dict)
+    assert orchestrator.get_config("theme", "dark") == "dark"
+    assert orchestrator.get_config("definitely_missing", "fallback") == "fallback"
+    assert orchestrator.get_config("definitely_missing") is None
+    orchestrator.update_config("theme", "light")
+    assert orchestrator.get_config("theme", "dark") == "light"
+
+
+def test_crash_report_consent_defaults_to_off(isolated_home):
+    """Reporting is opt-in; a fresh install must not send anything."""
+    from core.app_orchestrator import AppOrchestrator
+    from utils import observability
+
+    orchestrator = AppOrchestrator()
+    assert bool(orchestrator.get_config("share_crash_reports", False)) is False
+    assert observability.consent_from_config(orchestrator.get_config()) is False
+
+
 # ── error model ──────────────────────────────────────────────────────────────
 
 

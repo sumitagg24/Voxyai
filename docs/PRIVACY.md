@@ -15,13 +15,34 @@ One HTTPS request per utterance, to the provider whose key **you** configured:
 | Translation / Q&A | the same provider | only when you use that feature |
 | Voice commands (`new line`, `clear that`, …) | nothing – handled locally | – |
 | Update check | GitHub Releases | on start, once, can be disabled |
+| Crash report | Sentry (a third-party error service) | **only** if you enable *Settings → Privacy → Send a diagnostic report*, and only when something fails |
 
 If you only dictate and disable enhancement, exactly one request per utterance
 is made. There is no Voxylis server in this path.
 
-**No telemetry. No analytics. No crash reporting service.** The app never
-contacts a Voxylis-operated endpoint. `screenshots/` in the repo are local
-verification artefacts, not uploads.
+**No analytics and no usage tracking.** The app never contacts a
+Voxylis-operated endpoint, has no install ping and no session reporting. There
+is no "phone home" on start.
+
+The one optional exception is **crash reporting**, and it is off until you turn
+it on in *Settings → Privacy*. When it is on and something fails, one report is
+sent to Sentry containing:
+
+* the exception type and stack trace;
+* an error category (`pipeline`, `transcription`, `updater`, `hotkey`,
+  `microphone`, `injection`, `startup`, `auth`) and the error code for
+  recognised failures;
+* the app version, your OS and Python version, and whether the build is frozen;
+* the configured provider **name** (`groq` / `openai`) — never the key.
+
+It never contains API keys, credential-vault contents, session ids or tokens,
+transcripts, enhanced text, clipboard contents, audio, your account email, or
+paths under your user profile (they are rewritten to placeholders before an
+event is sent). Turning the switch off stops reporting immediately. A build with
+no reporting endpoint compiled in sends nothing even when the box is ticked.
+
+Local verification screenshots are development artefacts and are gitignored;
+they are never uploaded anywhere.
 
 ## What is stored on disk
 
@@ -34,6 +55,7 @@ Everything mutable lives under one folder (see `docs/ARCHITECTURE.md`):
 ├── data\stats.json            word/transcription counters, no text
 ├── secrets\credentials.vault  API keys, DPAPI-encrypted and user-scoped
 ├── logs\voxylis.log           sizes, languages, model names, error codes
+├── crashes\crash-<pid>.log    local crash report, written whether or not reporting is on
 ├── temp\                      temporary audio, deleted after every run
 └── updates\                   downloaded installers awaiting a verified apply
 ```

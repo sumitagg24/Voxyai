@@ -27,9 +27,18 @@ def test_generated_mirrors_match_the_canonical_version():
     assert f"FileVersion', u'{version.__version__}'" in (
         REPO / "packaging" / "version_info.txt"
     ).read_text(encoding="utf-8")
-    for target in (STATIC / "version.json", REPO / "web" / "downloads" / "version.json"):
-        payload = json.loads(target.read_text(encoding="utf-8"))
-        assert payload["version"] == version.__version__
+    payload = json.loads((STATIC / "version.json").read_text(encoding="utf-8"))
+    assert payload["version"] == version.__version__
+    # There is exactly one served mirror in the source tree. A second copy is
+    # how two different release numbers end up on the same site. Build output and
+    # virtualenvs are excluded: they are gitignored copies, not sources of truth.
+    generated = {".git", "build", "dist", "venv", ".venv", "__pycache__", "node_modules"}
+    others = [
+        path
+        for path in REPO.rglob("version.json")
+        if path != STATIC / "version.json" and not (generated & set(path.relative_to(REPO).parts))
+    ]
+    assert others == [], f"duplicate version mirrors: {others}"
 
 
 def test_constants_reexport_the_canonical_version():
@@ -57,6 +66,34 @@ def test_no_stale_hard_coded_versions_remain():
         text = (REPO / relative).read_text(encoding="utf-8")
         assert '"2.2.0"' not in text
         assert '"2.1.1"' not in text
+
+
+def test_download_links_are_only_advertised_when_published(app_client, monkeypatch):
+    """A visitor must never be sent to an installer that was never published.
+
+    The previous build hard-coded a v3.0.0 artifact URL that returned 404 for
+    every visitor while the page said an installer was available.
+    """
+    client, _ = app_client
+    for name in ("DOWNLOAD_URL_WINDOWS", "DOWNLOAD_URL_MACOS", "DOWNLOAD_URL_LINUX"):
+        monkeypatch.delenv(name, raising=False)
+
+    payload = client.get("/api/download/urls").get_json()
+    assert payload["available"] == {"windows": False, "macos": False, "linux": False}
+    for platform in ("windows", "macos", "linux"):
+        assert "download/v3" not in payload[platform]
+    assert payload["windows"] == payload["releases_url"]
+
+    monkeypatch.setenv("DOWNLOAD_URL_WINDOWS", "https://cdn.example.com/Voxylis-Setup.exe")
+    published = client.get("/api/download/urls").get_json()
+    assert published["available"]["windows"] is True
+    assert published["windows"] == "https://cdn.example.com/Voxylis-Setup.exe"
+
+
+def test_download_page_checks_availability_before_relinking():
+    text = (STATIC / "download.html").read_text(encoding="utf-8")
+    assert "available" in text
+    assert "dl-win-note" in text
 
 
 def test_download_page_reads_the_version_from_one_source():
@@ -186,3 +223,41 @@ def test_account_deletion_and_upgrade_claims_match_the_implementation():
     for relative in ("dashboard.html", "js/dashboard.js"):
         text = (STATIC / relative).read_text(encoding="utf-8")
         assert "subscription/upgrade" not in text
+
+
+def test_pricing_api_makes_no_unverifiable_language_claims(app_client):
+    """Tier language copy must not assert counts the code does not enforce.
+
+    The Whisper models behind /api/transcribe recognise their providers'
+    language sets, and the app pins a fixed list from ui/pages.py — neither is
+    a per-tier restriction, so advertising counts like "5 languages" (free) or
+    "99+ languages" (pro) is unsupported either way.
+    """
+    client, _ = app_client
+    payload = client.get("/api/pricing").get_json()
+    for tier in payload["tiers"]:
+        for feature in tier["features"]:
+            assert not re.search(
+                r"\d+\s*\+?\s*languages", feature, flags=re.IGNORECASE
+            ), f"{tier['id']}: {feature!r}"
+
+
+def test_pricing_api_matches_enforced_quotas_and_features(app_client):
+    """Advertised copy must agree with web/tier.py and config/constants.py."""
+    from config.constants import ENHANCEMENT_MODES
+    from web.tier import TIER_QUOTAS
+
+    client, _ = app_client
+    tiers = {t["id"]: t for t in client.get("/api/pricing").get_json()["tiers"]}
+    assert f"{TIER_QUOTAS['free']:,} transcriptions/month" in tiers["free"]["features"]
+    assert "Formal enhancement mode" in tiers["free"]["features"]
+    assert len(ENHANCEMENT_MODES) == 5
+    assert "All five enhancement modes" in tiers["pro"]["features"]
+    assert f"{TIER_QUOTAS['pro']:,} transcriptions/month" in tiers["pro"]["features"]
+
+
+def test_download_page_does_not_claim_a_language_count():
+    text = (STATIC / "download.html").read_text(encoding="utf-8")
+    assert not re.search(
+        r"\d+\+?\s*languages", text, flags=re.IGNORECASE
+    )

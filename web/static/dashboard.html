@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Voxylis Dashboard</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%99%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+    <title>Voxylis — Dashboard</title>
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" />
     <link rel="stylesheet" href="/static/css/dashboard.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="/static/js/api.js"></script>
+    <!-- Error monitoring: no-op unless a browser DSN is configured. -->
+    <script src="/static/js/sentry-init.js" defer></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -25,6 +28,7 @@
                 <a href="#" class="nav-item" data-section="wakeword"><span class="icon">🗣️</span> Wake Word</a>
                 <a href="#" class="nav-item" data-section="subscription"><span class="icon">💳</span> Plan</a>
                 <a href="docs/installation" class="nav-link"><span class="icon">📖</span> Docs</a>
+                <a href="#" class="nav-link" id="logoutBtn" style="margin-top:auto"><span class="icon">🚪</span> Log out</a>
             </nav>
         </aside>
 
@@ -915,6 +919,25 @@
         await window.refreshStats();
         await window.refreshHistory();
         await loadHotkeys();
+
+        const logoutBtn = document.getElementById("logoutBtn");
+        if (logoutBtn) {
+            logoutBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                try {
+                    const sid = localStorage.getItem("session_id");
+                    if (sid) {
+                        await voxyFetch("/api/auth/logout", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ session_id: sid }),
+                        });
+                    }
+                } catch (err) { /* logging out is best-effort client-side */ }
+                localStorage.removeItem("session_id");
+                window.location.href = "/auth";
+            });
+        }
     })();
     </script>
 </body>

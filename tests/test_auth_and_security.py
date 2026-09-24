@@ -168,8 +168,21 @@ def test_oversized_request_body_is_rejected(app_client):
 
 
 def test_errors_do_not_leak_internals(app_client):
+    """Error responses expose no internals.
+
+    Site paths get the HTML 404 page; API paths keep the structured JSON body.
+    Neither may echo back the requested URL or any internal detail.
+    """
     client, _ = app_client
-    body = client.get("/definitely-not-a-route").get_json()
+
+    site_resp = client.get("/definitely-not-a-route")
+    assert site_resp.status_code == 404
+    assert site_resp.content_type.startswith("text/html")
+    assert b"definitely-not-a-route" not in site_resp.data
+
+    api_resp = client.get("/api/definitely-not-a-route")
+    assert api_resp.status_code == 404
+    body = api_resp.get_json()
     assert set(body.keys()) == {"error"}
     assert body["error"] == "Not found"
 
@@ -237,3 +250,249 @@ def test_rate_limiting_is_configured(app_client):
         signup(client, f"flood{i}@gmail.com").status_code for i in range(15)
     ]
     assert 429 in statuses, "signup should be rate limited"
+
+
+# ── adversarial verification regressions (entitlement / type confusion) ─────
+
+
+def test_signup_ignores_client_supplied_privilege_fields(app_client):
+    """Mass assignment: tier/role/is_owner/unlimited in the body must be ignored."""
+    client, web_app = app_client
+    response = signup(client, "privilege@gmail.com")
+    assert response.status_code == 201
+    conn = web_app._get_db()
+    row = conn.execute(
+        "SELECT tier, role, is_owner, email_verified FROM users WHERE email_or_phone = ?",
+        ("privilege@gmail.com",),
+    ).fetchone()
+    conn.close()
+    assert (row["tier"], row["role"], bool(row["is_owner"]), bool(row["email_verified"])) == (
+        "free", "user", 0, 0
+    )
+
+
+def test_subscription_upgrade_cannot_be_granted_via_body_or_headers(app_client):
+    """A user cannot talk the server into applying an admin tier change."""
+    client, web_app = app_client
+    user = ApiUser(client, "upgrader@gmail.com")
+    for payload in (
+        {"tier": "owner"},
+        {"tier": "business", "source": "admin", "actor_is_admin": True},
+        {"tier": "owner", "actor": "sumitagg24@gmail.com", "source": "admin"},
+    ):
+        response = client.post("/api/subscription/upgrade", json=payload, headers=user.headers)
+        assert response.status_code == 403, payload
+    conn = web_app._get_db()
+    tier = conn.execute("SELECT tier FROM users WHERE id = ?", (user.user_id,)).fetchone()["tier"]
+    conn.close()
+    assert tier == "free"
+
+
+def test_owner_email_cannot_be_claimed_via_profile_update(app_client):
+    """Renaming/re-emailing to the owner address must not confer owner rights."""
+    client, web_app = app_client
+    user = ApiUser(client, "wannabe@gmail.com")
+    client.post(
+        "/api/auth/update-profile",
+        json={"name": "sumitagg24@gmail.com"},
+        headers=user.headers,
+    )
+    payload = client.get("/api/me", headers=user.headers).get_json()["user"]
+    assert payload["is_owner"] is False and payload["role"] == "user"
+    conn = web_app._get_db()
+    row = conn.execute(
+        "SELECT email_or_phone, is_owner FROM users WHERE id = ?", (user.user_id,)
+    ).fetchone()
+    conn.close()
+    assert row["email_or_phone"] == "wannabe@gmail.com" and not row["is_owner"]
+
+
+def test_type_confused_bodies_are_rejected_not_500(app_client):
+    """Object/number-typed JSON fields must be refused cleanly, never crash."""
+    client, _ = app_client
+    user = ApiUser(client, "typeconfused@gmail.com")
+    cases = [
+        ("/api/auth/signup", {"name": {"$gt": ""}, "email_or_phone": "x1@gmail.com", "password": "password-123"}),
+        ("/api/auth/login", {"email_or_phone": ["array"], "password": None}),
+        ("/api/auth/forgot-password", {"email": {"obj": 1}}),
+        ("/api/history", {"text": 12345}),
+        ("/api/enhance", {"text": {"deep": {"nest": 1}}, "mode": "formal"}),
+        ("/api/qa", {"question": [1, 2, 3]}),
+        ("/api/auth/update-profile", {"name": {"x": 1}}, user.headers),
+        ("/api/subscription/upgrade", {"tier": {"$ne": None}}, user.headers),
+    ]
+    for path, payload, *h in cases:
+        headers = h[0] if h else {}
+        response = client.post(path, json=payload, headers=headers)
+        assert response.status_code in (400, 401, 403, 415), (path, payload, response.status_code)
+
+
+def test_history_rejects_non_string_text(app_client):
+    """A number in the text field previously slipped through and stored "12345"."""
+    client, _ = app_client
+    user = ApiUser(client, "numbertext@gmail.com")
+    response = client.post("/api/history", json={"text": 12345}, headers=user.headers)
+    assert response.status_code == 400
+
+
+def test_auth0_login_refuses_unverified_email_claims(app_client, monkeypatch):
+    """Identity linking requires an IdP-verified address, or a hostile IdP
+    tenant could claim someone else's (possibly owner) email."""
+    client, web_app = app_client
+    monkeypatch.setenv("AUTH0_DOMAIN", " tenants.example.invalid")
+    monkeypatch.setenv("AUTH0_CLIENT_ID", "client-id")
+
+    from web import app as web_app_module
+
+    # A *verifiable* token whose claims carry email_verified=false must be
+    # refused before any account lookup or session creation.
+    monkeypatch.setattr(
+        web_app_module,
+        "_verify_auth0_token",
+        lambda token: {"iss": "https://tenants.example.invalid/", "aud": "client-id",
+                       "email": "sumitagg24@gmail.com", "email_verified": False, "sub": "attacker|1"},
+    )
+    response = client.post("/api/auth/auth0", json={"id_token": "any"})
+    assert response.status_code == 403
+    assert "not verified" in response.get_json()["error"].lower()
+
+    # No account was created or linked for the owner address.
+    conn = web_app._get_db()
+    assert conn.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE email_or_phone = 'sumitagg24@gmail.com'"
+    ).fetchone()["c"] == 0
+    conn.close()
+
+
+def test_idor_on_history_endpoints(app_client):
+    """A second user must not read or delete the first user's transcriptions."""
+    client, _ = app_client
+    victim = ApiUser(client, "idor-victim@gmail.com")
+    attacker = ApiUser(client, "idor-attacker@gmail.com")
+    client.post("/api/history", json={"text": "victim private note"}, headers=victim.headers)
+
+    listing = client.get("/api/history", headers=attacker.headers).get_json()
+    assert all("victim private note" not in h["text"] for h in listing.get("history", []))
+
+    conn = None
+    from web import app as web_app_module
+    conn = web_app_module._get_db()
+    victim_item = conn.execute(
+        "SELECT id FROM transcriptions WHERE user_id = ?", (victim.user_id,)
+    ).fetchone()["id"]
+    conn.close()
+
+    response = client.delete(f"/api/history/{victim_item}", headers=attacker.headers)
+    assert response.status_code == 404
+    conn = web_app_module._get_db()
+    assert conn.execute(
+        "SELECT COUNT(*) AS c FROM transcriptions WHERE id = ?", (victim_item,)
+    ).fetchone()["c"] == 1
+    conn.close()
+
+
+def test_cross_user_user_id_parameters_are_ignored(app_client):
+    """user_id in query or body must never widen what a session can read."""
+    client, _ = app_client
+    victim = ApiUser(client, "param-victim@gmail.com")
+    attacker = ApiUser(client, "param-attacker@gmail.com")
+    client.post("/api/history", json={"text": "param secret"}, headers=victim.headers)
+
+    leak = client.get("/api/history", query_string={"user_id": victim.user_id}, headers=attacker.headers)
+    assert "param secret" not in leak.get_data(as_text=True)
+    leak = client.get("/api/history", json={"user_id": victim.user_id, "session_id": attacker.session_id})
+    assert "param secret" not in leak.get_data(as_text=True)
+    leak = client.get("/api/subscription", query_string={"user_id": victim.user_id}, headers=attacker.headers)
+    assert (leak.get_json() or {}).get("subscription", {}).get("tier") == "free"
+
+
+# ── owner provisioning security regressions ───────────────────────────────────
+
+
+def test_owner_signup_is_not_promoted_until_the_address_is_verified(app_client):
+    """The owner email arrives by password signup: no owner rights yet.
+
+    A password signup claims an address it has not proven control of, so the
+    account must stay a normal free user until the emailed verification link
+    is consumed. Only then may the promotion pass confer owner privileges.
+    """
+    client, web_app = app_client
+    owner_email = "sumitagg24@gmail.com"
+    response = signup(client, owner_email)
+    assert response.status_code == 201
+    user_id = response.get_json()["user_id"]
+
+    me = client.get("/api/me", headers={"X-Session-Id": response.get_json()["session_id"]}).get_json()["user"]
+    assert me["is_owner"] is False
+    assert me["tier"] == "free" and me["role"] == "user"
+    assert me["entitlements"]["unlimited"] is False
+
+    conn = web_app._get_db()
+    row = conn.execute(
+        "SELECT tier, role, is_owner FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    conn.close()
+    assert (row["tier"], row["role"], bool(row["is_owner"])) == ("free", "user", False)
+
+
+def test_verified_owner_address_is_promoted_on_next_login(app_client):
+    """Once the owner address is verified, trusted promotion resumes."""
+    client, web_app = app_client
+    owner_email = "sumitagg24@gmail.com"
+    response = signup(client, owner_email)
+    assert response.status_code == 201
+
+    conn = web_app._get_db()
+    conn.execute(
+        "UPDATE users SET email_verified = 1 WHERE email_or_phone = ?", (owner_email,)
+    )
+    conn.commit()
+    conn.close()
+
+    login_response = login(client, owner_email)
+    assert login_response.status_code == 200
+    payload = login_response.get_json()
+    assert payload["is_owner"] is True
+    assert payload["tier"] == "owner" and payload["role"] == "owner"
+
+    me = client.get("/api/me", headers={"X-Session-Id": payload["session_id"]}).get_json()["user"]
+    assert me["entitlements"]["unlimited"] is True
+    assert me["entitlements"]["monthly_transcriptions_limit"] == -1
+
+
+def test_unverified_owner_claim_gets_no_owner_privileges_via_any_surface(app_client):
+    """End-to-end: an unverified owner-email account cannot use owner powers."""
+    client, web_app = app_client
+    owner_email = "sumitagg24@gmail.com"
+    response = signup(client, owner_email)
+    session_id = response.get_json()["session_id"]
+    headers = {"X-Session-Id": session_id}
+
+    # Admin surface must stay closed.
+    assert client.get("/api/admin/users", headers=headers).status_code == 403
+    # Quota behaviour must stay free-tier (100), not unlimited.
+    conn = web_app._get_db()
+    user_id = conn.execute(
+        "SELECT id FROM users WHERE email_or_phone = ?", (owner_email,)
+    ).fetchone()["id"]
+    conn.executemany(
+        "INSERT INTO transcriptions (user_id, text, created_at) VALUES (?, ?, datetime('now'))",
+        [(user_id, f"entry {i}") for i in range(100)],
+    )
+    conn.commit()
+    conn.close()
+    quota = web_app.check_transcription_quota(user_id)
+    assert quota == (False, 100, 100), quota
+
+    # A second account must not be able to pull the unverified claim up either.
+    other = ApiUser(client, "helper@gmail.com")
+    assert client.post(
+        "/api/subscription/upgrade", json={"tier": "owner"}, headers=other.headers
+    ).status_code == 403
+
+    conn = web_app._get_db()
+    row = conn.execute(
+        "SELECT tier, is_owner FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    conn.close()
+    assert row["tier"] == "free" and not row["is_owner"]
