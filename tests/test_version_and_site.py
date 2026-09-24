@@ -100,9 +100,15 @@ def test_download_page_reads_the_version_from_one_source():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
     assert "data-voxylis-version" in text
     assert "/version.json" in text
-    # The page loads the version at runtime; nothing may bake a release number
-    # into the markup, or the fallback text silently goes stale on a bump.
-    assert not re.search(r"v\d+\.\d+\.\d+", text)
+    # Buttons carry direct links to the published release assets, so a click
+    # starts the download immediately instead of navigating to GitHub. Those
+    # link targets necessarily contain the release number; the *displayed*
+    # version text must still be filled from version.json at runtime, so strip
+    # the link tags before checking that no release number is baked into the
+    # visible markup (it would silently go stale on a bump).
+    assert "releases/download/v" in text
+    visible = re.sub(r"<a\b[^>]*>", "", text)
+    assert not re.search(r"v\d+\.\d+\.\d+", visible)
 
 
 def test_version_json_is_served_by_the_backend_too(app_client):

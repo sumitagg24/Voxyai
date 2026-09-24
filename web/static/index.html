@@ -426,9 +426,9 @@ button{font-family:inherit;cursor:pointer}
     <h2 style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1.05">Speak.<br>Voxylis writes.</h2>
     <p style="margin-top:28px;font-size:18px;color:var(--ink2);max-width:560px;line-height:1.6">Download Voxylis for Windows, macOS, or Linux. Your voice is ready when you are.</p>
     <div style="margin-top:40px;display:flex;gap:16px;flex-wrap:wrap" id="downloadBtns">
-      <a href="#" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
-      <a href="#" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
-      <a href="#" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
+      <a href="https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe" download="Voxylis-Setup-3.0.0.exe" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
+      <a href="https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.zip" download="Voxylis-3.0.0.zip" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
+      <a href="https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.tar.gz" download="Voxylis-3.0.0.tar.gz" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
     </div>
     <div class="plat-tags" style="margin-top:20px">
       <span class="plat-tag" id="tag-win">Windows 10+</span>
@@ -482,11 +482,14 @@ document.addEventListener('DOMContentLoaded',()=>{document.body.style.overflow='
   else if(isLinux){var b=document.getElementById('dl-linux');if(b){b.className='btn';document.getElementById('tag-linux').classList.add('active')}}
 })();
 
-// Load download URLs from API
+// Load download URLs from API. The buttons already carry direct download links,
+// so a click starts the file immediately. Only re-point a button when the API
+// reports a configured artifact for that platform.
 fetch((window.VOXY_API_BASE||'')+'/api/download/urls').then(function(r){return r.json()}).then(function(d){
-  if(d.windows)document.getElementById('dl-win').href=d.windows;
-  if(d.macos)document.getElementById('dl-mac').href=d.macos;
-  if(d.linux)document.getElementById('dl-linux').href=d.linux;
+  var avail=d.available||{};
+  if(d.windows&&avail.windows){var w=document.getElementById('dl-win');w.href=d.windows;w.setAttribute('download','');}
+  if(d.macos&&avail.macos){var m=document.getElementById('dl-mac');m.href=d.macos;m.setAttribute('download','');}
+  if(d.linux&&avail.linux){var l=document.getElementById('dl-linux');l.href=d.linux;l.setAttribute('download','');}
 }).catch(function(){});
 
 // Track download click

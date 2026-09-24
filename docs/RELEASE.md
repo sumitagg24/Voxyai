@@ -133,4 +133,10 @@ Both are configuration gaps, not missing code; do not fake either one.
   reports nothing. The desktop app additionally requires the user to opt in.
 * **No release has been published**, so the download page points at the
   releases page and marks the Windows card as not published yet. Publish the
-  installer, then set `DOWNLOAD_URL_WINDOWS` to its URL.
+  installer, then set `DOWNLOAD_URL_WINDOWS` to its URL. Once `v3.0.0` (or
+  later) is published, the website buttons link straight at the release assets
+  (`releases/download/...`) with a `download` attribute, so a click starts the
+  file immediately instead of navigating to GitHub. **On every version bump,
+  update the pinned asset URLs** in `web/static/download.html`,
+  `web/static/index.html` and `README.md` to the new tag, or visitors download
+  a stale release.

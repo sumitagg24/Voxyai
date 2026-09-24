@@ -46,9 +46,16 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 
 ## Install
 
-Download `Voxylis-Setup-3.0.0.exe` from the
-[releases page](https://github.com/sumitagg24/Voxyai/releases) or the website's
-[download page](web/static/download.html).
+- **Windows:** [⬇ Download Voxylis-Setup-3.0.0.exe](https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe)
+  — clicking starts the download immediately.
+- **macOS:** [⬇ Download source .zip](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.zip)
+  (Python 3.10+, one-command `run.sh` setup).
+- **Linux:** [⬇ Download source .tar.gz](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.tar.gz)
+  (X11 + Wayland).
+
+Prefer to browse? The [releases page](https://github.com/sumitagg24/Voxyai/releases)
+lists every version with checksums, and the website's
+[download page](https://voxylis-web.vercel.app/download) auto-detects your OS.
 
 The installer is per-user by default (no administrator prompt), creates a Start
 Menu entry, and offers optional desktop shortcut and run-at-login tasks. The
