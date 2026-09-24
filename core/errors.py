@@ -108,7 +108,7 @@ _CATALOG = {
         code="mic_unavailable",
         title="Microphone unavailable",
         summary="Voxylis could not open the selected microphone.",
-        cause="Another application may be using it exclusively, it may be unplugged, or access is denied by Windows privacy settings.",
+        cause="Another application may be using it exclusively, it may be unplugged, or access is denied by Windows privacy settings.",  # noqa: E501
         action="Close other recording apps, then pick a device in Settings → Microphone.",
         settings_section="Microphone",
         docs_slug="troubleshooting",
@@ -146,7 +146,7 @@ _CATALOG = {
         title="Could not insert the text",
         summary="Voxylis could not type into the window that had focus.",
         cause="{cause}",
-        action="Click into the field you want the text in, then press the hotkey again. The text is also in History so you can copy it.",
+        action="Click into the field you want the text in, then press the hotkey again. The text is also in History so you can copy it.",  # noqa: E501
         docs_slug="troubleshooting",
     ),
     "recording_failed": VoxylisError(
@@ -172,7 +172,7 @@ _CATALOG = {
         title="Global shortcuts stopped working",
         summary="The keyboard listener stopped unexpectedly.",
         cause="Windows blocked the low-level keyboard hook, or another app grabbed the shortcut.",
-        action="Restart Voxylis. If it keeps happening, enable 'Disable global shortcuts' in Settings → Shortcuts and use the tray menu instead.",
+        action="Restart Voxylis. If it keeps happening, enable 'Disable global shortcuts' in Settings → Shortcuts and use the tray menu instead.",  # noqa: E501
         settings_section="Shortcuts",
         docs_slug="troubleshooting",
     ),
