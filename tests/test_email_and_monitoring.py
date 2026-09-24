@@ -305,10 +305,10 @@ def test_owner_is_never_blocked_by_the_verification_gate(app_client):
         conn.commit()
         conn.close()
 
-        client.post("/api/auth/login", json={"email_or_phone": "sumitagg24@gmail.com", "password": "correct-horse-battery"})
-        me = client.get(
-            "/api/me", headers={"X-Session-Id": signup["session_id"]}
-        ).get_json()["user"]
+        client.post(
+            "/api/auth/login", json={"email_or_phone": "sumitagg24@gmail.com", "password": "correct-horse-battery"}
+        )
+        me = client.get("/api/me", headers={"X-Session-Id": signup["session_id"]}).get_json()["user"]
         assert me["is_owner"] is True
         response = client.post("/api/transcribe", headers={"X-Session-Id": signup["session_id"]}, data={})
         assert response.status_code != 403
@@ -358,10 +358,13 @@ def test_reset_link_is_single_use_and_signs_out_every_device(outbox):
         again = client.post("/api/auth/reset-password", json={"token": token, "password": "another-password-here"})
         assert again.status_code == 400
 
-        assert client.post(
-            "/api/auth/login",
-            json={"email_or_phone": "resettwo@gmail.com", "password": "a-brand-new-password"},
-        ).status_code == 200
+        assert (
+            client.post(
+                "/api/auth/login",
+                json={"email_or_phone": "resettwo@gmail.com", "password": "a-brand-new-password"},
+            ).status_code
+            == 200
+        )
 
 
 def test_expired_reset_token_is_rejected(outbox):
@@ -399,12 +402,18 @@ def test_a_new_reset_request_retires_the_previous_link(outbox):
         second = _token_from(provider, "password_reset", RESET_LINK)
 
         assert first != second
-        assert client.post(
-            "/api/auth/reset-password", json={"token": first, "password": "a-brand-new-password"}
-        ).status_code == 400
-        assert client.post(
-            "/api/auth/reset-password", json={"token": second, "password": "a-brand-new-password"}
-        ).status_code == 200
+        assert (
+            client.post(
+                "/api/auth/reset-password", json={"token": first, "password": "a-brand-new-password"}
+            ).status_code
+            == 400
+        )
+        assert (
+            client.post(
+                "/api/auth/reset-password", json={"token": second, "password": "a-brand-new-password"}
+            ).status_code
+            == 200
+        )
 
 
 def test_password_change_is_notified_and_signs_out_other_devices(outbox):
@@ -513,25 +522,38 @@ def test_account_deletion_requires_password_and_confirmation(outbox):
 
         # The confirmation word is checked first: a malformed request never
         # reaches a password comparison.
-        assert client.post("/api/account/delete", json={"password": "wrong-password"}, headers=headers).status_code == 400
-        assert client.post(
-            "/api/account/delete", json={"password": "correct-horse-battery", "confirm": "yes"}, headers=headers
-        ).status_code == 400
-        assert client.post(
-            "/api/account/delete", json={"password": "wrong-password", "confirm": "DELETE"}, headers=headers
-        ).status_code == 401
-        assert client.post(
-            "/api/account/delete",
-            json={"password": "correct-horse-battery", "confirm": "DELETE"},
-            headers=headers,
-        ).status_code == 200
+        assert (
+            client.post("/api/account/delete", json={"password": "wrong-password"}, headers=headers).status_code == 400
+        )
+        assert (
+            client.post(
+                "/api/account/delete", json={"password": "correct-horse-battery", "confirm": "yes"}, headers=headers
+            ).status_code
+            == 400
+        )
+        assert (
+            client.post(
+                "/api/account/delete", json={"password": "wrong-password", "confirm": "DELETE"}, headers=headers
+            ).status_code
+            == 401
+        )
+        assert (
+            client.post(
+                "/api/account/delete",
+                json={"password": "correct-horse-battery", "confirm": "DELETE"},
+                headers=headers,
+            ).status_code
+            == 200
+        )
 
         assert client.post("/api/auth/verify", json={"session_id": signup["session_id"]}).get_json()["valid"] is False
 
     assert _sent_kinds(provider)[-1] == "account_deleted"
     conn = web_app._get_db()
     remaining = conn.execute("SELECT COUNT(*) AS c FROM users WHERE id = ?", (signup["user_id"],)).fetchone()["c"]
-    sessions = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE user_id = ?", (signup["user_id"],)).fetchone()["c"]
+    sessions = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE user_id = ?", (signup["user_id"],)).fetchone()[
+        "c"
+    ]
     conn.close()
     assert remaining == 0
     assert sessions == 0
@@ -909,9 +931,7 @@ def test_desktop_capture_helpers_are_no_ops_when_disabled(desktop_monitoring):
     desktop_monitoring.capture_stage_failure("transcription", RuntimeError("x"))
 
 
-def test_desktop_dsn_comes_from_the_environment_not_the_build(
-    desktop_monitoring, monkeypatch
-):
+def test_desktop_dsn_comes_from_the_environment_not_the_build(desktop_monitoring, monkeypatch):
     """Runtime-only resolution: env var wins, nothing is compiled in.
 
     A DSN baked into the PyInstaller bundle would ship a secret inside an
@@ -934,9 +954,7 @@ def test_desktop_dsn_comes_from_the_environment_not_the_build(
     assert desktop_monitoring.is_enabled() is True
 
 
-def test_desktop_dsn_file_is_read_only_in_frozen_builds(
-    desktop_monitoring, monkeypatch, tmp_path
-):
+def test_desktop_dsn_file_is_read_only_in_frozen_builds(desktop_monitoring, monkeypatch, tmp_path):
     """The DSN-file fallback exists for installed machines, never dev runs."""
     monkeypatch.delenv("SENTRY_DSN", raising=False)
     dsn_file = tmp_path / "desktop-dsn.txt"

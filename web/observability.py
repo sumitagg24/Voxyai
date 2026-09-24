@@ -245,7 +245,9 @@ def _drop_frame_locals(event: Dict[str, Any]) -> None:
                 frame.pop("vars", None)
 
 
-def before_send_transaction(event: Dict[str, Any], hint: Optional[Dict] = None) -> Optional[Dict[str, Any]]:  # noqa: ARG001
+def before_send_transaction(
+    event: Dict[str, Any], hint: Optional[Dict] = None
+) -> Optional[Dict[str, Any]]:  # noqa: ARG001
     """Performance events get the same treatment as errors."""
     event.pop("query_string", None)
     request = event.get("request")

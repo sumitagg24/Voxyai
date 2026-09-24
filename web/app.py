@@ -32,9 +32,14 @@ from config.version import (
     __version__ as APP_VERSION,
 )
 from web.tier import (
-    TIER_FREE, TIER_BUSINESS, TIER_OWNER,
-    TIER_FEATURES, TIER_ENHANCEMENT_MODES, TIER_STT_MODES,
-    FREE_MONTHLY_TRANSCRIPTIONS, OWNER_MONTHLY_TRANSCRIPTIONS,
+    TIER_FREE,
+    TIER_BUSINESS,
+    TIER_OWNER,
+    TIER_FEATURES,
+    TIER_ENHANCEMENT_MODES,
+    TIER_STT_MODES,
+    FREE_MONTHLY_TRANSCRIPTIONS,
+    OWNER_MONTHLY_TRANSCRIPTIONS,
     TIER_QUOTAS,
 )
 from web.services import email_preferences, email_service, subscription_service
@@ -136,23 +141,18 @@ def _resolve_secret_key() -> str:
     rather than run with an insecure or ephemeral key.
     """
     provided = (os.environ.get("SECRET_KEY") or "").strip()
-    insecure = (
-        not provided
-        or provided.lower() in _PLACEHOLDER_SECRETS
-        or len(provided) < 32
-    )
+    insecure = not provided or provided.lower() in _PLACEHOLDER_SECRETS or len(provided) < 32
     if not insecure:
         return provided
 
     if subscription_service.is_production():
         raise InsecureConfiguration(
             "SECRET_KEY must be set to a random value of at least 32 characters in production. "
-            "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
 
     logger.warning(
-        "SECRET_KEY is unset or too weak — using an ephemeral development key. "
-        "Set SECRET_KEY before deploying."
+        "SECRET_KEY is unset or too weak — using an ephemeral development key. " "Set SECRET_KEY before deploying."
     )
     return secrets.token_hex(32)
 
@@ -234,6 +234,7 @@ def security_headers(resp):
 # Database helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_db() -> sqlite3.Connection:
     """Return a per-request database connection with row_factory."""
     conn = sqlite3.connect(str(DB_PATH))
@@ -265,11 +266,7 @@ def _is_hex(value: str) -> bool:
 
 def _owner_emails() -> set:
     """Emails that are designated owners (unlimited server-enforced usage)."""
-    return {
-        e.strip().lower()
-        for e in os.environ.get("OWNER_EMAILS", "sumitagg24@gmail.com").split(",")
-        if e.strip()
-    }
+    return {e.strip().lower() for e in os.environ.get("OWNER_EMAILS", "sumitagg24@gmail.com").split(",") if e.strip()}
 
 
 def _init_db() -> None:
@@ -505,7 +502,7 @@ def _seed_blog(conn: sqlite3.Connection) -> None:
                 "## Where the work goes instead\n\n"
                 "1. **Provider abstraction.** One interface for transcription and one for enhancement, with model "
                 "fallback, timeouts and retries in a single place rather than scattered across call sites.\n"
-                "2. **Error mapping with a name.** An HTTP 401 becomes *\"Groq rejected the API key\"* plus an action, "
+                '2. **Error mapping with a name.** An HTTP 401 becomes *"Groq rejected the API key"* plus an action, '
                 "not a stack trace in a dialog.\n"
                 "3. **Insertion that admits failure.** Pasting into a window that lost focus used to report success. "
                 "It now returns a structured result and tries the next strategy.\n"
@@ -609,6 +606,7 @@ _init_db()
 # Auth helpers
 # ---------------------------------------------------------------------------
 
+
 def _create_session(user_id: int) -> str:
     """Create a 30-day session and return its ID."""
     session_id = uuid.uuid4().hex
@@ -628,9 +626,7 @@ def _verify_session(session_id: str):
     if not session_id:
         return None
     conn = _get_db()
-    row = conn.execute(
-        "SELECT user_id, expires_at, created_at FROM sessions WHERE id = ?", (session_id,)
-    ).fetchone()
+    row = conn.execute("SELECT user_id, expires_at, created_at FROM sessions WHERE id = ?", (session_id,)).fetchone()
     if row is None:
         conn.close()
         return None
@@ -679,6 +675,7 @@ def _extract_session() -> str:
 
 def require_auth(f):
     """Decorator: expects session_id in JSON body or header."""
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         session_id = _extract_session()
@@ -686,6 +683,7 @@ def require_auth(f):
         if user_id is None:
             return jsonify({"success": False, "error": "Unauthorized"}), 401
         return f(user_id=user_id, *args, **kwargs)
+
     return wrapper
 
 
@@ -699,9 +697,7 @@ def _issue_email_token(user_id: int, hours: int = 24) -> str:
     token = secrets.token_urlsafe(32)
     expires = (utcnow() + timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
     conn = _get_db()
-    conn.execute(
-        "UPDATE email_verifications SET used = 1 WHERE user_id = ? AND used = 0", (user_id,)
-    )
+    conn.execute("UPDATE email_verifications SET used = 1 WHERE user_id = ? AND used = 0", (user_id,))
     conn.execute(
         "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
         (user_id, token, expires),
@@ -741,6 +737,7 @@ def require_verified_email(f):
     Applied to features that cost money or create server-side records, so an
     unverified throwaway address cannot consume quota.
     """
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         session_id = _extract_session()
@@ -748,16 +745,22 @@ def require_verified_email(f):
         if user_id is None:
             return jsonify({"success": False, "error": "Unauthorized"}), 401
         if not is_email_verified(user_id):
-            return jsonify({
-                "success": False,
-                "code": "email_not_verified",
-                "error": (
-                    "Confirm your email address before using this feature. "
-                    "Open the link we emailed you, or request a new one."
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "code": "email_not_verified",
+                        "error": (
+                            "Confirm your email address before using this feature. "
+                            "Open the link we emailed you, or request a new one."
+                        ),
+                        "resend_endpoint": "/api/auth/verify-email",
+                    }
                 ),
-                "resend_endpoint": "/api/auth/verify-email",
-            }), 403
+                403,
+            )
         return f(user_id=user_id, *args, **kwargs)
+
     return wrapper
 
 
@@ -787,9 +790,7 @@ def _notify_usage_threshold(user_id: int) -> None:
         period = utcnow().strftime("%Y-%m")
         conn = _get_db()
         try:
-            row = conn.execute(
-                "SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)
-            ).fetchone()
+            row = conn.execute("SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)).fetchone()
             if row is None:
                 return
             address = row["email_or_phone"]
@@ -824,6 +825,7 @@ def _notify_usage_threshold(user_id: int) -> None:
 # ---------------------------------------------------------------------------
 # Static page routes
 # ---------------------------------------------------------------------------
+
 
 @app.route("/")
 def index():
@@ -888,9 +890,7 @@ def docs(page):
         "tips-tricks",
     ]
     if page in valid_pages:
-        return send_from_directory(
-            os.path.join(app.static_folder, "docs"), f"{page}.html"
-        )
+        return send_from_directory(os.path.join(app.static_folder, "docs"), f"{page}.html")
     return jsonify({"error": "Page not found"}), 404
 
 
@@ -917,6 +917,7 @@ def _valid_password(value: str) -> bool:
 def _sanitize(value: str) -> str:
     """Escape HTML entities in user-provided text to prevent XSS."""
     from markupsafe import escape
+
     return str(escape(value))
 
 
@@ -936,13 +937,12 @@ def _text(value) -> str:
 # Tier helpers (DB-aware, defined here to avoid circular imports with tier.py)
 # ---------------------------------------------------------------------------
 
+
 def _email_verified_flag(user_id) -> bool:
     """Trusted email_verified flag for the account, tolerant of old schemas."""
     try:
         conn = _get_db()
-        row = conn.execute(
-            "SELECT email_verified FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        row = conn.execute("SELECT email_verified FROM users WHERE id = ?", (user_id,)).fetchone()
         conn.close()
     except Exception:
         return False
@@ -970,9 +970,7 @@ def is_owner(user_id=None, email=None) -> bool:
         return False
     try:
         conn = _get_db()
-        row = conn.execute(
-            "SELECT is_owner, role, email_or_phone FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        row = conn.execute("SELECT is_owner, role, email_or_phone FROM users WHERE id = ?", (user_id,)).fetchone()
         conn.close()
     except Exception:
         return False
@@ -1005,9 +1003,7 @@ def _ensure_owner(conn, user_id: int, email: str) -> None:
     if (email or "").strip().lower() not in _owner_emails():
         return
     try:
-        verified = conn.execute(
-            "SELECT email_verified FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        verified = conn.execute("SELECT email_verified FROM users WHERE id = ?", (user_id,)).fetchone()
         if verified is not None and not bool(verified["email_verified"]):
             return
         conn.execute(
@@ -1115,40 +1111,66 @@ def get_user_entitlements(user_id: int) -> dict:
 # Auth0 authentication + admin roles + email-domain policy + QR login tickets
 # ---------------------------------------------------------------------------
 
+
 def _admin_emails() -> set:
     """Emails that are always Voxylis admins (full access to everything)."""
-    return {
-        e.strip().lower()
-        for e in os.environ.get("ADMIN_EMAILS", "sumitagg24@gmail.com").split(",")
-        if e.strip()
-    }
+    return {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "sumitagg24@gmail.com").split(",") if e.strip()}
 
 
 def _password_login_domains() -> set:
     """Email domains allowed for password signup (Gmail + official domains)."""
     return {
         d.strip().lower()
-        for d in os.environ.get(
-            "PASSWORD_LOGIN_DOMAINS", "gmail.com,googlemail.com,voxylis.com"
-        ).split(",")
+        for d in os.environ.get("PASSWORD_LOGIN_DOMAINS", "gmail.com,googlemail.com,voxylis.com").split(",")
         if d.strip()
     }
 
 
 # Known disposable/temporary-mail providers. Password accounts may never use
 # these — not at signup, not at login.
-DISPOSABLE_EMAIL_DOMAINS = frozenset({
-    "mailinator.com", "mailinator.net", "tempmail.com", "10minutemail.com",
-    "10minutemail.net", "guerrillamail.com", "guerrillamail.net",
-    "guerrillamailblock.com", "yopmail.com", "yopmail.net", "temp-mail.org",
-    "temp-mail.io", "throwaway.email", "getnada.com", "mohmal.com",
-    "sharklasers.com", "maildrop.cc", "trashmail.com", "trashmail.net",
-    "fakeinbox.com", "mintemail.com", "mytemp.email", "tempail.com",
-    "dispostable.com", "spambog.com", "mailnesia.com", "mailexpire.com",
-    "pokemail.net", "spamgourmet.com", "slipry.net", "mail.tm",
-    "emailondeck.com", "tmpmail.org", "tmpmail.net", "burnermail.io",
-    "mailcatch.com", "jetable.org", "trash-mail.com", "fake-mail.cf",
-})
+DISPOSABLE_EMAIL_DOMAINS = frozenset(
+    {
+        "mailinator.com",
+        "mailinator.net",
+        "tempmail.com",
+        "10minutemail.com",
+        "10minutemail.net",
+        "guerrillamail.com",
+        "guerrillamail.net",
+        "guerrillamailblock.com",
+        "yopmail.com",
+        "yopmail.net",
+        "temp-mail.org",
+        "temp-mail.io",
+        "throwaway.email",
+        "getnada.com",
+        "mohmal.com",
+        "sharklasers.com",
+        "maildrop.cc",
+        "trashmail.com",
+        "trashmail.net",
+        "fakeinbox.com",
+        "mintemail.com",
+        "mytemp.email",
+        "tempail.com",
+        "dispostable.com",
+        "spambog.com",
+        "mailnesia.com",
+        "mailexpire.com",
+        "pokemail.net",
+        "spamgourmet.com",
+        "slipry.net",
+        "mail.tm",
+        "emailondeck.com",
+        "tmpmail.org",
+        "tmpmail.net",
+        "burnermail.io",
+        "mailcatch.com",
+        "jetable.org",
+        "trash-mail.com",
+        "fake-mail.cf",
+    }
+)
 
 
 def _email_domain(identifier: str) -> str:
@@ -1178,9 +1200,7 @@ def is_admin(user_id=None, email=None) -> bool:
         return False
     try:
         conn = _get_db()
-        row = conn.execute(
-            "SELECT role, email_or_phone, is_owner FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        row = conn.execute("SELECT role, email_or_phone, is_owner FROM users WHERE id = ?", (user_id,)).fetchone()
         conn.close()
     except Exception:
         return False
@@ -1218,6 +1238,7 @@ def _ensure_admin(conn, user_id: int, email: str) -> None:
 
 def require_admin(f):
     """Decorator: admin users only."""
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         user_id = _verify_session(_extract_session())
@@ -1226,6 +1247,7 @@ def require_admin(f):
         if not is_admin(user_id=user_id):
             return jsonify({"success": False, "error": "Admin access required"}), 403
         return f(user_id=user_id, *args, **kwargs)
+
     return wrapper
 
 
@@ -1234,11 +1256,7 @@ _jwks_cache: dict = {"keys": [], "fetched_at": None}
 
 def _auth0_jwks(domain: str) -> dict:
     now = utcnow()
-    if (
-        _jwks_cache["keys"]
-        and _jwks_cache["fetched_at"]
-        and (now - _jwks_cache["fetched_at"]) < timedelta(hours=12)
-    ):
+    if _jwks_cache["keys"] and _jwks_cache["fetched_at"] and (now - _jwks_cache["fetched_at"]) < timedelta(hours=12):
         return {"keys": _jwks_cache["keys"]}
     resp = http_requests.get(f"https://{domain}/.well-known/jwks.json", timeout=10)
     resp.raise_for_status()
@@ -1279,15 +1297,15 @@ def auth0_config():
     """Public Auth0 settings for the frontend (client IDs are public by design)."""
     domain = os.environ.get("AUTH0_DOMAIN", "").strip()
     client_id = os.environ.get("AUTH0_CLIENT_ID", "").strip()
-    desktop_client_id = (
-        os.environ.get("AUTH0_DESKTOP_CLIENT_ID", "").strip() or client_id
+    desktop_client_id = os.environ.get("AUTH0_DESKTOP_CLIENT_ID", "").strip() or client_id
+    return jsonify(
+        {
+            "enabled": bool(domain and client_id),
+            "domain": domain,
+            "clientId": client_id,
+            "desktopClientId": desktop_client_id,
+        }
     )
-    return jsonify({
-        "enabled": bool(domain and client_id),
-        "domain": domain,
-        "clientId": client_id,
-        "desktopClientId": desktop_client_id,
-    })
 
 
 @app.route("/api/auth/auth0", methods=["POST"])
@@ -1320,13 +1338,9 @@ def auth_auth0():
     conn = _get_db()
     user = None
     if sub:
-        user = conn.execute(
-            "SELECT id FROM users WHERE auth0_sub = ?", (sub,)
-        ).fetchone()
+        user = conn.execute("SELECT id FROM users WHERE auth0_sub = ?", (sub,)).fetchone()
     if user is None:
-        user = conn.execute(
-            "SELECT id FROM users WHERE email_or_phone = ?", (email,)
-        ).fetchone()
+        user = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (email,)).fetchone()
     if user is None:
         cur = conn.execute(
             "INSERT INTO users (name, email_or_phone, password_hash, "
@@ -1338,8 +1352,7 @@ def auth_auth0():
         user_id = user["id"]
         try:
             conn.execute(
-                "UPDATE users SET auth0_sub = COALESCE(auth0_sub, ?), "
-                "email_verified = 1 WHERE id = ?",
+                "UPDATE users SET auth0_sub = COALESCE(auth0_sub, ?), " "email_verified = 1 WHERE id = ?",
                 (sub or None, user_id),
             )
         except Exception:
@@ -1353,16 +1366,21 @@ def auth_auth0():
     conn.close()
 
     session_id = _create_session(user_id)
-    return jsonify({
-        "success": True,
-        "user_id": user_id,
-        "session_id": session_id,
-        "name": row["name"],
-        "email_or_phone": row["email_or_phone"],
-        "tier": get_user_tier(user_id),
-        "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
-        "is_owner": is_owner(user_id=user_id),
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "user_id": user_id,
+                "session_id": session_id,
+                "name": row["name"],
+                "email_or_phone": row["email_or_phone"],
+                "tier": get_user_tier(user_id),
+                "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
+                "is_owner": is_owner(user_id=user_id),
+            }
+        ),
+        200,
+    )
 
 
 _QR_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -1382,9 +1400,7 @@ def qr_start():
     code = None
     for _ in range(5):
         candidate = _new_qr_code()
-        if not conn.execute(
-            "SELECT 1 FROM qr_tickets WHERE code = ?", (candidate,)
-        ).fetchone():
+        if not conn.execute("SELECT 1 FROM qr_tickets WHERE code = ?", (candidate,)).fetchone():
             code = candidate
             break
     if not code:
@@ -1408,15 +1424,11 @@ def qr_status():
     if not code:
         return jsonify({"success": False, "error": "Missing code"}), 400
     conn = _get_db()
-    t = conn.execute(
-        "SELECT * FROM qr_tickets WHERE code = ?", (code,)
-    ).fetchone()
+    t = conn.execute("SELECT * FROM qr_tickets WHERE code = ?", (code,)).fetchone()
     if t is None:
         conn.close()
         return jsonify({"success": False, "error": "Unknown code"}), 404
-    if t["status"] == "expired" or utcnow() > datetime.strptime(
-        t["expires_at"], "%Y-%m-%d %H:%M:%S"
-    ):
+    if t["status"] == "expired" or utcnow() > datetime.strptime(t["expires_at"], "%Y-%m-%d %H:%M:%S"):
         conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ?", (code,))
         conn.commit()
         conn.close()
@@ -1424,26 +1436,36 @@ def qr_status():
     if t["status"] == "approved":
         if t["session_id"]:
             conn.close()
-            return jsonify({
-                "success": True, "status": "approved", "session_id": t["session_id"],
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "status": "approved",
+                        "session_id": t["session_id"],
+                    }
+                ),
+                200,
+            )
         session_id = _create_session(t["approved_user_id"])
-        conn.execute(
-            "UPDATE qr_tickets SET session_id = ? WHERE code = ?", (session_id, code)
-        )
+        conn.execute("UPDATE qr_tickets SET session_id = ? WHERE code = ?", (session_id, code))
         conn.commit()
         row = conn.execute(
             "SELECT name, email_or_phone FROM users WHERE id = ?",
             (t["approved_user_id"],),
         ).fetchone()
         conn.close()
-        return jsonify({
-            "success": True,
-            "status": "approved",
-            "session_id": session_id,
-            "name": row["name"] if row else "",
-            "email_or_phone": row["email_or_phone"] if row else "",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "success": True,
+                    "status": "approved",
+                    "session_id": session_id,
+                    "name": row["name"] if row else "",
+                    "email_or_phone": row["email_or_phone"] if row else "",
+                }
+            ),
+            200,
+        )
     conn.close()
     return jsonify({"success": True, "status": "pending"}), 200
 
@@ -1458,15 +1480,11 @@ def qr_approve(user_id):
     if not code:
         return jsonify({"success": False, "error": "Missing code"}), 400
     conn = _get_db()
-    t = conn.execute(
-        "SELECT status, expires_at FROM qr_tickets WHERE code = ?", (code,)
-    ).fetchone()
+    t = conn.execute("SELECT status, expires_at FROM qr_tickets WHERE code = ?", (code,)).fetchone()
     if t is None:
         conn.close()
         return jsonify({"success": False, "error": "Unknown code"}), 404
-    if t["status"] != "pending" or utcnow() > datetime.strptime(
-        t["expires_at"], "%Y-%m-%d %H:%M:%S"
-    ):
+    if t["status"] != "pending" or utcnow() > datetime.strptime(t["expires_at"], "%Y-%m-%d %H:%M:%S"):
         conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ?", (code,))
         conn.commit()
         conn.close()
@@ -1486,25 +1504,27 @@ def qr_approve(user_id):
 def admin_users(user_id):
     """Admin-only user listing."""
     conn = _get_db()
-    rows = conn.execute(
-        "SELECT id, name, email_or_phone, tier, role, created_at "
-        "FROM users ORDER BY id"
-    ).fetchall()
+    rows = conn.execute("SELECT id, name, email_or_phone, tier, role, created_at " "FROM users ORDER BY id").fetchall()
     conn.close()
-    return jsonify({
-        "success": True,
-        "users": [
+    return (
+        jsonify(
             {
-                "id": r["id"],
-                "name": r["name"],
-                "email_or_phone": r["email_or_phone"],
-                "tier": r["tier"] or "free",
-                "role": (r["role"] or "user"),
-                "created_at": r["created_at"],
+                "success": True,
+                "users": [
+                    {
+                        "id": r["id"],
+                        "name": r["name"],
+                        "email_or_phone": r["email_or_phone"],
+                        "tier": r["tier"] or "free",
+                        "role": (r["role"] or "user"),
+                        "created_at": r["created_at"],
+                    }
+                    for r in rows
+                ],
             }
-            for r in rows
-        ],
-    }), 200
+        ),
+        200,
+    )
 
 
 @app.route("/api/auth/signup", methods=["POST"])
@@ -1526,25 +1546,38 @@ def auth_signup():
     # Password accounts: Gmail / official-domain mail only, never temp mail.
     # (Auth0 social logins bypass this — the IdP already verified the identity.)
     if "@" not in email_or_phone:
-        return jsonify({
-            "success": False,
-            "error": "Please sign up with your Gmail or company email address.",
-        }), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Please sign up with your Gmail or company email address.",
+                }
+            ),
+            400,
+        )
     if _is_disposable_email(email_or_phone):
-        return jsonify({
-            "success": False,
-            "error": "Temporary email addresses are not allowed.",
-        }), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Temporary email addresses are not allowed.",
+                }
+            ),
+            400,
+        )
     if not _password_domain_allowed(email_or_phone):
-        return jsonify({
-            "success": False,
-            "error": "Password signup is limited to Gmail and official company email.",
-        }), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Password signup is limited to Gmail and official company email.",
+                }
+            ),
+            400,
+        )
 
     conn = _get_db()
-    existing = conn.execute(
-        "SELECT id FROM users WHERE email_or_phone = ?", (email_or_phone,)
-    ).fetchone()
+    existing = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (email_or_phone,)).fetchone()
     if existing:
         conn.close()
         return jsonify({"success": False, "error": "Account already exists"}), 400
@@ -1585,22 +1618,27 @@ def auth_signup():
             "verify_url": email_service.build_link("verify_email", verify_token) if verify_token else "",
         },
     )
-    return jsonify({
-        "success": True,
-        "user_id": user_id,
-        "session_id": session_id,
-        "name": name,
-        "email_or_phone": email_or_phone,
-        "tier": get_user_tier(user_id),
-        "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
-        "is_owner": is_owner(user_id=user_id),
-        "email_verified": False,
-        "verification_email_sent": email_service.email_configured(),
-        "onboarding": {
-            "steps": _onboarding_steps(),
-            "completed": {},
-        },
-    }), 201
+    return (
+        jsonify(
+            {
+                "success": True,
+                "user_id": user_id,
+                "session_id": session_id,
+                "name": name,
+                "email_or_phone": email_or_phone,
+                "tier": get_user_tier(user_id),
+                "role": "owner" if is_owner(user_id=user_id) else ("admin" if is_admin(user_id=user_id) else "user"),
+                "is_owner": is_owner(user_id=user_id),
+                "email_verified": False,
+                "verification_email_sent": email_service.email_configured(),
+                "onboarding": {
+                    "steps": _onboarding_steps(),
+                    "completed": {},
+                },
+            }
+        ),
+        201,
+    )
 
 
 @app.route("/api/auth/login", methods=["POST"])
@@ -1623,10 +1661,15 @@ def auth_login():
     if user is None or not _check_password(user["password_hash"], password):
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
     if _is_disposable_email(email_or_phone):
-        return jsonify({
-            "success": False,
-            "error": "Temporary email addresses are not allowed.",
-        }), 403
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Temporary email addresses are not allowed.",
+                }
+            ),
+            403,
+        )
 
     try:
         admin_conn = _get_db()
@@ -1636,16 +1679,23 @@ def auth_login():
     except Exception:
         pass
     session_id = _create_session(user["id"])
-    return jsonify({
-        "success": True,
-        "user_id": user["id"],
-        "session_id": session_id,
-        "name": user["name"],
-        "email_or_phone": email_or_phone,
-        "tier": get_user_tier(user["id"]),
-        "role": "owner" if is_owner(user_id=user["id"]) else ("admin" if is_admin(user_id=user["id"]) else "user"),
-        "is_owner": is_owner(user_id=user["id"]),
-    }), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "user_id": user["id"],
+                "session_id": session_id,
+                "name": user["name"],
+                "email_or_phone": email_or_phone,
+                "tier": get_user_tier(user["id"]),
+                "role": (
+                    "owner" if is_owner(user_id=user["id"]) else ("admin" if is_admin(user_id=user["id"]) else "user")
+                ),
+                "is_owner": is_owner(user_id=user["id"]),
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/api/auth/verify", methods=["POST"])
@@ -1665,17 +1715,22 @@ def auth_verify():
     ).fetchone()
     conn.close()
 
-    return jsonify({
-        "valid": True,
-        "user_id": user["id"],
-        "name": user["name"],
-        "email_or_phone": user["email_or_phone"],
-        "email_verified": bool(user["email_verified"]),
-        "onboarding": _load_onboarding(user["onboarding"]),
-        # Present when the server rotated the session; also sent as the
-        # X-Session-Rotated header. Clients must persist the new id.
-        "session_id": getattr(g, "rotated_session_id", None) or session_id,
-    }), 200
+    return (
+        jsonify(
+            {
+                "valid": True,
+                "user_id": user["id"],
+                "name": user["name"],
+                "email_or_phone": user["email_or_phone"],
+                "email_verified": bool(user["email_verified"]),
+                "onboarding": _load_onboarding(user["onboarding"]),
+                # Present when the server rotated the session; also sent as the
+                # X-Session-Rotated header. Clients must persist the new id.
+                "session_id": getattr(g, "rotated_session_id", None) or session_id,
+            }
+        ),
+        200,
+    )
 
 
 @app.route("/api/auth/logout", methods=["POST"])
@@ -1730,10 +1785,12 @@ def forgot_password():
         {"reset_url": email_service.build_link("password_reset", token), "expires_in": "1 hour"},
     )
     # Deliberately identical whether or not the address exists.
-    return jsonify({
-        "success": True,
-        "message": "If an account exists, a reset link has been sent.",
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": "If an account exists, a reset link has been sent.",
+        }
+    )
 
 
 @app.route("/api/auth/reset-password", methods=["POST"])
@@ -1749,9 +1806,7 @@ def reset_password():
         return jsonify({"success": False, "error": "Password must be 8-128 characters"}), 400
 
     conn = _get_db()
-    row = conn.execute(
-        "SELECT id, user_id, expires_at, used FROM password_resets WHERE token = ?", (token,)
-    ).fetchone()
+    row = conn.execute("SELECT id, user_id, expires_at, used FROM password_resets WHERE token = ?", (token,)).fetchone()
     if row is None or row["used"]:
         conn.close()
         return jsonify({"success": False, "error": "Invalid or used token"}), 400
@@ -1767,9 +1822,7 @@ def reset_password():
     conn.execute("UPDATE password_resets SET used = 1 WHERE user_id = ?", (row["user_id"],))
     # A password change signs out every device, including the attacker's.
     conn.execute("DELETE FROM sessions WHERE user_id = ?", (row["user_id"],))
-    account = conn.execute(
-        "SELECT name, email_or_phone FROM users WHERE id = ?", (row["user_id"],)
-    ).fetchone()
+    account = conn.execute("SELECT name, email_or_phone FROM users WHERE id = ?", (row["user_id"],)).fetchone()
     conn.commit()
     conn.close()
 
@@ -1782,10 +1835,12 @@ def reset_password():
                 "changed_at": utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             },
         )
-    return jsonify({
-        "success": True,
-        "message": "Password reset successful. Sign in again with your new password.",
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": "Password reset successful. Sign in again with your new password.",
+        }
+    )
 
 
 # ============================================
@@ -1809,10 +1864,15 @@ def send_verification(user_id):
     address = user["email_or_phone"]
     conn.close()
     if "@" not in (address or ""):
-        return jsonify({
-            "success": False,
-            "error": "This account has no email address to verify.",
-        }), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "This account has no email address to verify.",
+                }
+            ),
+            400,
+        )
 
     token = _issue_email_token(user_id, hours=24)
     delivered = email_service.send_transactional(
@@ -1822,18 +1882,25 @@ def send_verification(user_id):
     )
     if delivered is None:
         # Be explicit instead of claiming an email went out that did not.
-        return jsonify({
-            "success": False,
-            "code": "email_delivery_unavailable",
-            "error": (
-                "We could not send the verification email. This deployment has no email "
-                "provider configured — contact support."
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "code": "email_delivery_unavailable",
+                    "error": (
+                        "We could not send the verification email. This deployment has no email "
+                        "provider configured — contact support."
+                    ),
+                }
             ),
-        }), 503
-    return jsonify({
-        "success": True,
-        "message": "Verification email sent. The link expires in 24 hours.",
-    })
+            503,
+        )
+    return jsonify(
+        {
+            "success": True,
+            "message": "Verification email sent. The link expires in 24 hours.",
+        }
+    )
 
 
 @app.route("/api/auth/confirm-email", methods=["POST"])
@@ -1861,11 +1928,13 @@ def confirm_email():
     conn.execute("UPDATE email_verifications SET used = 1 WHERE id = ?", (row["id"],))
     conn.commit()
     conn.close()
-    return jsonify({
-        "success": True,
-        "email_verified": True,
-        "message": "Email verified successfully. Thanks for confirming.",
-    })
+    return jsonify(
+        {
+            "success": True,
+            "email_verified": True,
+            "message": "Email verified successfully. Thanks for confirming.",
+        }
+    )
 
 
 # ============================================
@@ -1892,10 +1961,12 @@ def _load_onboarding(raw: str):
         completed = {}
     steps = []
     for s in _ONBOARDING_STEPS:
-        steps.append({
-            **s,
-            "done": bool(completed.get(s["id"])),
-        })
+        steps.append(
+            {
+                **s,
+                "done": bool(completed.get(s["id"])),
+            }
+        )
     return {"steps": steps, "completed": completed}
 
 
@@ -1921,21 +1992,23 @@ def me():
     role = entitlements["role"]
     is_owner_val = entitlements["is_owner"]
 
-    return jsonify({
-        "success": True,
-        "user": {
-            "id": user["id"],
-            "name": user["name"],
-            "email_or_phone": user["email_or_phone"],
-            "created_at": user["created_at"],
-            "tier": entitlements["tier"],
-            "role": role,
-            "is_owner": is_owner_val,
-            "email_verified": bool(user["email_verified"]) if "email_verified" in user.keys() else False,
-            "entitlements": entitlements,
-            "onboarding": _load_onboarding(user["onboarding"]),
-        },
-    })
+    return jsonify(
+        {
+            "success": True,
+            "user": {
+                "id": user["id"],
+                "name": user["name"],
+                "email_or_phone": user["email_or_phone"],
+                "created_at": user["created_at"],
+                "tier": entitlements["tier"],
+                "role": role,
+                "is_owner": is_owner_val,
+                "email_verified": bool(user["email_verified"]) if "email_verified" in user.keys() else False,
+                "entitlements": entitlements,
+                "onboarding": _load_onboarding(user["onboarding"]),
+            },
+        }
+    )
 
 
 @app.route("/api/onboarding", methods=["GET", "POST"])
@@ -1970,15 +2043,15 @@ def onboarding():
         conn.commit()
 
     conn.close()
-    return jsonify({
-        "success": True,
-        "onboarding": {
-            "steps": [
-                {**s, "done": bool(completed.get(s["id"]))} for s in _ONBOARDING_STEPS
-            ],
-            "completed": completed,
-        },
-    })
+    return jsonify(
+        {
+            "success": True,
+            "onboarding": {
+                "steps": [{**s, "done": bool(completed.get(s["id"]))} for s in _ONBOARDING_STEPS],
+                "completed": completed,
+            },
+        }
+    )
 
 
 # ============================================
@@ -1989,79 +2062,93 @@ def onboarding():
 @app.route("/api/features", methods=["GET"])
 @cache.cached(timeout=3600)
 def get_features():
-    return jsonify({
-        "status": "success",
-        "features": [
-            {"id": 1, "name": "Voice-to-Text", "description": "Accurate speech recognition", "icon": "\U0001f3a4"},
-            {"id": 2, "name": "AI Enhancement", "description": "Smart text improvement", "icon": "\u2728"},
-            {"id": 3, "name": "Wake Word", "description": "Custom activation word", "icon": "\U0001f5e3\ufe0f"},
-            {"id": 4, "name": "Q&A Feature", "description": "Instant answers", "icon": "\U0001f916"},
-            {"id": 5, "name": "Custom Hotkeys", "description": "Personalized shortcuts", "icon": "\u2328\ufe0f"},
-            {"id": 6, "name": "Multi-Language", "description": "Recognises the languages your speech provider supports", "icon": "\U0001f30d"},
-            {"id": 7, "name": "Local History", "description": "Export and delete your transcripts anytime", "icon": "\U0001f4c4"},
-            {"id": 8, "name": "Privacy First", "description": "Your data, your control", "icon": "\U0001f512"},
-        ],
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "features": [
+                {"id": 1, "name": "Voice-to-Text", "description": "Accurate speech recognition", "icon": "\U0001f3a4"},
+                {"id": 2, "name": "AI Enhancement", "description": "Smart text improvement", "icon": "\u2728"},
+                {"id": 3, "name": "Wake Word", "description": "Custom activation word", "icon": "\U0001f5e3\ufe0f"},
+                {"id": 4, "name": "Q&A Feature", "description": "Instant answers", "icon": "\U0001f916"},
+                {"id": 5, "name": "Custom Hotkeys", "description": "Personalized shortcuts", "icon": "\u2328\ufe0f"},
+                {
+                    "id": 6,
+                    "name": "Multi-Language",
+                    "description": "Recognises the languages your speech provider supports",
+                    "icon": "\U0001f30d",
+                },
+                {
+                    "id": 7,
+                    "name": "Local History",
+                    "description": "Export and delete your transcripts anytime",
+                    "icon": "\U0001f4c4",
+                },
+                {"id": 8, "name": "Privacy First", "description": "Your data, your control", "icon": "\U0001f512"},
+            ],
+        }
+    )
 
 
 @app.route("/api/pricing", methods=["GET"])
 @cache.cached(timeout=3600)
 def get_pricing():
-    return jsonify({
-        "status": "success",
-        "tiers": [
-            {
-                "id": "free",
-                "name": "Free",
-                "price": 0,
-                "period": "month",
-                "description": "Perfect for getting started",
-                "features": [
-                    "100 transcriptions/month",
-                    "Languages your speech provider supports",
-                    "Formal enhancement mode",
-                    "Community support",
-                ],
-                "cta": "Get Started",
-                "popular": False,
-            },
-            {
-                "id": "pro",
-                "name": "Pro",
-                "price": 9.99,
-                "period": "month",
-                "description": "For power users",
-                "features": [
-                    "1,000 transcriptions/month",
-                    "Languages your speech provider supports",
-                    "All five enhancement modes",
-                    "Live Q&A feature",
-                    "Custom wake word",
-                    "Priority support",
-                ],
-                "cta": "Start Free Trial",
-                "popular": True,
-            },
-            {
-                "id": "business",
-                "name": "Business",
-                "price": 29.99,
-                "period": "month",
-                "description": "For teams",
-                "features": [
-                    "5,000 transcriptions/month",
-                    "Everything in Pro",
-                    "Team collaboration",
-                    "API access",
-                    "Custom integrations",
-                    "Dedicated support",
-                    "Advanced analytics",
-                ],
-                "cta": "Contact Sales",
-                "popular": False,
-            },
-        ],
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "tiers": [
+                {
+                    "id": "free",
+                    "name": "Free",
+                    "price": 0,
+                    "period": "month",
+                    "description": "Perfect for getting started",
+                    "features": [
+                        "100 transcriptions/month",
+                        "Languages your speech provider supports",
+                        "Formal enhancement mode",
+                        "Community support",
+                    ],
+                    "cta": "Get Started",
+                    "popular": False,
+                },
+                {
+                    "id": "pro",
+                    "name": "Pro",
+                    "price": 9.99,
+                    "period": "month",
+                    "description": "For power users",
+                    "features": [
+                        "1,000 transcriptions/month",
+                        "Languages your speech provider supports",
+                        "All five enhancement modes",
+                        "Live Q&A feature",
+                        "Custom wake word",
+                        "Priority support",
+                    ],
+                    "cta": "Start Free Trial",
+                    "popular": True,
+                },
+                {
+                    "id": "business",
+                    "name": "Business",
+                    "price": 29.99,
+                    "period": "month",
+                    "description": "For teams",
+                    "features": [
+                        "5,000 transcriptions/month",
+                        "Everything in Pro",
+                        "Team collaboration",
+                        "API access",
+                        "Custom integrations",
+                        "Dedicated support",
+                        "Advanced analytics",
+                    ],
+                    "cta": "Contact Sales",
+                    "popular": False,
+                },
+            ],
+        }
+    )
 
 
 @app.route("/api/settings", methods=["GET", "POST"])
@@ -2157,11 +2244,16 @@ def qa_endpoint():
 
     if not has_feature(user_id, "qa"):
         tier = get_user_tier(user_id)
-        return jsonify({
-            "error": "Q&A requires a Pro or Business plan",
-            "current_tier": tier,
-            "upgrade_url": "/pricing",
-        }), 403
+        return (
+            jsonify(
+                {
+                    "error": "Q&A requires a Pro or Business plan",
+                    "current_tier": tier,
+                    "upgrade_url": "/pricing",
+                }
+            ),
+            403,
+        )
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -2172,12 +2264,14 @@ def qa_endpoint():
 
     answer = _call_llm_for_qa(question)
     record_usage(user_id, "qa", count=1)
-    return jsonify({
-        "status": "success",
-        "question": question,
-        "answer": answer,
-        "timestamp": datetime.now().isoformat(),
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "question": question,
+            "answer": answer,
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
 
 def _call_llm_for_qa(question: str) -> str:
@@ -2190,11 +2284,15 @@ def _call_llm_for_qa(question: str) -> str:
     if model_key:
         try:
             import openai
+
             client = openai.OpenAI(api_key=model_key, base_url="https://api.meta.ai/v1")
             resp = client.chat.completions.create(
                 model="muse-spark-1.3",
                 messages=[
-                    {"role": "system", "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support)."},
+                    {
+                        "role": "system",
+                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support).",
+                    },
                     {"role": "user", "content": question},
                 ],
                 max_tokens=512,
@@ -2207,11 +2305,15 @@ def _call_llm_for_qa(question: str) -> str:
     if openrouter_key:
         try:
             import openai
+
             client = openai.OpenAI(api_key=openrouter_key, base_url="https://openrouter.ai/api/v1")
             resp = client.chat.completions.create(
                 model="meta-llama/llama-3.3-70b-instruct:free",
                 messages=[
-                    {"role": "system", "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support)."},
+                    {
+                        "role": "system",
+                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support).",
+                    },
                     {"role": "user", "content": question},
                 ],
                 max_tokens=512,
@@ -2224,11 +2326,15 @@ def _call_llm_for_qa(question: str) -> str:
     if groq_key:
         try:
             import groq
+
             client = groq.Groq(api_key=groq_key)
             resp = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support)."},
+                    {
+                        "role": "system",
+                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support).",
+                    },
                     {"role": "user", "content": question},
                 ],
                 max_tokens=512,
@@ -2241,11 +2347,15 @@ def _call_llm_for_qa(question: str) -> str:
     if openai_key:
         try:
             import openai
+
             client = openai.OpenAI(api_key=openai_key)
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately."},
+                    {
+                        "role": "system",
+                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately.",
+                    },
                     {"role": "user", "content": question},
                 ],
                 max_tokens=512,
@@ -2292,28 +2402,33 @@ def enhance_endpoint():
     tier = get_user_tier(user_id)
     allowed_modes = TIER_ENHANCEMENT_MODES.get(tier, TIER_ENHANCEMENT_MODES[TIER_FREE])
     if mode not in allowed_modes:
-        return jsonify({
-            "error": f"Mode '{mode}' requires a paid plan. Free tier: formal only.",
-            "current_tier": tier,
-            "allowed_modes": list(allowed_modes),
-            "upgrade_url": "/pricing",
-        }), 403
+        return (
+            jsonify(
+                {
+                    "error": f"Mode '{mode}' requires a paid plan. Free tier: formal only.",
+                    "current_tier": tier,
+                    "allowed_modes": list(allowed_modes),
+                    "upgrade_url": "/pricing",
+                }
+            ),
+            403,
+        )
 
     # Without a provider key there is nothing to enhance with. Returning the
     # original text as "success" would look like the feature worked.
     if not _any_llm_key_configured():
-        return jsonify({
-            "error": "Enhancement is unavailable: no AI provider key is configured on this server."
-        }), 503
+        return jsonify({"error": "Enhancement is unavailable: no AI provider key is configured on this server."}), 503
 
     enhanced = _call_llm_for_enhancement(text, mode)
     record_usage(user_id, "enhancement", count=1)
-    return jsonify({
-        "status": "success",
-        "original": text,
-        "enhanced": enhanced,
-        "mode": mode,
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "original": text,
+            "enhanced": enhanced,
+            "mode": mode,
+        }
+    )
 
 
 def _any_llm_key_configured() -> bool:
@@ -2335,6 +2450,7 @@ def _call_llm_for_enhancement(text: str, mode: str) -> str:
     if model_key:
         try:
             import openai
+
             client = openai.OpenAI(api_key=model_key, base_url="https://api.meta.ai/v1")
             resp = client.chat.completions.create(
                 model="muse-spark-1.3",
@@ -2352,6 +2468,7 @@ def _call_llm_for_enhancement(text: str, mode: str) -> str:
     if openrouter_key:
         try:
             import openai
+
             client = openai.OpenAI(api_key=openrouter_key, base_url="https://openrouter.ai/api/v1")
             resp = client.chat.completions.create(
                 model="meta-llama/llama-3.3-70b-instruct:free",
@@ -2369,6 +2486,7 @@ def _call_llm_for_enhancement(text: str, mode: str) -> str:
     if groq_key:
         try:
             import groq
+
             client = groq.Groq(api_key=groq_key)
             resp = client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
@@ -2386,6 +2504,7 @@ def _call_llm_for_enhancement(text: str, mode: str) -> str:
     if openai_key:
         try:
             import openai
+
             client = openai.OpenAI(api_key=openai_key)
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -2420,12 +2539,17 @@ def transcribe_endpoint(user_id):
     """
     allowed, used, limit = check_transcription_quota(user_id)
     if not allowed:
-        return jsonify({
-            "error": f"Monthly transcription limit reached ({limit})",
-            "used": used,
-            "limit": limit,
-            "upgrade_url": "/pricing",
-        }), 403
+        return (
+            jsonify(
+                {
+                    "error": f"Monthly transcription limit reached ({limit})",
+                    "used": used,
+                    "limit": limit,
+                    "upgrade_url": "/pricing",
+                }
+            ),
+            403,
+        )
 
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
@@ -2441,12 +2565,17 @@ def transcribe_endpoint(user_id):
     tier = get_user_tier(user_id)
     allowed_modes = TIER_STT_MODES.get(tier, TIER_STT_MODES[TIER_FREE])
     if mode not in allowed_modes:
-        return jsonify({
-            "error": f"STT mode '{mode}' requires a paid plan",
-            "current_tier": tier,
-            "allowed_modes": list(allowed_modes),
-            "upgrade_url": "/pricing",
-        }), 403
+        return (
+            jsonify(
+                {
+                    "error": f"STT mode '{mode}' requires a paid plan",
+                    "current_tier": tier,
+                    "allowed_modes": list(allowed_modes),
+                    "upgrade_url": "/pricing",
+                }
+            ),
+            403,
+        )
 
     audio_bytes = audio_file.read()
     if len(audio_bytes) > 32 * 1024 * 1024:
@@ -2465,11 +2594,13 @@ def transcribe_endpoint(user_id):
                 files={
                     "request": (
                         None,
-                        json.dumps({
-                            "model": "muse-voice-transcribe-1.0",
-                            "audioEncoding": "WAV",
-                            "mode": mode,
-                        }),
+                        json.dumps(
+                            {
+                                "model": "muse-voice-transcribe-1.0",
+                                "audioEncoding": "WAV",
+                                "mode": mode,
+                            }
+                        ),
                         "application/json",
                     ),
                     "audio": (audio_file.filename, audio_bytes, audio_file.content_type or "audio/wav"),
@@ -2500,12 +2631,14 @@ def transcribe_endpoint(user_id):
                 except Exception as save_err:
                     logger.warning("Failed to record transcription: %s", save_err)
 
-                return jsonify({
-                    "status": "success",
-                    "transcript": transcript.strip(),
-                    "provider": "muse-voice-transcribe",
-                    "mode": mode,
-                })
+                return jsonify(
+                    {
+                        "status": "success",
+                        "transcript": transcript.strip(),
+                        "provider": "muse-voice-transcribe",
+                        "mode": mode,
+                    }
+                )
         except Exception as e:
             logger.warning("Muse Voice Transcribe failed, falling back to Groq: %s", e)
             observability.capture_pipeline_failure("transcribe", e, provider="muse-voice-transcribe")
@@ -2515,6 +2648,7 @@ def transcribe_endpoint(user_id):
     if groq_key:
         try:
             import groq
+
             client = groq.Groq(api_key=groq_key)
             # Reset file pointer for Groq
             audio_file.seek(0)
@@ -2540,12 +2674,14 @@ def transcribe_endpoint(user_id):
                 except Exception as save_err:
                     logger.warning("Failed to record transcription: %s", save_err)
 
-                return jsonify({
-                    "status": "success",
-                    "transcript": transcript.strip(),
-                    "provider": "groq-whisper",
-                    "mode": mode,
-                })
+                return jsonify(
+                    {
+                        "status": "success",
+                        "transcript": transcript.strip(),
+                        "provider": "groq-whisper",
+                        "mode": mode,
+                    }
+                )
         except Exception as e:
             logger.warning("Groq Whisper failed: %s", e)
             observability.capture_pipeline_failure("transcribe", e, provider="groq-whisper")
@@ -2664,15 +2800,12 @@ def stats():
 
     conn = _get_db()
     try:
-        total = conn.execute(
-            f"SELECT COUNT(*) as c FROM transcriptions {scope}", params
-        ).fetchone()["c"]
-        langs = conn.execute(
-            f"SELECT COUNT(DISTINCT language) as c FROM transcriptions {scope}", params
-        ).fetchone()["c"]
+        total = conn.execute(f"SELECT COUNT(*) as c FROM transcriptions {scope}", params).fetchone()["c"]
+        langs = conn.execute(f"SELECT COUNT(DISTINCT language) as c FROM transcriptions {scope}", params).fetchone()[
+            "c"
+        ]
         enhanced = conn.execute(
-            f"SELECT COUNT(*) as c FROM transcriptions {scope}"
-            f"{' AND' if scope else 'WHERE'} enhanced = 1",
+            f"SELECT COUNT(*) as c FROM transcriptions {scope}" f"{' AND' if scope else 'WHERE'} enhanced = 1",
             params,
         ).fetchone()["c"]
 
@@ -2685,9 +2818,7 @@ def stats():
                 f"SELECT text, language FROM transcriptions {scope} AND {month_filter}",
                 params,
             ).fetchall()
-            all_texts = conn.execute(
-                f"SELECT text FROM transcriptions {scope}", params
-            ).fetchall()
+            all_texts = conn.execute(f"SELECT text FROM transcriptions {scope}", params).fetchall()
         else:
             month_rows = []
             all_texts = []
@@ -2702,9 +2833,7 @@ def stats():
                 (*params, day),
             ).fetchone()["n"]
             weekly_counts.append(c)
-            weekly_labels.append(
-                (datetime.now() - timedelta(days=i)).strftime("%a")
-            )
+            weekly_labels.append((datetime.now() - timedelta(days=i)).strftime("%a"))
     finally:
         conn.close()
 
@@ -2714,40 +2843,42 @@ def stats():
     minutes = max(1, round(words / 150)) if words else 0
     total_time = f"{minutes // 60}h {minutes % 60}m" if minutes >= 60 else f"{minutes}m"
 
-    return jsonify({
-        "status": "success",
-        "stats": {
-            "transcriptions": total,
-            "totalTime": total_time,
-            "languages": langs,
-            "enhancements": enhanced,
-            "words": words,
-            "thisMonth": {
-                "transcriptions": len(month_rows),
-                "words": month_words,
-                "languages": month_langs,
+    return jsonify(
+        {
+            "status": "success",
+            "stats": {
+                "transcriptions": total,
+                "totalTime": total_time,
+                "languages": langs,
+                "enhancements": enhanced,
+                "words": words,
+                "thisMonth": {
+                    "transcriptions": len(month_rows),
+                    "words": month_words,
+                    "languages": month_langs,
+                },
+                "weekly": {"labels": weekly_labels, "counts": weekly_counts},
             },
-            "weekly": {"labels": weekly_labels, "counts": weekly_counts},
-        },
-    })
+        }
+    )
 
 
 @app.route("/api/stats/public", methods=["GET"])
 def public_stats():
     conn = _get_db()
     users_count = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
-    transcriptions_count = conn.execute(
-        "SELECT COUNT(*) as c FROM transcriptions"
-    ).fetchone()["c"]
+    transcriptions_count = conn.execute("SELECT COUNT(*) as c FROM transcriptions").fetchone()["c"]
     conn.close()
 
-    return jsonify({
-        "status": "success",
-        "stats": {
-            "total_users": users_count,
-            "total_transcriptions": transcriptions_count,
-        },
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "stats": {
+                "total_users": users_count,
+                "total_transcriptions": transcriptions_count,
+            },
+        }
+    )
 
 
 # ============================================
@@ -2762,38 +2893,36 @@ def subscription():
     if user_id is None:
         # Logged-out visitors see the free plan only, and are told plainly that
         # there is nothing to buy (no payment provider is wired up).
-        return jsonify({
-            "status": "success",
-            "authenticated": False,
-            "subscription": {
-                "plan": "Free",
-                "tier": TIER_FREE,
-                "price": 0,
-                "renewalDate": None,
-                "status": "active",
-                "usage": {
-                    "transcriptions": 0,
-                    "limit": "100/month",
-                    "percentage": 0,
+        return jsonify(
+            {
+                "status": "success",
+                "authenticated": False,
+                "subscription": {
+                    "plan": "Free",
+                    "tier": TIER_FREE,
+                    "price": 0,
+                    "renewalDate": None,
+                    "status": "active",
+                    "usage": {
+                        "transcriptions": 0,
+                        "limit": "100/month",
+                        "percentage": 0,
+                    },
+                    "can_self_upgrade": subscription_service.self_service_upgrade_available(),
+                    "checkout_available": subscription_service.payments_configured(),
                 },
-                "can_self_upgrade": subscription_service.self_service_upgrade_available(),
-                "checkout_available": subscription_service.payments_configured(),
-            },
-        })
+            }
+        )
 
     # The plan is computed and owned by the server; the client only reads it.
-    summary = subscription_service.tier_summary(
-        user_id, get_user_tier, get_monthly_transcription_count
-    )
+    summary = subscription_service.tier_summary(user_id, get_user_tier, get_monthly_transcription_count)
     return jsonify({"status": "success", "subscription": summary})
 
 
 def _count_transcriptions(user_id: int) -> int:
     try:
         conn = _get_db()
-        row = conn.execute(
-            "SELECT COUNT(*) as c FROM transcriptions WHERE user_id = ?", (user_id,)
-        ).fetchone()
+        row = conn.execute("SELECT COUNT(*) as c FROM transcriptions WHERE user_id = ?", (user_id,)).fetchone()
         conn.close()
         return row["c"] if row else 0
     except Exception:
@@ -2817,15 +2946,20 @@ def upgrade_tier(user_id):
     source = subscription_service.resolve_actor_source(actor_is_admin)
 
     if source is None:
-        return jsonify({
-            "success": False,
-            "code": "self_service_tier_change_disabled",
-            "error": (
-                "Plans cannot be changed from the app. Paid plans must be purchased through the "
-                "payment provider."
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "code": "self_service_tier_change_disabled",
+                    "error": (
+                        "Plans cannot be changed from the app. Paid plans must be purchased through the "
+                        "payment provider."
+                    ),
+                    "payments_configured": subscription_service.payments_configured(),
+                }
             ),
-            "payments_configured": subscription_service.payments_configured(),
-        }), 403
+            403,
+        )
 
     conn = _get_db()
     try:
@@ -2845,15 +2979,11 @@ def upgrade_tier(user_id):
     finally:
         conn.close()
 
-    logger.warning(
-        "tier change applied to user %s -> %s via %s", user_id, result.tier, result.source
-    )
+    logger.warning("tier change applied to user %s -> %s via %s", user_id, result.tier, result.source)
     # The plan owner is told, even when an admin made the change.
     try:
         notify_conn = _get_db()
-        account = notify_conn.execute(
-            "SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        account = notify_conn.execute("SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)).fetchone()
         notify_conn.close()
         if account is not None and "@" in (account["email_or_phone"] or ""):
             email_service.send_transactional(
@@ -2912,9 +3042,7 @@ def update_profile(user_id):
         pw_hash = _hash_password(new_password)
         conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user_id))
         # A password change signs out every *other* device and keeps this one.
-        conn.execute(
-            "DELETE FROM sessions WHERE user_id = ? AND id != ?", (user_id, _extract_session())
-        )
+        conn.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user_id, _extract_session()))
         password_changed = True
     else:
         password_changed = False
@@ -2925,9 +3053,7 @@ def update_profile(user_id):
             return jsonify({"success": False, "error": "Name must be 2-80 characters"}), 400
         conn.execute("UPDATE users SET name = ? WHERE id = ?", (name, user_id))
 
-    account = conn.execute(
-        "SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+    account = conn.execute("SELECT name, email_or_phone FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.commit()
     conn.close()
 
@@ -2967,11 +3093,16 @@ def delete_account(user_id):
     if not password:
         return jsonify({"success": False, "error": "Password required"}), 400
     if confirm != "DELETE":
-        return jsonify({
-            "success": False,
-            "error": 'Type DELETE to confirm account deletion.',
-            "code": "confirmation_required",
-        }), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Type DELETE to confirm account deletion.",
+                    "code": "confirmation_required",
+                }
+            ),
+            400,
+        )
 
     conn = _get_db()
     user = conn.execute(
@@ -2983,11 +3114,16 @@ def delete_account(user_id):
     if bool(user["is_owner"]) or is_owner(user_id=user_id):
         # Guard against locking the operator out of their own deployment.
         conn.close()
-        return jsonify({
-            "success": False,
-            "error": "The owner account cannot be deleted from the app.",
-            "code": "owner_protected",
-        }), 403
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "The owner account cannot be deleted from the app.",
+                    "code": "owner_protected",
+                }
+            ),
+            403,
+        )
     if not _check_password(user["password_hash"], password):
         conn.close()
         return jsonify({"success": False, "error": "Incorrect password"}), 401
@@ -3020,10 +3156,15 @@ def contact_submit():
     message = _text(data.get("message"))
 
     if not name or not email or not message:
-        return jsonify({
-            "success": False,
-            "error": "Name, email, and message are required",
-        }), 400
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Name, email, and message are required",
+                }
+            ),
+            400,
+        )
 
     if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         return jsonify({"success": False, "error": "Invalid email address"}), 400
@@ -3070,9 +3211,7 @@ def newsletter_subscribe():
         return jsonify({"success": False, "error": "Invalid email address"}), 400
 
     conn = _get_db()
-    existing = conn.execute(
-        "SELECT id FROM newsletter_subscribers WHERE email = ?", (email,)
-    ).fetchone()
+    existing = conn.execute("SELECT id FROM newsletter_subscribers WHERE email = ?", (email,)).fetchone()
     if existing:
         conn.close()
         return jsonify({"success": True, "message": "You are already subscribed."})
@@ -3107,17 +3246,19 @@ def download_urls():
     windows = (os.environ.get("DOWNLOAD_URL_WINDOWS") or "").strip()
     macos = (os.environ.get("DOWNLOAD_URL_MACOS") or "").strip()
     linux = (os.environ.get("DOWNLOAD_URL_LINUX") or "").strip()
-    return jsonify({
-        "windows": windows or RELEASES_PAGE_URL,
-        "macos": macos or f"{REPOSITORY_URL}#macos-installation",
-        "linux": linux or f"{REPOSITORY_URL}#linux-installation",
-        "available": {
-            "windows": bool(windows),
-            "macos": bool(macos),
-            "linux": bool(linux),
-        },
-        "releases_url": RELEASES_PAGE_URL,
-    })
+    return jsonify(
+        {
+            "windows": windows or RELEASES_PAGE_URL,
+            "macos": macos or f"{REPOSITORY_URL}#macos-installation",
+            "linux": linux or f"{REPOSITORY_URL}#linux-installation",
+            "available": {
+                "windows": bool(windows),
+                "macos": bool(macos),
+                "linux": bool(linux),
+            },
+            "releases_url": RELEASES_PAGE_URL,
+        }
+    )
 
 
 @app.route("/api/download/detect", methods=["GET"])
@@ -3150,8 +3291,7 @@ LEGACY_BLOG_SLUGS = {
 def blog_list():
     conn = _get_db()
     rows = conn.execute(
-        "SELECT slug, title, date, category, excerpt, read_time "
-        "FROM blog_posts ORDER BY date DESC"
+        "SELECT slug, title, date, category, excerpt, read_time " "FROM blog_posts ORDER BY date DESC"
     ).fetchall()
     conn.close()
 
@@ -3174,8 +3314,7 @@ def blog_post(slug):
     slug = LEGACY_BLOG_SLUGS.get(slug, slug)
     conn = _get_db()
     row = conn.execute(
-        "SELECT slug, title, date, category, excerpt, content, read_time "
-        "FROM blog_posts WHERE slug = ?",
+        "SELECT slug, title, date, category, excerpt, content, read_time " "FROM blog_posts WHERE slug = ?",
         (slug,),
     ).fetchone()
     conn.close()
@@ -3183,18 +3322,20 @@ def blog_post(slug):
     if row is None:
         return jsonify({"error": "Post not found"}), 404
 
-    return jsonify({
-        "status": "success",
-        "post": {
-            "slug": row["slug"],
-            "title": row["title"],
-            "date": row["date"],
-            "category": row["category"],
-            "excerpt": row["excerpt"],
-            "content": row["content"],
-            "read_time": row["read_time"],
-        },
-    })
+    return jsonify(
+        {
+            "status": "success",
+            "post": {
+                "slug": row["slug"],
+                "title": row["title"],
+                "date": row["date"],
+                "category": row["category"],
+                "excerpt": row["excerpt"],
+                "content": row["content"],
+                "read_time": row["read_time"],
+            },
+        }
+    )
 
 
 # ============================================
@@ -3214,9 +3355,7 @@ def blog_post_page(slug):
         return redirect(url_for("blog_post_page", slug=replacement), code=301)
     conn = _get_db()
     try:
-        row = conn.execute(
-            "SELECT 1 FROM blog_posts WHERE slug = ?", (slug,)
-        ).fetchone()
+        row = conn.execute("SELECT 1 FROM blog_posts WHERE slug = ?", (slug,)).fetchone()
     finally:
         conn.close()
     if row is None:
@@ -3260,13 +3399,15 @@ def version_json():
     download page's version fetch fails silently and the page falls back to
     stale text.
     """
-    return jsonify({
-        "version": APP_VERSION,
-        "name": APP_NAME,
-        "engine": ENGINE_NAME,
-        "released": "stable",
-        "releases_url": RELEASES_URL,
-    })
+    return jsonify(
+        {
+            "version": APP_VERSION,
+            "name": APP_NAME,
+            "engine": ENGINE_NAME,
+            "released": "stable",
+            "releases_url": RELEASES_URL,
+        }
+    )
 
 
 @app.route("/api/public-config", methods=["GET"])
@@ -3276,24 +3417,28 @@ def public_config():
     Only values that are safe to publish are returned. The Sentry *browser* DSN
     is public by design; the server DSN and every credential stay server-side.
     """
-    return jsonify({
-        "version": APP_VERSION,
-        "environment": subscription_service.environment(),
-        "sentry_dsn": observability.browser_dsn(),
-        "sentry_release": observability.release_name(),
-    })
+    return jsonify(
+        {
+            "version": APP_VERSION,
+            "environment": subscription_service.environment(),
+            "sentry_dsn": observability.browser_dsn(),
+            "sentry_release": observability.release_name(),
+        }
+    )
 
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "version": APP_VERSION,
-        "subscription_policy": subscription_service.describe_policy(),
-        "email": email_service.describe_configuration(),
-        "monitoring": observability.status(),
-    })
+    return jsonify(
+        {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "version": APP_VERSION,
+            "subscription_policy": subscription_service.describe_policy(),
+            "email": email_service.describe_configuration(),
+            "monitoring": observability.status(),
+        }
+    )
 
 
 @app.route("/unsubscribe", methods=["GET", "POST"])
@@ -3318,10 +3463,15 @@ def unsubscribe():
 
     if request.args.get("format") == "json" or request.is_json:
         if masked is None:
-            return jsonify({
-                "success": False,
-                "error": "This unsubscribe link is invalid or has expired.",
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "This unsubscribe link is invalid or has expired.",
+                    }
+                ),
+                400,
+            )
         return jsonify({"success": True, "message": "You will no longer receive product news."})
 
     if masked is None:
@@ -3362,9 +3512,7 @@ def server_error(error):
     caller would hand an attacker the file layout and dependency versions.
     """
     try:
-        observability.capture_exception(
-            getattr(error, "original_exception", None) or error, category="http_500"
-        )
+        observability.capture_exception(getattr(error, "original_exception", None) or error, category="http_500")
     except Exception:
         pass
     return jsonify({"error": "Server error"}), 500

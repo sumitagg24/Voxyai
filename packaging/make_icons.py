@@ -102,9 +102,7 @@ def write_ico(images, destination: Path) -> None:
     body = b""
     for size, data in payloads:
         dimension = 0 if size >= 256 else size
-        entries += struct.pack(
-            "<BBBBHHII", dimension, dimension, 0, 0, 1, 32, len(data), offset
-        )
+        entries += struct.pack("<BBBBHHII", dimension, dimension, 0, 0, 1, 32, len(data), offset)
         body += data
         offset += len(data)
 

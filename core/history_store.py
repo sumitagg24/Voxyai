@@ -195,9 +195,7 @@ class HistoryStore:
         with self._lock:
             try:
                 conn = self._connect()
-                rows = conn.execute(
-                    f"SELECT * FROM history ORDER BY id DESC{limit_clause}"
-                ).fetchall()
+                rows = conn.execute(f"SELECT * FROM history ORDER BY id DESC{limit_clause}").fetchall()
                 conn.close()
             except sqlite3.Error as exc:
                 log_error(f"History read failed: {exc}")
@@ -271,8 +269,7 @@ class HistoryStore:
             try:
                 conn = self._connect()
                 cur = conn.execute(
-                    "DELETE FROM history WHERE id NOT IN "
-                    "(SELECT id FROM history ORDER BY id DESC LIMIT ?)",
+                    "DELETE FROM history WHERE id NOT IN " "(SELECT id FROM history ORDER BY id DESC LIMIT ?)",
                     (self.max_entries,),
                 )
                 removed = cur.rowcount or 0
@@ -305,7 +302,9 @@ class HistoryStore:
                     writer.writerows(entries)
             else:
                 destination.write_text(
-                    json.dumps({"exported": datetime.now().isoformat(), "entries": entries}, indent=2, ensure_ascii=False),
+                    json.dumps(
+                        {"exported": datetime.now().isoformat(), "entries": entries}, indent=2, ensure_ascii=False
+                    ),
                     encoding="utf-8",
                 )
         except OSError as exc:

@@ -81,9 +81,7 @@ class StartupManager:
 
             # Create startup entry in registry
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE
-            )
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
 
             if getattr(sys, "frozen", False):
                 # Frozen exe — launch directly
@@ -111,9 +109,7 @@ class StartupManager:
             import winreg
 
             key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE
-            )
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
 
             try:
                 winreg.DeleteValue(key, self.app_name)

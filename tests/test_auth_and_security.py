@@ -68,9 +68,7 @@ def test_expired_session_is_rejected_and_removed(app_client):
 
     assert client.post("/api/auth/verify", json={"session_id": user.session_id}).get_json()["valid"] is False
     conn = web_app._get_db()
-    remaining = conn.execute(
-        "SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (user.session_id,)
-    ).fetchone()["c"]
+    remaining = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (user.session_id,)).fetchone()["c"]
     conn.close()
     assert remaining == 0
 
@@ -79,9 +77,7 @@ def test_session_rotates_after_a_day(app_client):
     client, web_app = app_client
     user = ApiUser(client, "rotate@gmail.com")
     conn = web_app._get_db()
-    conn.execute(
-        "UPDATE sessions SET created_at = '2020-01-01 00:00:00' WHERE id = ?", (user.session_id,)
-    )
+    conn.execute("UPDATE sessions SET created_at = '2020-01-01 00:00:00' WHERE id = ?", (user.session_id,))
     conn.commit()
     conn.close()
 
@@ -89,9 +85,7 @@ def test_session_rotates_after_a_day(app_client):
     response = client.post("/api/auth/verify", json={"session_id": user.session_id})
     assert response.get_json()["valid"] is True
     conn = web_app._get_db()
-    old = conn.execute(
-        "SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (user.session_id,)
-    ).fetchone()["c"]
+    old = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (user.session_id,)).fetchone()["c"]
     conn.close()
     assert old == 0, "rotated session should no longer exist under the old id"
 
@@ -116,9 +110,7 @@ def test_me_reports_server_side_tier(app_client):
 def test_free_tier_cannot_use_paid_enhancement_modes(app_client):
     client, _ = app_client
     user = ApiUser(client, "freemode@gmail.com")
-    response = client.post(
-        "/api/enhance", json={"text": "hello world", "mode": "creative"}, headers=user.headers
-    )
+    response = client.post("/api/enhance", json={"text": "hello world", "mode": "creative"}, headers=user.headers)
     assert response.status_code == 403
     assert response.get_json()["current_tier"] == "free"
 
@@ -128,9 +120,7 @@ def test_free_tier_quota_is_enforced(app_client):
     user = ApiUser(client, "quota@gmail.com")
     conn = web_app._get_db()
     for _ in range(web_app.FREE_MONTHLY_TRANSCRIPTIONS):
-        conn.execute(
-            "INSERT INTO transcriptions (user_id, text) VALUES (?, ?)", (user.user_id, "x")
-        )
+        conn.execute("INSERT INTO transcriptions (user_id, text) VALUES (?, ?)", (user.user_id, "x"))
     conn.commit()
     conn.close()
 
@@ -246,9 +236,7 @@ def test_rate_limiting_is_configured(app_client):
     client, web_app = app_client
     assert web_app.limiter is not None
     # The signup route is explicitly limited; hammering it must not be unbounded.
-    statuses = [
-        signup(client, f"flood{i}@gmail.com").status_code for i in range(15)
-    ]
+    statuses = [signup(client, f"flood{i}@gmail.com").status_code for i in range(15)]
     assert 429 in statuses, "signup should be rate limited"
 
 
@@ -266,9 +254,7 @@ def test_signup_ignores_client_supplied_privilege_fields(app_client):
         ("privilege@gmail.com",),
     ).fetchone()
     conn.close()
-    assert (row["tier"], row["role"], bool(row["is_owner"]), bool(row["email_verified"])) == (
-        "free", "user", 0, 0
-    )
+    assert (row["tier"], row["role"], bool(row["is_owner"]), bool(row["email_verified"])) == ("free", "user", 0, 0)
 
 
 def test_subscription_upgrade_cannot_be_granted_via_body_or_headers(app_client):
@@ -300,9 +286,7 @@ def test_owner_email_cannot_be_claimed_via_profile_update(app_client):
     payload = client.get("/api/me", headers=user.headers).get_json()["user"]
     assert payload["is_owner"] is False and payload["role"] == "user"
     conn = web_app._get_db()
-    row = conn.execute(
-        "SELECT email_or_phone, is_owner FROM users WHERE id = ?", (user.user_id,)
-    ).fetchone()
+    row = conn.execute("SELECT email_or_phone, is_owner FROM users WHERE id = ?", (user.user_id,)).fetchone()
     conn.close()
     assert row["email_or_phone"] == "wannabe@gmail.com" and not row["is_owner"]
 
@@ -349,8 +333,13 @@ def test_auth0_login_refuses_unverified_email_claims(app_client, monkeypatch):
     monkeypatch.setattr(
         web_app_module,
         "_verify_auth0_token",
-        lambda token: {"iss": "https://tenants.example.invalid/", "aud": "client-id",
-                       "email": "sumitagg24@gmail.com", "email_verified": False, "sub": "attacker|1"},
+        lambda token: {
+            "iss": "https://tenants.example.invalid/",
+            "aud": "client-id",
+            "email": "sumitagg24@gmail.com",
+            "email_verified": False,
+            "sub": "attacker|1",
+        },
     )
     response = client.post("/api/auth/auth0", json={"id_token": "any"})
     assert response.status_code == 403
@@ -358,9 +347,10 @@ def test_auth0_login_refuses_unverified_email_claims(app_client, monkeypatch):
 
     # No account was created or linked for the owner address.
     conn = web_app._get_db()
-    assert conn.execute(
-        "SELECT COUNT(*) AS c FROM users WHERE email_or_phone = 'sumitagg24@gmail.com'"
-    ).fetchone()["c"] == 0
+    assert (
+        conn.execute("SELECT COUNT(*) AS c FROM users WHERE email_or_phone = 'sumitagg24@gmail.com'").fetchone()["c"]
+        == 0
+    )
     conn.close()
 
 
@@ -376,18 +366,15 @@ def test_idor_on_history_endpoints(app_client):
 
     conn = None
     from web import app as web_app_module
+
     conn = web_app_module._get_db()
-    victim_item = conn.execute(
-        "SELECT id FROM transcriptions WHERE user_id = ?", (victim.user_id,)
-    ).fetchone()["id"]
+    victim_item = conn.execute("SELECT id FROM transcriptions WHERE user_id = ?", (victim.user_id,)).fetchone()["id"]
     conn.close()
 
     response = client.delete(f"/api/history/{victim_item}", headers=attacker.headers)
     assert response.status_code == 404
     conn = web_app_module._get_db()
-    assert conn.execute(
-        "SELECT COUNT(*) AS c FROM transcriptions WHERE id = ?", (victim_item,)
-    ).fetchone()["c"] == 1
+    assert conn.execute("SELECT COUNT(*) AS c FROM transcriptions WHERE id = ?", (victim_item,)).fetchone()["c"] == 1
     conn.close()
 
 
@@ -428,9 +415,7 @@ def test_owner_signup_is_not_promoted_until_the_address_is_verified(app_client):
     assert me["entitlements"]["unlimited"] is False
 
     conn = web_app._get_db()
-    row = conn.execute(
-        "SELECT tier, role, is_owner FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+    row = conn.execute("SELECT tier, role, is_owner FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.close()
     assert (row["tier"], row["role"], bool(row["is_owner"])) == ("free", "user", False)
 
@@ -443,9 +428,7 @@ def test_verified_owner_address_is_promoted_on_next_login(app_client):
     assert response.status_code == 201
 
     conn = web_app._get_db()
-    conn.execute(
-        "UPDATE users SET email_verified = 1 WHERE email_or_phone = ?", (owner_email,)
-    )
+    conn.execute("UPDATE users SET email_verified = 1 WHERE email_or_phone = ?", (owner_email,))
     conn.commit()
     conn.close()
 
@@ -472,9 +455,7 @@ def test_unverified_owner_claim_gets_no_owner_privileges_via_any_surface(app_cli
     assert client.get("/api/admin/users", headers=headers).status_code == 403
     # Quota behaviour must stay free-tier (100), not unlimited.
     conn = web_app._get_db()
-    user_id = conn.execute(
-        "SELECT id FROM users WHERE email_or_phone = ?", (owner_email,)
-    ).fetchone()["id"]
+    user_id = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (owner_email,)).fetchone()["id"]
     conn.executemany(
         "INSERT INTO transcriptions (user_id, text, created_at) VALUES (?, ?, datetime('now'))",
         [(user_id, f"entry {i}") for i in range(100)],
@@ -486,13 +467,9 @@ def test_unverified_owner_claim_gets_no_owner_privileges_via_any_surface(app_cli
 
     # A second account must not be able to pull the unverified claim up either.
     other = ApiUser(client, "helper@gmail.com")
-    assert client.post(
-        "/api/subscription/upgrade", json={"tier": "owner"}, headers=other.headers
-    ).status_code == 403
+    assert client.post("/api/subscription/upgrade", json={"tier": "owner"}, headers=other.headers).status_code == 403
 
     conn = web_app._get_db()
-    row = conn.execute(
-        "SELECT tier, is_owner FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+    row = conn.execute("SELECT tier, is_owner FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.close()
     assert row["tier"] == "free" and not row["is_owner"]

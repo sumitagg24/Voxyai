@@ -67,8 +67,7 @@ def _layout(heading: str, paragraphs, button: Tuple[str, str] = None, footer_not
     ]
     for paragraph in paragraphs:
         parts.append(
-            '<p style="font-size:14px;line-height:1.6;margin:0 0 14px 0;color:#3a3a3c">'
-            f"{escape(paragraph)}</p>"
+            '<p style="font-size:14px;line-height:1.6;margin:0 0 14px 0;color:#3a3a3c">' f"{escape(paragraph)}</p>"
         )
     if button:
         label, url = button
@@ -85,14 +84,13 @@ def _layout(heading: str, paragraphs, button: Tuple[str, str] = None, footer_not
         )
     if footer_note:
         parts.append(
-            '<p style="font-size:12px;line-height:1.6;color:#6b6b70;margin:0 0 14px 0">'
-            f"{escape(footer_note)}</p>"
+            '<p style="font-size:12px;line-height:1.6;color:#6b6b70;margin:0 0 14px 0">' f"{escape(footer_note)}</p>"
         )
     parts.append(
         '<hr style="border:none;border-top:1px solid #e3e3e8;margin:22px 0">'
         '<p style="font-size:12px;line-height:1.6;color:#6b6b70;margin:0">'
         f"{escape(BRAND)} &middot; Voice input for your desktop<br>"
-        f'Questions? Reply to this email or write to {escape(SUPPORT_EMAIL)}.<br>'
+        f"Questions? Reply to this email or write to {escape(SUPPORT_EMAIL)}.<br>"
         f'<a href="{WEBSITE}" style="color:#6b6b70">{WEBSITE}</a></p>',
     )
     parts.append("</div></div>")
@@ -129,8 +127,7 @@ def _welcome(c: Dict) -> Tuple[str, str, str]:
     if verify:
         lines += [
             "",
-            "One step left — confirm your email address so we can send you "
-            "password resets and security alerts:",
+            "One step left — confirm your email address so we can send you " "password resets and security alerts:",
             verify[1],
             "",
             "The link expires in 24 hours.",
@@ -155,8 +152,7 @@ def _welcome(c: Dict) -> Tuple[str, str, str]:
         ]
     else:
         paragraphs += [
-            "Voxylis runs on your own keys: download the desktop app and add a Groq or "
-            "OpenAI key in Settings.",
+            "Voxylis runs on your own keys: download the desktop app and add a Groq or " "OpenAI key in Settings.",
         ]
     return subject, "\n".join(lines), _layout(f"Welcome to {BRAND}", paragraphs, verify)
 
@@ -185,8 +181,7 @@ def _verify_email(c: Dict) -> Tuple[str, str, str]:
             greeting,
             f"Confirm this address to finish setting up your {BRAND} account. "
             f"The link expires in {expiry} and can only be used once.",
-            "If you did not create a Voxylis account, you can ignore this email — "
-            "no account will be activated.",
+            "If you did not create a Voxylis account, you can ignore this email — " "no account will be activated.",
         ],
         button,
         "For your security we never ask for your password by email.",
@@ -222,8 +217,7 @@ def _password_reset(c: Dict) -> Tuple[str, str, str]:
             f"The link expires in {expiry} and works only once.",
             "If this was not you, no action is needed — your password has not changed "
             "and no one can use this link without it.",
-            "Signing in elsewhere stays active until you use the link above; using it "
-            "signs out other devices.",
+            "Signing in elsewhere stays active until you use the link above; using it " "signs out other devices.",
         ],
         button,
         "We never include your current password, and we never ask you to send one.",
@@ -242,8 +236,7 @@ def _password_changed(c: Dict) -> Tuple[str, str, str]:
             f"The password for your {BRAND} account was changed ({when}).",
             "All other devices have been signed out.",
             "",
-            f"If this was not you, reset your password immediately at {WEBSITE}/auth "
-            f"and contact {SUPPORT_EMAIL}.",
+            f"If this was not you, reset your password immediately at {WEBSITE}/auth " f"and contact {SUPPORT_EMAIL}.",
             "",
             BRAND,
         ]
@@ -252,8 +245,7 @@ def _password_changed(c: Dict) -> Tuple[str, str, str]:
         "Your password was changed",
         [
             greeting,
-            f"The password for your {BRAND} account was changed ({when}). "
-            "All other devices have been signed out.",
+            f"The password for your {BRAND} account was changed ({when}). " "All other devices have been signed out.",
             "If this was not you, reset your password immediately and contact support.",
             "We will never ask you to confirm a password by email.",
         ],
@@ -274,8 +266,7 @@ def _security_alert(c: Dict) -> Tuple[str, str, str]:
             "",
             f"{what} ({when}).",
             "",
-            "If you did not do this, reset your password and contact "
-            f"{SUPPORT_EMAIL} immediately.",
+            "If you did not do this, reset your password and contact " f"{SUPPORT_EMAIL} immediately.",
             "",
             BRAND,
         ]
@@ -382,8 +373,7 @@ def _usage_limit_reached(c: Dict) -> Tuple[str, str, str]:
             f"You have used all {limit} transcriptions included this month. "
             "Transcription is paused until the allowance resets at the start of "
             "next month.",
-            "Existing history stays available in the desktop app, and nothing has "
-            "been charged.",
+            "Existing history stays available in the desktop app, and nothing has " "been charged.",
         ],
         _button_from(c, "dashboard_url", "View usage"),
         "Paid plans are not purchasable yet, so there is nothing to buy right now.",
@@ -476,8 +466,7 @@ def _product_update(c: Dict) -> Tuple[str, str, str]:
         [
             greeting,
             summary,
-            "This is product news. Account and security messages are sent regardless "
-            "of this preference.",
+            "This is product news. Account and security messages are sent regardless " "of this preference.",
         ],
         _button_from(c, "download_url", "Download the update"),
         f"Unsubscribe any time: {(unsubscribe or ('', ''))[1]}",

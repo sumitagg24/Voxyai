@@ -349,12 +349,19 @@ class HomePage(BasePage):
         self.set_stage(status.get("stage", "idle"))
 
         rows = [
-            ("Speech-to-text provider", bool(providers["groq"]["configured"] or providers["openai"]["configured"]),
-             "Configure in AI Providers",
-             "Settings → AI Providers"),
+            (
+                "Speech-to-text provider",
+                bool(providers["groq"]["configured"] or providers["openai"]["configured"]),
+                "Configure in AI Providers",
+                "Settings → AI Providers",
+            ),
             ("Microphone", True, "Test in Microphone", ""),
-            ("Global shortcut", bool(self.orchestrator.get_config("hotkey")),
-             "Set in Shortcuts", "Settings → Shortcuts"),
+            (
+                "Global shortcut",
+                bool(self.orchestrator.get_config("hotkey")),
+                "Set in Shortcuts",
+                "Settings → Shortcuts",
+            ),
             ("Text insertion", True, "Clipboard, SendInput or typing", ""),
             ("History", True, "Stored locally in SQLite", ""),
         ]
@@ -669,8 +676,10 @@ class VoicePage(BasePage):
             return
         config = self.orchestrator.get_config()
         self._load_devices()
-        for combo, value in ((self.language_combo, config.get("language", "auto")),
-                             (self.secondary_combo, config.get("secondary_language", "auto"))):
+        for combo, value in (
+            (self.language_combo, config.get("language", "auto")),
+            (self.secondary_combo, config.get("secondary_language", "auto")),
+        ):
             index = combo.findData(value)
             combo.setCurrentIndex(index if index >= 0 else 0)
         self.auto_inject.setChecked(bool(config.get("auto_inject", True)))
@@ -687,7 +696,11 @@ class VoicePage(BasePage):
             devices = self.orchestrator.recorder.list_devices()
             for index, device in enumerate(devices):
                 name = device.get("name") if isinstance(device, dict) else getattr(device, "name", "")
-                inputs = device.get("max_input_channels", 0) if isinstance(device, dict) else getattr(device, "max_input_channels", 0)
+                inputs = (
+                    device.get("max_input_channels", 0)
+                    if isinstance(device, dict)
+                    else getattr(device, "max_input_channels", 0)
+                )
                 if name and inputs:
                     self.device_combo.addItem(str(name), index)
         except Exception:
@@ -750,7 +763,9 @@ class AIPage(BasePage):
         self.groq_input = QLineEdit()
         self.groq_input.setEchoMode(QLineEdit.Password)
         self.groq_input.setPlaceholderText("gsk_…  (free at console.groq.com/keys)")
-        keys_layout.addLayout(self._key_row("Groq (free, recommended)", self.groq_status, self.groq_input, "groq_api_key"))
+        keys_layout.addLayout(
+            self._key_row("Groq (free, recommended)", self.groq_status, self.groq_input, "groq_api_key")
+        )
 
         self.openai_status = QLabel("")
         self.openai_input = QLineEdit()
@@ -759,7 +774,9 @@ class AIPage(BasePage):
         keys_layout.addLayout(self._key_row("OpenAI", self.openai_status, self.openai_input, "openai_api_key"))
 
         keys_layout.addWidget(
-            hint("Voxylis prefers Groq because the free tier is fast and generous. OpenAI is used only if Groq is absent.")
+            hint(
+                "Voxylis prefers Groq because the free tier is fast and generous. OpenAI is used only if Groq is absent."
+            )
         )
         self.body.addWidget(keys_box)
 
@@ -842,9 +859,7 @@ class AIPage(BasePage):
         index = self.mode_combo.findData(config.get("enhancement_mode", "formal"))
         self.mode_combo.setCurrentIndex(index if index >= 0 else 0)
         custom = config.get("custom_modes", {}) or {}
-        self.custom_modes_label.setText(
-            f"{len(custom)} custom mode(s) defined" if custom else "No custom modes yet."
-        )
+        self.custom_modes_label.setText(f"{len(custom)} custom mode(s) defined" if custom else "No custom modes yet.")
 
     def _save_key(self, config_key: str, field: QLineEdit) -> None:
         value = field.text().strip()
@@ -913,9 +928,7 @@ class ShortcutsPage(BasePage):
             row.addWidget(QLabel(label))
             row.addWidget(recorder, 1)
             mode_layout.addLayout(row)
-        mode_layout.addWidget(
-            hint("Mode shortcuts record directly in that mode. Leave one empty to remove it.")
-        )
+        mode_layout.addWidget(hint("Mode shortcuts record directly in that mode. Leave one empty to remove it."))
         self.casual_recorder.changed.connect(self._save_mode_hotkeys)
         self.technical_recorder.changed.connect(self._save_mode_hotkeys)
         self.body.addWidget(mode_box)
@@ -1130,15 +1143,13 @@ class PrivacyPage(BasePage):
             QMessageBox.information(
                 self,
                 "Crash reports",
-                "Your choice is saved. This build has no reporting endpoint baked in, so "
-                "nothing will be sent.",
+                "Your choice is saved. This build has no reporting endpoint baked in, so " "nothing will be sent.",
             )
         elif chosen and not started:
             QMessageBox.information(
                 self,
                 "Crash reports",
-                "Your choice is saved, but reports could not start on this system. "
-                f"Reason: {status['reason']}.",
+                "Your choice is saved, but reports could not start on this system. " f"Reason: {status['reason']}.",
             )
 
     def _export(self) -> None:
@@ -1387,9 +1398,7 @@ class DiagnosticsPage(BasePage):
 
     def _show_catalog(self) -> None:
         entries = error_catalog.catalog()
-        message = "\n\n".join(
-            f"{key}\n  {value.summary}\n  → {value.action}" for key, value in sorted(entries.items())
-        )
+        message = "\n\n".join(f"{key}\n  {value.summary}\n  → {value.action}" for key, value in sorted(entries.items()))
         dialog = QMessageBox(QMessageBox.Information, "Error catalogue", message, QMessageBox.Ok, self)
         dialog.exec_()
 
@@ -1414,7 +1423,9 @@ class AboutPage(BasePage):
         name.setObjectName("PageTitle")
         layout.addWidget(name)
 
-        tagline = QLabel("System-wide AI dictation for Windows. Press a shortcut, speak, and the text lands in whatever you are working in.")
+        tagline = QLabel(
+            "System-wide AI dictation for Windows. Press a shortcut, speak, and the text lands in whatever you are working in."
+        )
         tagline.setWordWrap(True)
         layout.addWidget(tagline)
 
@@ -1439,9 +1450,7 @@ class AboutPage(BasePage):
         update_row.addWidget(self.update_status, 1)
         self.download_button = QPushButton("Open download page")
         self.download_button.setObjectName("Link")
-        self.download_button.clicked.connect(
-            lambda: __import__("webbrowser").open(version.RELEASES_URL)
-        )
+        self.download_button.clicked.connect(lambda: __import__("webbrowser").open(version.RELEASES_URL))
         update_row.addWidget(self.download_button)
         layout.addLayout(update_row)
         self.body.addWidget(card_widget)
@@ -1518,9 +1527,7 @@ class AboutPage(BasePage):
                 "The installer was not launched. Download it manually from the release page."
             )
             return
-        self.update_status.setText(
-            "Verified. Voxylis will close so the installer can replace files."
-        )
+        self.update_status.setText("Verified. Voxylis will close so the installer can replace files.")
         if updater.launch_installer(result.path):
             from PyQt5.QtWidgets import QApplication
 

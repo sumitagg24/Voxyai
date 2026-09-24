@@ -185,9 +185,7 @@ class OnboardingWindow(QDialog):
                 "choose to send to your own speech provider.",
             )
         )
-        local_note = QLabel(
-            f"Version {version.__version__} · data folder: {paths.user_data_root()}"
-        )
+        local_note = QLabel(f"Version {version.__version__} · data folder: {paths.user_data_root()}")
         local_note.setObjectName("Mono")
         local_note.setWordWrap(True)
         layout.addWidget(local_note)
@@ -328,9 +326,7 @@ class OnboardingWindow(QDialog):
         self.enhance_checkbox = QCheckBox("Rewrite my text with AI before inserting it")
         layout.addWidget(self.enhance_checkbox)
         layout.addWidget(
-            QLabel(
-                "Enhancement sends the transcript (not the audio) to the provider and can add a moment of latency."
-            )
+            QLabel("Enhancement sends the transcript (not the audio) to the provider and can add a moment of latency.")
         )
         layout.addStretch()
         return widget
@@ -405,11 +401,7 @@ class OnboardingWindow(QDialog):
     def _on_shortcut_changed(self, value: str) -> None:
         self._answered["shortcut"] = value
         self._shortcut_error.setText("")
-        self.hold_hint.setText(
-            f"Voxylis will listen while {format_hotkey(value)} is held down."
-            if value
-            else ""
-        )
+        self.hold_hint.setText(f"Voxylis will listen while {format_hotkey(value)} is held down." if value else "")
 
     def _test_microphone(self) -> None:
         self.mic_button.setEnabled(False)

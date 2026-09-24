@@ -174,8 +174,22 @@ def test_legacy_json_history_is_imported(tmp_path):
     legacy.write_text(
         json.dumps(
             [
-                {"id": 2, "timestamp": "2026-01-02 10:00:00", "raw": "newer", "enhanced": "Newer", "mode": "formal", "language": "English"},
-                {"id": 1, "timestamp": "2026-01-01 10:00:00", "raw": "older", "enhanced": "Older", "mode": "casual", "language": "English"},
+                {
+                    "id": 2,
+                    "timestamp": "2026-01-02 10:00:00",
+                    "raw": "newer",
+                    "enhanced": "Newer",
+                    "mode": "formal",
+                    "language": "English",
+                },
+                {
+                    "id": 1,
+                    "timestamp": "2026-01-01 10:00:00",
+                    "raw": "older",
+                    "enhanced": "Older",
+                    "mode": "casual",
+                    "language": "English",
+                },
             ]
         ),
         encoding="utf-8",

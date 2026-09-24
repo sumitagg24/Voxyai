@@ -136,13 +136,11 @@ def _send_unicode_text(text: str) -> bool:
         send_input = ctypes.windll.user32.SendInput  # type: ignore[attr-defined]
 
         for index in range(0, len(units), 2):
-            code = int.from_bytes(units[index:index + 2], "little")
+            code = int.from_bytes(units[index : index + 2], "little")
             for flags in (KEYEVENTF_UNICODE, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP):
                 item = INPUT(
                     type=INPUT_KEYBOARD,
-                    u=_INPUTUNION(
-                        ki=KEYBDINPUT(wVk=0, wScan=code, dwFlags=flags, time=0, dwExtraInfo=None)
-                    ),
+                    u=_INPUTUNION(ki=KEYBDINPUT(wVk=0, wScan=code, dwFlags=flags, time=0, dwExtraInfo=None)),
                 )
                 if send_input(1, ctypes.byref(item), ctypes.sizeof(INPUT)) != 1:
                     return False
@@ -216,14 +214,8 @@ class TextInjector:
         now = time.time()
         if text == self._last_text and now - self._last_time < self._cooldown:
             log_debug("Duplicate injection suppressed")
-            strategy = (
-                self.last_result.strategy
-                if self.last_result
-                else InjectionStrategy.CLIPBOARD_PASTE
-            )
-            result = InjectionResult(
-                True, strategy, detail="duplicate-suppressed", verified=True
-            )
+            strategy = self.last_result.strategy if self.last_result else InjectionStrategy.CLIPBOARD_PASTE
+            result = InjectionResult(True, strategy, detail="duplicate-suppressed", verified=True)
             self.last_result = result
             return result
 

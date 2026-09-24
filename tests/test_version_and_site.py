@@ -24,9 +24,9 @@ def test_version_is_semantic():
 
 def test_generated_mirrors_match_the_canonical_version():
     version.sync()
-    assert f"FileVersion', u'{version.__version__}'" in (
-        REPO / "packaging" / "version_info.txt"
-    ).read_text(encoding="utf-8")
+    assert f"FileVersion', u'{version.__version__}'" in (REPO / "packaging" / "version_info.txt").read_text(
+        encoding="utf-8"
+    )
     payload = json.loads((STATIC / "version.json").read_text(encoding="utf-8"))
     assert payload["version"] == version.__version__
     # There is exactly one served mirror in the source tree. A second copy is
@@ -243,9 +243,7 @@ def test_pricing_api_makes_no_unverifiable_language_claims(app_client):
     payload = client.get("/api/pricing").get_json()
     for tier in payload["tiers"]:
         for feature in tier["features"]:
-            assert not re.search(
-                r"\d+\s*\+?\s*languages", feature, flags=re.IGNORECASE
-            ), f"{tier['id']}: {feature!r}"
+            assert not re.search(r"\d+\s*\+?\s*languages", feature, flags=re.IGNORECASE), f"{tier['id']}: {feature!r}"
 
 
 def test_pricing_api_matches_enforced_quotas_and_features(app_client):
@@ -264,6 +262,4 @@ def test_pricing_api_matches_enforced_quotas_and_features(app_client):
 
 def test_download_page_does_not_claim_a_language_count():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
-    assert not re.search(
-        r"\d+\+?\s*languages", text, flags=re.IGNORECASE
-    )
+    assert not re.search(r"\d+\+?\s*languages", text, flags=re.IGNORECASE)

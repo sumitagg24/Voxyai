@@ -384,10 +384,7 @@ Original text in {language_name}: {{text}}"""
         is_hinglish = confidence >= 0.3  # At least 30% Hinglish words
 
         if is_hinglish:
-            log_debug(
-                f"Hinglish detected: {hinglish_count}/{total_words} words, "
-                f"confidence={confidence:.2f}"
-            )
+            log_debug(f"Hinglish detected: {hinglish_count}/{total_words} words, " f"confidence={confidence:.2f}")
 
         return is_hinglish, confidence
 

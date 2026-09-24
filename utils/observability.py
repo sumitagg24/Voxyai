@@ -194,10 +194,7 @@ def scrub(value: Any, depth: int = 0) -> Any:
     if depth > _MAX_DEPTH:
         return _REDACTED
     if isinstance(value, dict):
-        return {
-            key: (_REDACTED if _is_sensitive(key) else scrub(item, depth + 1))
-            for key, item in value.items()
-        }
+        return {key: (_REDACTED if _is_sensitive(key) else scrub(item, depth + 1)) for key, item in value.items()}
     if isinstance(value, (list, tuple)):
         return [scrub(item, depth + 1) for item in value]
     if isinstance(value, str):
@@ -285,10 +282,7 @@ def init_observability(config: Optional[dict] = None) -> bool:
         import sentry_sdk
     except ImportError:
         _state["reason"] = "sentry-sdk is not installed"
-        logger.warning(
-            "Crash reports are enabled in Settings but sentry-sdk is missing; "
-            "no reports will be sent."
-        )
+        logger.warning("Crash reports are enabled in Settings but sentry-sdk is missing; " "no reports will be sent.")
         return False
 
     try:

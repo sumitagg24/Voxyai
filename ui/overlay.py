@@ -85,12 +85,7 @@ class FloatingWidget(QWidget):
     # ── window setup ─────────────────────────────────────────────────────
 
     def _setup_window(self) -> None:
-        self.setWindowFlags(
-            Qt.FramelessWindowHint
-            | Qt.WindowStaysOnTopHint
-            | Qt.Tool
-            | Qt.NoDropShadowWindowHint
-        )
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setFixedSize(WIDTH, HEIGHT)
@@ -195,9 +190,7 @@ class FloatingWidget(QWidget):
             max_height = 20
             height = max(2.0, min(max_height, 2.0 + level * max_height))
             x = left + index * (bar_width + gap)
-            painter.drawRoundedRect(
-                QRectF(x, center_y - height / 2, bar_width, height), 1.5, 1.5
-            )
+            painter.drawRoundedRect(QRectF(x, center_y - height / 2, bar_width, height), 1.5, 1.5)
 
     def _draw_meta(self, painter: QPainter, colors: dict) -> None:
         painter.setPen(QColor(colors["text"]))

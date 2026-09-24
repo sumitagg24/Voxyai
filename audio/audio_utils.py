@@ -142,8 +142,7 @@ def has_speech(
     active = sum(
         1
         for i in range(n_frames)
-        if float(np.sqrt(np.mean(flat[i * frame_size : (i + 1) * frame_size] ** 2)))
-        >= rms_threshold
+        if float(np.sqrt(np.mean(flat[i * frame_size : (i + 1) * frame_size] ** 2))) >= rms_threshold
     )
 
     return (active / n_frames) >= min_speech_ratio

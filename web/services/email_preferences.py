@@ -127,9 +127,7 @@ def marketing_opt_in(conn: sqlite3.Connection, user_id: int) -> bool:
     """True only when the user explicitly opted in. Absence of a row is "no"."""
     try:
         ensure_schema(conn)
-        row = conn.execute(
-            "SELECT marketing_opt_in FROM email_preferences WHERE user_id = ?", (user_id,)
-        ).fetchone()
+        row = conn.execute("SELECT marketing_opt_in FROM email_preferences WHERE user_id = ?", (user_id,)).fetchone()
     except sqlite3.Error:  # pragma: no cover - defensive
         return False
     if row is None:
@@ -150,15 +148,13 @@ def opt_out_by_token(conn: sqlite3.Connection, token: str) -> Optional[str]:
     if parsed is None:
         return None
     user_id, email = parsed
-    row = conn.execute(
-        "SELECT email_or_phone FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+    row = conn.execute("SELECT email_or_phone FROM users WHERE id = ?", (user_id,)).fetchone()
     if row is None:
         return None
     current = (row["email_or_phone"] if not hasattr(row, "keys") else row["email_or_phone"]) or ""
     if current.strip().lower() != email.strip().lower():
         return None
     set_marketing_opt_in(conn, user_id, False, source="unsubscribe-link")
-    masked = email[:1] + "***" + email[email.find("@"):] if "@" in email else "***"
+    masked = email[:1] + "***" + email[email.find("@") :] if "@" in email else "***"
     logger.info("email: marketing opt-out applied for %s", masked)
     return masked

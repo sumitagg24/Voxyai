@@ -23,9 +23,14 @@ from dataclasses import dataclass
 from typing import Optional
 
 from web.tier import (
-    TIER_BUSINESS, TIER_FREE, TIER_PRO, TIER_OWNER,
-    FREE_MONTHLY_TRANSCRIPTIONS, PRO_MONTHLY_TRANSCRIPTIONS,
-    BUSINESS_MONTHLY_TRANSCRIPTIONS, OWNER_MONTHLY_TRANSCRIPTIONS,
+    TIER_BUSINESS,
+    TIER_FREE,
+    TIER_PRO,
+    TIER_OWNER,
+    FREE_MONTHLY_TRANSCRIPTIONS,
+    PRO_MONTHLY_TRANSCRIPTIONS,
+    BUSINESS_MONTHLY_TRANSCRIPTIONS,
+    OWNER_MONTHLY_TRANSCRIPTIONS,
 )
 
 VALID_TIERS = (TIER_FREE, TIER_PRO, TIER_BUSINESS, TIER_OWNER)
@@ -110,8 +115,7 @@ def _record(conn, user_id: int, old_tier: str, new_tier: str, source: str, actor
         " created_at TEXT NOT NULL DEFAULT (datetime('now')))"
     )
     conn.execute(
-        "INSERT INTO tier_audit (user_id, old_tier, new_tier, source, actor, note)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO tier_audit (user_id, old_tier, new_tier, source, actor, note)" " VALUES (?, ?, ?, ?, ?, ?)",
         (user_id, old_tier, new_tier, source, actor or "", note or ""),
     )
 
@@ -167,8 +171,7 @@ def apply_tier_change(
             )
         if not dev_tier_change_enabled():
             raise TierChangeDenied(
-                "Changing your own plan is not allowed. Paid plans must be purchased through the "
-                "payment provider.",
+                "Changing your own plan is not allowed. Paid plans must be purchased through the " "payment provider.",
                 status=403,
                 code="self_service_tier_change_disabled",
             )
@@ -187,9 +190,24 @@ def tier_summary(user_id: int, get_tier, count_transcriptions) -> dict:
     """Server-authoritative plan summary. The client only reads this."""
     tier = get_tier(user_id)
     tier_info = {
-        TIER_FREE: {"price": 0, "limit": f"{FREE_MONTHLY_TRANSCRIPTIONS}/month", "name": "Free", "max": FREE_MONTHLY_TRANSCRIPTIONS},
-        TIER_PRO: {"price": 9.99, "limit": f"{PRO_MONTHLY_TRANSCRIPTIONS}/month", "name": "Pro", "max": PRO_MONTHLY_TRANSCRIPTIONS},
-        TIER_BUSINESS: {"price": 29.99, "limit": f"{BUSINESS_MONTHLY_TRANSCRIPTIONS}/month", "name": "Business", "max": BUSINESS_MONTHLY_TRANSCRIPTIONS},
+        TIER_FREE: {
+            "price": 0,
+            "limit": f"{FREE_MONTHLY_TRANSCRIPTIONS}/month",
+            "name": "Free",
+            "max": FREE_MONTHLY_TRANSCRIPTIONS,
+        },
+        TIER_PRO: {
+            "price": 9.99,
+            "limit": f"{PRO_MONTHLY_TRANSCRIPTIONS}/month",
+            "name": "Pro",
+            "max": PRO_MONTHLY_TRANSCRIPTIONS,
+        },
+        TIER_BUSINESS: {
+            "price": 29.99,
+            "limit": f"{BUSINESS_MONTHLY_TRANSCRIPTIONS}/month",
+            "name": "Business",
+            "max": BUSINESS_MONTHLY_TRANSCRIPTIONS,
+        },
         TIER_OWNER: {"price": 0, "limit": "Unlimited", "name": "Owner", "max": OWNER_MONTHLY_TRANSCRIPTIONS},
     }
     info = tier_info.get(tier, tier_info[TIER_FREE])

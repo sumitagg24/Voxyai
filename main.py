@@ -311,9 +311,7 @@ class VoxylisApp:
         if mode in self._mode_actions:
             self._mode_actions[mode].setChecked(True)
         if self._mic_action is not None and self.overlay is not None:
-            self._mic_action.setText(
-                "Microphone: input detected" if self.overlay.mic_healthy else "Microphone: idle"
-            )
+            self._mic_action.setText("Microphone: input detected" if self.overlay.mic_healthy else "Microphone: idle")
 
     def _on_language(self, language_name: str = "", language_code: str = "") -> None:
         if self.overlay:
@@ -477,7 +475,11 @@ class VoxylisApp:
                 providers = self.orchestrator.provider_status()
                 self._provider_action.setText(
                     "Provider: "
-                    + ("Groq" if providers["groq"]["configured"] else ("OpenAI" if providers["openai"]["configured"] else "not configured"))
+                    + (
+                        "Groq"
+                        if providers["groq"]["configured"]
+                        else ("OpenAI" if providers["openai"]["configured"] else "not configured")
+                    )
                 )
 
     def _write_crash_report(self, exc: BaseException) -> None:

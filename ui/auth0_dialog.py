@@ -99,10 +99,7 @@ class Auth0LoginDialog(QDialog):
         self.title.setAlignment(Qt.AlignCenter)
         root.addWidget(self.title)
 
-        self.hint = QLabel(
-            "Enter this code in the browser window\n"
-            "that opens (or open the link manually):"
-        )
+        self.hint = QLabel("Enter this code in the browser window\n" "that opens (or open the link manually):")
         self.hint.setAlignment(Qt.AlignCenter)
         self.hint.setWordWrap(True)
         root.addWidget(self.hint)
@@ -155,9 +152,7 @@ class Auth0LoginDialog(QDialog):
     def _start(self):
         try:
             if not self.client_id:
-                cfg = requests.get(
-                    f"{self.api_base}/api/auth/auth0/config", timeout=10
-                ).json()
+                cfg = requests.get(f"{self.api_base}/api/auth/auth0/config", timeout=10).json()
                 if not cfg.get("enabled"):
                     self.status.setText(
                         "Auth0 is not configured on the server.\n"
@@ -168,9 +163,7 @@ class Auth0LoginDialog(QDialog):
                 self.client_id = cfg.get("desktopClientId") or cfg["clientId"]
             else:
                 # Domain still comes from the backend config.
-                cfg = requests.get(
-                    f"{self.api_base}/api/auth/auth0/config", timeout=10
-                ).json()
+                cfg = requests.get(f"{self.api_base}/api/auth/auth0/config", timeout=10).json()
                 self.domain = cfg.get("domain", "")
             if not self.domain or not self.client_id:
                 self.status.setText("Auth0 is not configured on the server.")
@@ -193,14 +186,10 @@ class Auth0LoginDialog(QDialog):
                 return
 
             self.device_code = data["device_code"]
-            self.verify_uri = data.get("verification_uri_complete") or data.get(
-                "verification_uri", ""
-            )
+            self.verify_uri = data.get("verification_uri_complete") or data.get("verification_uri", "")
             self.code_label.setText(data.get("user_code", "…"))
             if self.verify_uri:
-                self.link_label.setText(
-                    f'<a href="{self.verify_uri}" style="color:#aaaaff;">{self.verify_uri}</a>'
-                )
+                self.link_label.setText(f'<a href="{self.verify_uri}" style="color:#aaaaff;">{self.verify_uri}</a>')
             self.browser_btn.setEnabled(True)
             self.copy_btn.setEnabled(True)
             self.status.setText("Waiting for browser approval…")
@@ -243,10 +232,7 @@ class Auth0LoginDialog(QDialog):
             self.status.setText(f"Backend unreachable: {e}")
             return
         if r.status_code != 200 or not data.get("session_id"):
-            self.status.setText(
-                "Backend rejected the login: "
-                + str(data.get("error") or r.status_code)
-            )
+            self.status.setText("Backend rejected the login: " + str(data.get("error") or r.status_code))
             return
         self.result_data = {
             "email": data.get("email_or_phone", ""),

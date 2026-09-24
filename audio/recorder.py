@@ -84,10 +84,7 @@ class AudioRecorder:
             self.recording_thread.daemon = True
             self.recording_thread.start()
 
-            log_info(
-                f"Audio recording started "
-                f"(auto_stop_on_silence={self.auto_stop_on_silence})"
-            )
+            log_info(f"Audio recording started " f"(auto_stop_on_silence={self.auto_stop_on_silence})")
             return True
 
         except Exception as e:
@@ -135,9 +132,7 @@ class AudioRecorder:
             audio_data = normalize_audio(audio_data)
 
             duration = time.time() - self.start_time if self.start_time else 0.0
-            log_info(
-                f"Recording stopped. Duration: {duration:.2f}s, Samples: {len(audio_data)}"
-            )
+            log_info(f"Recording stopped. Duration: {duration:.2f}s, Samples: {len(audio_data)}")
 
             return audio_data
 
@@ -205,25 +200,17 @@ class AudioRecorder:
                     # Nothing spoken shortly after activation (e.g. wake word
                     # triggered but the user stayed quiet) — stop waiting.
                     no_speech_give_up = (
-                        self.auto_stop_on_silence
-                        and speech_frames < min_speech_frames
-                        and elapsed > 5.0
+                        self.auto_stop_on_silence and speech_frames < min_speech_frames and elapsed > 5.0
                     )
                     if should_auto_stop or no_speech_give_up:
                         if no_speech_give_up:
                             log_info("Auto-stop: no speech detected after activation")
                         else:
-                            log_info(
-                                f"Auto-stop: {silent_frames * frame_seconds:.1f}s of "
-                                f"silence after speech"
-                            )
+                            log_info(f"Auto-stop: {silent_frames * frame_seconds:.1f}s of " f"silence after speech")
                         self.is_recording = False
                         break
 
-                    log_debug(
-                        f"Chunk {frame_count}: level={level:.1f}% "
-                        f"rms={rms:.4f} silent={silent_frames}"
-                    )
+                    log_debug(f"Chunk {frame_count}: level={level:.1f}% " f"rms={rms:.4f} silent={silent_frames}")
 
             # Notify listener (e.g. wake-word mode) that recording ended by itself.
             # Run in a fresh thread: the handler calls stop_recording(), which

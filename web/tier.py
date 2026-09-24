@@ -1,6 +1,7 @@
 """
 Tier constants for Voxylis. DB-aware helpers live in web/app.py to avoid circular imports.
 """
+
 from __future__ import annotations
 
 import os
@@ -26,18 +27,18 @@ TIER_QUOTAS = {
 # Feature access map: tier -> set of allowed features
 TIER_FEATURES = {
     TIER_FREE: {
-        "transcription",       # basic (PUSH_TO_TALK only)
-        "enhancement_basic",   # formal mode only
+        "transcription",  # basic (PUSH_TO_TALK only)
+        "enhancement_basic",  # formal mode only
         "history",
         "settings",
         "hotkeys",
     },
     TIER_PRO: {
-        "transcription",       # all modes (PUSH_TO_TALK, ENDPOINTING, DIARIZATION)
+        "transcription",  # all modes (PUSH_TO_TALK, ENDPOINTING, DIARIZATION)
         "enhancement_basic",
-        "enhancement_all",     # all 5 modes
-        "qa",                  # Q&A feature
-        "advanced_stt",        # ENDPOINTING, DIARIZATION modes
+        "enhancement_all",  # all 5 modes
+        "qa",  # Q&A feature
+        "advanced_stt",  # ENDPOINTING, DIARIZATION modes
         "wake_word",
         "history",
         "settings",

@@ -175,7 +175,4 @@ def stylesheet(theme: str = "dark") -> str:
 def stat_card(title: str) -> str:
     """Stylesheet snippet for a small metric card."""
     c = palette()
-    return (
-        f"#Card {{ background: {c['bg_elevated']}; border: 1px solid {c['border']};"
-        f" border-radius: 12px; }}"
-    )
+    return f"#Card {{ background: {c['bg_elevated']}; border: 1px solid {c['border']};" f" border-radius: 12px; }}"

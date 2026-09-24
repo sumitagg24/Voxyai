@@ -38,7 +38,8 @@ class CustomModesWindow(QMainWindow):
     def _init_ui(self):
         self.setWindowTitle("Voxylis — Custom Enhancement Modes")
         self.setGeometry(150, 150, 720, 520)
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QMainWindow, QWidget { background: #1e1e1e; color: #e0e0e0; }
             QListWidget { background: #252525; border: 1px solid #444;
                           border-radius: 4px; font-size: 12px; }
@@ -56,7 +57,8 @@ class CustomModesWindow(QMainWindow):
             QPushButton#save:hover { background: #3a7c3a; }
             QLabel#heading { font-size: 14px; font-weight: bold; color: #aaaaff; }
             QLabel#hint { font-size: 11px; color: #888; }
-        """)
+        """
+        )
 
         central = QWidget()
         self.setCentralWidget(central)

@@ -42,6 +42,7 @@ class CommandProcessor:
     def __init__(self):
         try:
             from utils.helpers import get_base_dir
+
             base = get_base_dir()
         except ImportError:
             base = Path(".")
@@ -74,9 +75,7 @@ class CommandProcessor:
         Returns: (success, result_message)
         """
         text = text.strip()
-        self.command_history.append(
-            {"command": text, "timestamp": datetime.now().isoformat()}
-        )
+        self.command_history.append({"command": text, "timestamp": datetime.now().isoformat()})
 
         # Keep history size manageable
         if len(self.command_history) > self.max_history:
@@ -229,9 +228,7 @@ class CommandProcessor:
                 process = subprocess.Popen(["clip"], stdin=subprocess.PIPE)
                 process.communicate(email_draft.encode("utf-8"))
             else:  # macOS/Linux
-                process = subprocess.Popen(
-                    ["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE
-                )
+                process = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
                 process.communicate(email_draft.encode("utf-8"))
 
             return (
@@ -367,9 +364,7 @@ Best regards,
     def _retrieve_snippet(self, text: str) -> Tuple[bool, str]:
         """Retrieve a snippet"""
         # Extract snippet name
-        match = re.search(
-            r"(?:get|retrieve|use)\s+(?:snippet\s+)?(\w+)", text, re.IGNORECASE
-        )
+        match = re.search(r"(?:get|retrieve|use)\s+(?:snippet\s+)?(\w+)", text, re.IGNORECASE)
         if not match:
             return False, "Snippet not found"
 

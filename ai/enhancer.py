@@ -79,9 +79,7 @@ class TextEnhancer:
             except Exception as e:  # noqa: BLE001 - try next candidate
                 last_error = e
                 log_warning(f"Model '{model}' failed: {e}")
-        raise RuntimeError(
-            f"All models failed for backend {self.backend}: {last_error}"
-        )
+        raise RuntimeError(f"All models failed for backend {self.backend}: {last_error}")
 
     def set_custom_modes(self, custom_modes: dict):
         """Update custom enhancement modes."""
@@ -99,6 +97,7 @@ class TextEnhancer:
             # Tier-based mode enforcement
             if settings:
                 from config.constants import get_user_tier, TIER_ENHANCEMENT_MODES
+
                 tier = get_user_tier(settings)
                 allowed = TIER_ENHANCEMENT_MODES.get(tier, TIER_ENHANCEMENT_MODES["free"])
                 if mode not in allowed:
@@ -110,16 +109,12 @@ class TextEnhancer:
             lang_name = language_detector.get_language_name(lang_code)
 
             log_debug(
-                f"Language detected: {lang_name} ({lang_code}), "
-                f"script: {script}, confidence: {confidence:.2f}"
+                f"Language detected: {lang_name} ({lang_code}), " f"script: {script}, confidence: {confidence:.2f}"
             )
 
             # Check if enhancement is appropriate for this language
             if not language_detector.should_enhance(lang_code):
-                log_info(
-                    f"Language {lang_name} not well supported for enhancement, "
-                    "returning original text"
-                )
+                log_info(f"Language {lang_name} not well supported for enhancement, " "returning original text")
                 return text
 
             # Get base prompt
@@ -143,14 +138,10 @@ Original text in {lang_name}: {text}"""
             else:
                 prompt = base_prompt
 
-            log_debug(
-                f"Enhancing {lang_name} text with mode '{mode}' via {self.backend}"
-            )
+            log_debug(f"Enhancing {lang_name} text with mode '{mode}' via {self.backend}")
 
             result = self._chat(prompt, max_tokens=1000)
-            log_info(
-                f"Enhancement OK ({self.backend}): {len(result)} chars in {lang_name}"
-            )
+            log_info(f"Enhancement OK ({self.backend}): {len(result)} chars in {lang_name}")
             return result
 
         except Exception as e:
@@ -206,9 +197,7 @@ Source text ({source_lang_name}):
 Translation ({target_lang_name}):"""
 
             result = self._chat(prompt, max_tokens=2000)
-            log_info(
-                f"Translation from {source_lang_name} to {target_lang_name}: {len(result)} chars"
-            )
+            log_info(f"Translation from {source_lang_name} to {target_lang_name}: {len(result)} chars")
             return result
         except Exception as e:
             log_error(f"Translation error: {e}", exc_info=True)

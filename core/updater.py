@@ -121,9 +121,7 @@ class Updater:
                 log_warning("Update manifest is malformed")
                 return None
             try:
-                (paths.cache_dir() / MANIFEST_CACHE).write_text(
-                    json.dumps(manifest), encoding="utf-8"
-                )
+                (paths.cache_dir() / MANIFEST_CACHE).write_text(json.dumps(manifest), encoding="utf-8")
             except OSError:
                 pass
             return manifest

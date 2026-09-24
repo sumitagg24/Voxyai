@@ -46,9 +46,7 @@ def _audit_rows(web_app) -> int:
 
 def test_self_upgrade_is_refused_by_default(user):
     """The headline bug: a normal user must not be able to buy themselves Pro."""
-    response = user.client.post(
-        "/api/subscription/upgrade", json={"tier": "business"}, headers=user.headers
-    )
+    response = user.client.post("/api/subscription/upgrade", json={"tier": "business"}, headers=user.headers)
     assert response.status_code == 403
     payload = response.get_json()
     assert payload["code"] == "self_service_tier_change_disabled"
@@ -66,9 +64,7 @@ def test_dev_override_must_be_explicit(app_client, monkeypatch, isolated_home):
     # A plain development environment is NOT enough: the flag is required.
     monkeypatch.delenv("ALLOW_DEV_TIER_CHANGE", raising=False)
     user = ApiUser(client, "dev@gmail.com")
-    response = client.post(
-        "/api/subscription/upgrade", json={"tier": "pro"}, headers=user.headers
-    )
+    response = client.post("/api/subscription/upgrade", json={"tier": "pro"}, headers=user.headers)
     assert response.status_code == 403
 
 
@@ -77,9 +73,7 @@ def test_dev_override_works_and_is_audited(app_client, monkeypatch, isolated_hom
     monkeypatch.setenv("ALLOW_DEV_TIER_CHANGE", "1")
     user = ApiUser(client, "dev2@gmail.com")
     before = _audit_rows(web_app)
-    response = client.post(
-        "/api/subscription/upgrade", json={"tier": "pro"}, headers=user.headers
-    )
+    response = client.post("/api/subscription/upgrade", json={"tier": "pro"}, headers=user.headers)
     assert response.status_code == 200
     assert response.get_json()["tier"] == "pro"
     assert _tier(web_app, user.user_id) == "pro"
@@ -93,18 +87,14 @@ def test_dev_override_is_ignored_in_production(app_client, monkeypatch, isolated
     user = ApiUser(client, "dev3@gmail.com")
     web_app = _reload(monkeypatch)  # re-evaluate policy with production env
 
-    response = client.post(
-        "/api/subscription/upgrade", json={"tier": "business"}, headers=user.headers
-    )
+    response = client.post("/api/subscription/upgrade", json={"tier": "business"}, headers=user.headers)
     assert response.status_code == 403
     assert _tier(web_app, user.user_id) == "free"
 
 
 def test_admin_can_change_a_tier(admin_user, app_client):
     client, web_app = app_client
-    response = client.post(
-        "/api/subscription/upgrade", json={"tier": "business"}, headers=admin_user.headers
-    )
+    response = client.post("/api/subscription/upgrade", json={"tier": "business"}, headers=admin_user.headers)
     assert response.status_code == 200
     assert _tier(web_app, admin_user.user_id) == "business"
 
@@ -153,9 +143,7 @@ def test_arbitrary_source_is_rejected(app_client):
     _, web_app = app_client
     conn = web_app._get_db()
     with pytest.raises(web_app.subscription_service.TierChangeDenied) as excinfo:
-        web_app.subscription_service.apply_tier_change(
-            conn, user_id=1, new_tier="pro", source="client"
-        )
+        web_app.subscription_service.apply_tier_change(conn, user_id=1, new_tier="pro", source="client")
     conn.close()
     assert excinfo.value.code == "invalid_source"
 
@@ -175,9 +163,9 @@ def test_owner_account_has_unlimited_entitlements(app_client):
     owner = ApiUser(client, "sumitagg24@gmail.com")
     # An unverified claim is an ordinary free user: no privileges yet.
     conn = web_app._get_db()
-    verified = conn.execute(
-        "SELECT email_verified FROM users WHERE id = ?", (owner.user_id,)
-    ).fetchone()["email_verified"]
+    verified = conn.execute("SELECT email_verified FROM users WHERE id = ?", (owner.user_id,)).fetchone()[
+        "email_verified"
+    ]
     conn.close()
     if not verified:
         conn = web_app._get_db()

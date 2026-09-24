@@ -13,6 +13,7 @@ from pathlib import Path
 def _get_config_dir() -> Path:
     try:
         from utils.helpers import get_base_dir
+
         return Path(get_base_dir()) / "config"
     except Exception:
         return Path("config")
@@ -116,9 +117,7 @@ class UserManager:
         self.save_users(users)
 
         # Create session
-        session_id = hashlib.sha256(
-            f"{email_or_phone}{datetime.now().isoformat()}".encode()
-        ).hexdigest()
+        session_id = hashlib.sha256(f"{email_or_phone}{datetime.now().isoformat()}".encode()).hexdigest()
         sessions = self.load_sessions()
         sessions[session_id] = {
             "user": email_or_phone,
@@ -145,15 +144,17 @@ class UserManager:
             return {"success": False, "error": "Missing email or session"}
         users = self.load_users()
         user = users.get(email, {})
-        user.update({
-            "name": name or user.get("name") or email.split("@")[0],
-            "last_login": datetime.now().isoformat(),
-            "tier": tier or user.get("tier", "free"),
-            "role": role or user.get("role", "user"),
-            "auth_provider": "auth0",
-            "created_at": user.get("created_at") or datetime.now().isoformat(),
-            "stats": user.get("stats", {"transcriptions": 0, "total_time": 0, "languages": []}),
-        })
+        user.update(
+            {
+                "name": name or user.get("name") or email.split("@")[0],
+                "last_login": datetime.now().isoformat(),
+                "tier": tier or user.get("tier", "free"),
+                "role": role or user.get("role", "user"),
+                "auth_provider": "auth0",
+                "created_at": user.get("created_at") or datetime.now().isoformat(),
+                "stats": user.get("stats", {"transcriptions": 0, "total_time": 0, "languages": []}),
+            }
+        )
         users[email] = user
         self.save_users(users)
 

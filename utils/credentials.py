@@ -140,7 +140,7 @@ class DpapiBackend(Backend):
         raw = self.path.read_bytes()
         if not raw.startswith(_DPAPI_PREFIX):
             return None
-        return self._crypt(raw[len(_DPAPI_PREFIX):], unprotect=True)
+        return self._crypt(raw[len(_DPAPI_PREFIX) :], unprotect=True)
 
     def store(self, payload: bytes) -> bool:
         blob = _DPAPI_PREFIX + self._crypt(payload, unprotect=False)
@@ -242,7 +242,7 @@ class ObfuscatedBackend(Backend):
         raw = self.path.read_bytes()
         if not raw.startswith(_OBF_PREFIX):
             return None
-        return self._xor(base64.b64decode(raw[len(_OBF_PREFIX):]))
+        return self._xor(base64.b64decode(raw[len(_OBF_PREFIX) :]))
 
     def store(self, payload: bytes) -> bool:
         log_warning(

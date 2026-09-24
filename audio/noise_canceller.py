@@ -23,13 +23,9 @@ FRAME_SIZE = 512  # FFT frame size (samples)
 HOP_SIZE = 256  # overlap-add hop (50 % overlap)
 N_CALIB_FRAMES = 20  # frames used to estimate noise floor (~0.3 s)
 OVER_SUBTRACT = 1.8  # how aggressively to subtract noise
-SPECTRAL_FLOOR = (
-    0.005  # minimum gain after subtraction (balanced to avoid silence/artifacts)
-)
+SPECTRAL_FLOOR = 0.005  # minimum gain after subtraction (balanced to avoid silence/artifacts)
 WIENER_ALPHA = 0.96  # smoothing factor for noise estimate update
-POST_GATE_RMS = (
-    0.004  # frames below this RMS after processing → zero (balanced sensitivity)
-)
+POST_GATE_RMS = 0.004  # frames below this RMS after processing → zero (balanced sensitivity)
 
 
 class NoiseCanceller:
@@ -70,10 +66,7 @@ class NoiseCanceller:
         # Step 2 — frame-by-frame spectral subtraction + Wiener filter
         clean = self._process_frames(float_audio)
 
-        log_debug(
-            f"ANC: input_rms={self._rms(float_audio):.4f} "
-            f"output_rms={self._rms(clean):.4f}"
-        )
+        log_debug(f"ANC: input_rms={self._rms(float_audio):.4f} " f"output_rms={self._rms(clean):.4f}")
         return self._to_int16(clean)
 
     def reset(self):
@@ -99,10 +92,7 @@ class NoiseCanceller:
         if psds:
             self._noise_psd = np.mean(psds, axis=0)
             self._calibrated = True
-            log_debug(
-                f"ANC calibrated from {len(psds)} frames, "
-                f"noise_rms≈{np.sqrt(np.mean(self._noise_psd)):.5f}"
-            )
+            log_debug(f"ANC calibrated from {len(psds)} frames, " f"noise_rms≈{np.sqrt(np.mean(self._noise_psd)):.5f}")
 
     # ── frame processing ──────────────────────────────────────────────────
 
@@ -122,9 +112,7 @@ class NoiseCanceller:
             psd = mag**2
 
             # ── spectral subtraction ──────────────────────────────────────
-            clean_psd = np.maximum(
-                psd - OVER_SUBTRACT * noise_psd, SPECTRAL_FLOOR * psd
-            )
+            clean_psd = np.maximum(psd - OVER_SUBTRACT * noise_psd, SPECTRAL_FLOOR * psd)
             clean_mag = np.sqrt(clean_psd)
 
             # ── Wiener gain ───────────────────────────────────────────────

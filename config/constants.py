@@ -91,12 +91,26 @@ TIER_BUSINESS = "business"
 TIER_FEATURES = {
     TIER_FREE: {"transcription", "enhancement_basic", "history", "settings"},
     TIER_PRO: {
-        "transcription", "enhancement_basic", "enhancement_all", "qa",
-        "advanced_stt", "wake_word", "history", "settings",
+        "transcription",
+        "enhancement_basic",
+        "enhancement_all",
+        "qa",
+        "advanced_stt",
+        "wake_word",
+        "history",
+        "settings",
     },
     TIER_BUSINESS: {
-        "transcription", "enhancement_basic", "enhancement_all", "qa",
-        "advanced_stt", "wake_word", "api_access", "team_features", "history", "settings",
+        "transcription",
+        "enhancement_basic",
+        "enhancement_all",
+        "qa",
+        "advanced_stt",
+        "wake_word",
+        "api_access",
+        "team_features",
+        "history",
+        "settings",
     },
 }
 

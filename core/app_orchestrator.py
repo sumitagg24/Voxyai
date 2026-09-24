@@ -293,9 +293,7 @@ class AppOrchestrator:
                 return False
             started = self.hotkey_listener.start_listening()
             if not started and not self.config.get("global_shortcuts_disabled", False):
-                self._emit_error(
-                    friendly_error("hotkey_listener_failed", detail="start_listening() returned False")
-                )
+                self._emit_error(friendly_error("hotkey_listener_failed", detail="start_listening() returned False"))
                 # Not fatal: the tray menu and main window still work.
             self.recorder.on_audio_chunk = lambda level: event_manager.emit(Events.AUDIO_LEVEL_CHANGED, level)
             self.is_running = True
@@ -454,9 +452,7 @@ class AppOrchestrator:
                 return
             self._is_processing = True
         self._cancel_processing.clear()
-        threading.Thread(
-            target=self._process_audio, args=(audio_data, duration_ms), daemon=True
-        ).start()
+        threading.Thread(target=self._process_audio, args=(audio_data, duration_ms), daemon=True).start()
 
     def _retry(self, fn: Callable, attempts: int = MAX_ATTEMPTS):
         """Retry a provider call with exponential backoff.
@@ -717,11 +713,7 @@ class AppOrchestrator:
                     return False
                 value = canonical
             if key == "mode_hotkeys":
-                mapping = {
-                    str(k).strip().lower(): str(v)
-                    for k, v in (value or {}).items()
-                    if str(k).strip()
-                }
+                mapping = {str(k).strip().lower(): str(v) for k, v in (value or {}).items() if str(k).strip()}
                 # find_conflicts reports reserved combinations and duplicates
                 # inside the mapping; the main shortcut is checked separately
                 # because it is not part of this dict.
