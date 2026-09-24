@@ -6,8 +6,16 @@ services:
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      # Full LLM fallback chain: Muse → OpenRouter → Groq → OpenAI.
+      - MODEL_API_KEY=${MODEL_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Error monitoring and account plumbing (see docs/DEPLOYMENT.md).
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - OWNER_EMAILS=${OWNER_EMAILS:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - FRONTEND_URL=${FRONTEND_URL:-}
     volumes:
       - web-data:/app/web/data
     restart: unless-stopped

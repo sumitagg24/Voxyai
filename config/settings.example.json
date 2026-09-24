@@ -24,6 +24,9 @@
   "startup_on_boot": false,
   "log_level": "INFO",
 
+  "_api_base_note": "Backend the desktop app talks to for sign-in (Auth0 device flow) and plan checks. Empty = the local dashboard server (127.0.0.1:5000). Set to e.g. https://api.voxylis.com for a hosted backend.",
+  "api_base": "",
+
   "history_enabled": true,
   "history_retention_days": 0,
   "max_history": 500,
