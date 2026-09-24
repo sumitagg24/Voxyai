@@ -79,7 +79,8 @@ jobs:
             "flask>=3.0.0" "flask-cors>=4.0.0" "flask-caching>=2.1.0" \
             "flask-limiter>=3.5.0" "werkzeug>=3.0.0" "requests>=2.31.0" \
             "python-dotenv>=1.0.0" "pytest>=7.4.3" "pytest-cov>=4.1.0" \
-            "numpy>=1.24.3" "sentry-sdk>=2.0.0" "sounddevice>=0.5.0" "scipy>=1.11.4"
+            "numpy>=1.24.3" "sentry-sdk>=2.0.0" "sounddevice>=0.5.0" "scipy>=1.11.4" \
+            "pynput>=1.7.6" "keyboard>=0.13.5" "pyperclip>=1.8.2" "keyring>=24.3.0"
       - name: Run test suite
         run: pytest tests -v --cov=web --cov=core --cov=utils --cov-report=xml
       - name: Flask app imports
