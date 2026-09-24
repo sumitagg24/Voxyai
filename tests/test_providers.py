@@ -30,8 +30,6 @@ from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
-
 from tests.conftest import ApiUser
 
 REPO = Path(__file__).resolve().parent.parent
@@ -66,12 +64,17 @@ def _fake_module(name: str, **attrs):
 class _RecordingClient:
     """Stands in for openai.OpenAI / groq.Groq and records constructor args."""
 
-    calls: list = []
+    calls: list = []          # constructor kwargs (api_key, base_url)
+    create_calls: list = []   # chat.completions.create kwargs (model, messages)
     text: str = "stub answer"
-    error: Exception | None = None
+    error: Exception | None = None  # fail every client when set
+    fail_keys: tuple = ()           # ... or only clients built with these api keys
 
     def __init__(self, **kwargs):
         type(self).calls.append(kwargs)
+        self._fail = type(self).error is not None or (
+            kwargs.get("api_key", "") in type(self).fail_keys
+        )
         self.chat = SimpleNamespace(
             completions=SimpleNamespace(create=self._create)
         )
@@ -80,17 +83,21 @@ class _RecordingClient:
         )
 
     def _create(self, **kwargs):
-        if type(self).error is not None:
-            raise type(self).error
+        type(self).create_calls.append(kwargs)
+        if self._fail:
+            raise type(self).error or RuntimeError("simulated provider failure")
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=type(self).text))]
         )
 
     @classmethod
-    def reset(cls, text: str = "stub answer", error: Exception | None = None):
+    def reset(cls, text: str = "stub answer", error: Exception | None = None,
+              fail_keys: tuple = ()):
         cls.calls = []
+        cls.create_calls = []
         cls.text = text
         cls.error = error
+        cls.fail_keys = fail_keys
 
 
 def _make_pro(client, web_app, identifier: str) -> ApiUser:
@@ -155,10 +162,9 @@ def test_qa_uses_muse_first_with_its_documented_model(app_client, monkeypatch):
 
     assert response.status_code == 200
     assert response.get_json()["answer"] == "muse answer"
-    call = _RecordingClient.calls[0]
-    assert call["api_key"] == "mk_test_primary"
-    assert call["base_url"] == "https://api.meta.ai/v1"
-    assert call["model"] == "muse-spark-1.3"
+    assert _RecordingClient.calls[0]["api_key"] == "mk_test_primary"
+    assert _RecordingClient.calls[0]["base_url"] == "https://api.meta.ai/v1"
+    assert _RecordingClient.create_calls[0]["model"] == "muse-spark-1.3"
 
 
 def test_qa_falls_through_to_groq_when_muse_fails(app_client, monkeypatch):
@@ -168,7 +174,7 @@ def test_qa_falls_through_to_groq_when_muse_fails(app_client, monkeypatch):
     monkeypatch.setenv("GROQ_API_KEY", "gsk_test_fallback")
     user = _make_pro(client, web_app, "qafallback@gmail.com")
 
-    _RecordingClient.reset(error=RuntimeError("meta.ai unreachable"))
+    _RecordingClient.reset(fail_keys=("mk_test_broken",))  # muse down, groq up
     with _fake_module("openai", OpenAI=_RecordingClient):
         with _fake_module("groq", Groq=_RecordingClient):
             response = client.post("/api/qa", json={"question": "hi"}, headers=user.headers)
@@ -176,7 +182,7 @@ def test_qa_falls_through_to_groq_when_muse_fails(app_client, monkeypatch):
     assert response.get_json()["answer"] == "stub answer"
     assert _RecordingClient.calls[0]["api_key"] == "mk_test_broken"  # muse tried first
     assert _RecordingClient.calls[1]["api_key"] == "gsk_test_fallback"
-    assert _RecordingClient.calls[1]["model"] == "llama-3.3-70b-versatile"
+    assert _RecordingClient.create_calls[1]["model"] == "llama-3.3-70b-versatile"
 
 
 def test_qa_openai_fallback_sends_no_base_url(app_client, monkeypatch):
@@ -192,7 +198,7 @@ def test_qa_openai_fallback_sends_no_base_url(app_client, monkeypatch):
     assert response.get_json()["answer"] == "openai answer"
     assert _RecordingClient.calls[0]["api_key"] == "sk_test_lastresort"
     assert _RecordingClient.calls[0].get("base_url") is None
-    assert _RecordingClient.calls[0]["model"] == "gpt-4o-mini"
+    assert _RecordingClient.create_calls[0]["model"] == "gpt-4o-mini"
 
 
 def test_enhancement_is_refused_with_503_when_no_provider_is_configured(
@@ -216,16 +222,19 @@ def test_openrouter_sits_between_muse_and_groq(app_client, monkeypatch):
     _clear_provider_keys(monkeypatch)
     monkeypatch.setenv("MODEL_API_KEY", "mk_test_x")
     monkeypatch.setenv("OPENROUTER_API_KEY", "or_test_x")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_test_x")
     user = _make_pro(client, web_app, "qarouter@gmail.com")
 
-    _RecordingClient.reset(error=RuntimeError("down"))
+    _RecordingClient.reset(fail_keys=("mk_test_x", "or_test_x"))
     with _fake_module("openai", OpenAI=_RecordingClient):
         with _fake_module("groq", Groq=_RecordingClient):
             response = client.post("/api/qa", json={"question": "hi"}, headers=user.headers)
 
-    assert response.get_json()["answer"] == "stub answer"
-    models = [call.get("model") for call in _RecordingClient.calls]
+    assert response.get_json()["answer"] == "stub answer"  # groq rescued the request
+    # Muse is tried first, OpenRouter second, Groq third.
+    models = [call["model"] for call in _RecordingClient.create_calls[:2]]
     assert models == ["muse-spark-1.3", "meta-llama/llama-3.3-70b-instruct:free"]
+    assert _RecordingClient.calls[2]["api_key"] == "gsk_test_x"
 
 
 def test_provider_failures_never_log_the_key(app_client, monkeypatch, caplog):
