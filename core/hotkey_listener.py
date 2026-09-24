@@ -25,7 +25,11 @@ from __future__ import annotations
 import threading
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
-from pynput import keyboard
+try:
+    from pynput import keyboard
+except Exception as _pynput_import_error:  # headless CI without DISPLAY
+    keyboard = None  # type: ignore[assignment]
+    _pynput_import_error = _pynput_import_error  # keep for diagnostics
 
 from core.event_manager import Events, event_manager
 from utils.logger import log_error, log_info, log_warning
