@@ -40,6 +40,9 @@ jobs:
     name: Windows installer
     runs-on: windows-latest
     needs: [version-check]
+    env:
+      WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
+      WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -56,14 +59,14 @@ jobs:
       - name: Build the executable
         run: pyinstaller voxylis.spec --clean --noconfirm
       - name: Sign the executable
-        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
+        if: env.WINDOWS_CERT_BASE64 != ''
         shell: pwsh
         run: |
           $pfx = "$env:RUNNER_TEMP\voxylis-cert.pfx"
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String('${{ secrets.WINDOWS_CERT_BASE64 }}'))
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-          & $signtool sign /f $pfx /p '${{ secrets.WINDOWS_CERT_PASSWORD }}' /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/Voxylis/Voxylis.exe
+          & $signtool sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist/Voxylis/Voxylis.exe
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
       - name: Build the installer
@@ -71,16 +74,16 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.version.outputs.value }} installer\voxylis.iss
       - name: Sign the installer
-        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
+        if: env.WINDOWS_CERT_BASE64 != ''
         shell: pwsh
         run: |
           $pfx = "$env:RUNNER_TEMP\voxylis-cert.pfx"
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String('${{ secrets.WINDOWS_CERT_BASE64 }}'))
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERT_BASE64))
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
             Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-          & $signtool sign /f $pfx /p '${{ secrets.WINDOWS_CERT_PASSWORD }}' /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "installer/output/Voxylis-Setup-${{ steps.version.outputs.value }}.exe"
+          & $signtool sign /f $pfx /p $env:WINDOWS_CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "installer/output/Voxylis-Setup-${{ steps.version.outputs.value }}.exe"
       - name: Verify signatures
-        if: ${{ secrets.WINDOWS_CERT_BASE64 != '' }}
+        if: env.WINDOWS_CERT_BASE64 != ''
         shell: pwsh
         run: |
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
@@ -142,13 +145,17 @@ jobs:
     name: Website
     runs-on: ubuntu-latest
     needs: [version-check]
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Vercel
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+        if: env.VERCEL_TOKEN != ''
         uses: amondnet/vercel-action@v25
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-token: ${{ env.VERCEL_TOKEN }}
+          vercel-org-id: ${{ env.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
