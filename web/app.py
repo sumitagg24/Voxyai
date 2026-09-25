@@ -852,6 +852,16 @@ def contact_page():
     return app.send_static_file("contact.html")
 
 
+@app.route("/privacy")
+def privacy_page():
+    return app.send_static_file("privacy.html")
+
+
+@app.route("/terms")
+def terms_page():
+    return app.send_static_file("terms.html")
+
+
 @app.route("/auth")
 def auth_page():
     return app.send_static_file("auth.html")

@@ -1,18 +1,18 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blog — Voxylis</title>
-<meta name="description" content="Insights, updates, and deep dives from the Voxylis team.">
+<title>Terms of Service — Voxylis</title>
+<meta name="description" content="Voxylis terms of service: what the app and website provide, acceptable use, free quotas, and limits of liability.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="canonical" href="https://voxylis.com/blog">
+<link rel="canonical" href="https://voxylis-web.vercel.app/terms">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Voxylis">
-<meta property="og:title" content="Blog — Voxylis">
-<meta property="og:description" content="Insights, updates, and deep dives from the Voxylis team.">
-<meta property="og:url" content="https://voxylis.com/blog">
+<meta property="og:title" content="Terms of Service — Voxylis">
+<meta property="og:description" content="What Voxylis provides, acceptable use, free quotas, and limits of liability.">
+<meta property="og:url" content="https://voxylis-web.vercel.app/terms">
 <meta property="og:image" content="https://voxylis.com/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,8 +43,6 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:14px;font-weight:600;transition:all .15s;line-height:1}
 .btn:hover{background:#000;border-color:#000}.btn.ghost{background:transparent;color:var(--ink)}.btn.ghost:hover{background:#f0f0f0}
 @media(max-width:900px){.nav-links,.nav-right{display:none}}
-
-/* Mobile hamburger */
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px}
 .nav-toggle span{display:block;width:22px;height:2px;background:var(--ink);margin:5px 0;transition:all .2s}
 @media(max-width:900px){.nav-toggle{display:block}}
@@ -64,40 +62,75 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 .page-hero .eyebrow{font-family:var(--mono);font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:24px}
 .page-hero h1{font-size:clamp(40px,7vw,80px);font-weight:700;line-height:1;letter-spacing:-0.03em}
 .page-hero p{margin-top:24px;font-size:18px;color:var(--ink2);max-width:560px;margin-left:auto;margin-right:auto;line-height:1.6}
-.blog-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:80px 0}
-@media(max-width:900px){.blog-grid{grid-template-columns:1fr}}
-.blog-card{border:1px solid var(--line2);border-radius:10px;padding:32px;display:flex;flex-direction:column;gap:14px;transition:transform .15s,box-shadow .15s;cursor:pointer;text-decoration:none;color:inherit}
-.blog-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.08)}
-.blog-card .meta{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
-.blog-card .tag{padding:3px 8px;background:var(--bg2);border:1px solid var(--line2);border-radius:4px}
-.blog-card h3{font-size:20px;font-weight:700;line-height:1.3;letter-spacing:-0.01em}
-.blog-card .excerpt{font-size:14px;color:var(--ink2);line-height:1.6}
-.blog-card .read-more{font-family:var(--mono);font-size:13px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;margin-top:auto;font-weight:500}
-.blog-loading{padding:80px 0;text-align:center;font-family:var(--mono);font-size:14px;color:var(--muted)}
-.blog-empty{padding:80px 0;text-align:center}
-.blog-empty h3{font-size:24px;font-weight:700;margin-bottom:12px}
-.blog-empty p{color:var(--ink2)}
+.legal{padding:80px 0}
+.legal .doc{max-width:760px;margin:0 auto}
+.legal h2{font-size:24px;font-weight:700;letter-spacing:-0.02em;margin:48px 0 16px}
+.legal h2:first-child{margin-top:0}
+.legal p{font-size:16px;color:var(--ink2);line-height:1.7;margin-bottom:16px}
+.legal ul{margin:0 0 16px 20px;display:flex;flex-direction:column;gap:8px}
+.legal ul li{font-size:16px;color:var(--ink2);line-height:1.7}
+.legal a.inline{text-decoration:underline;text-underline-offset:3px}
+.updated{font-family:var(--mono);font-size:13px;color:var(--muted);margin-bottom:32px}
 </style>
 </head>
 <body>
 <nav class="nav">
   <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
   <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
-  <div class="nav-links"><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a></div>
-  <div class="nav-right"><a href="/auth" class="signin">Sign In</a><a href="/download" class="btn">Download App</a></div>
+  <div class="nav-links">
+    <a href="/#features">Features</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/docs/installation">Docs</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/blog">Blog</a>
+  </div>
+  <div class="nav-right">
+    <a href="/auth" class="signin">Sign In</a>
+    <a href="/download" class="btn">Download App</a>
+  </div>
 </nav>
 
 <header class="page-hero">
   <div class="wrap">
-    <div class="eyebrow">Voxylis / Blog</div>
-    <h1>Blog</h1>
-    <p>Insights, updates, and deep dives from the Voxylis team.</p>
+    <div class="eyebrow">Voxylis / Terms</div>
+    <h1>Terms of Service</h1>
+    <p>What Voxylis provides, what you agree to, and where the limits are.</p>
   </div>
 </header>
 
-<section class="wrap">
-  <div id="blog-grid" class="blog-grid">
-    <div class="blog-loading">Loading posts...</div>
+<section class="legal">
+  <div class="wrap">
+    <div class="doc">
+      <p class="updated">Effective: 26 September 2026 · Contact: hello@voxylis.com</p>
+
+      <h2>1. What Voxylis is</h2>
+      <p>Voxylis is a voice-dictation desktop app plus a companion website and API. The desktop app is open source under the MIT license (see the repository); the hosted website and API are operated as a free service. Paid plans shown on the pricing page are not purchasable yet — creating a free account costs nothing and desktop dictation with your own provider key is never metered.</p>
+
+      <h2>2. Your account</h2>
+      <p>You may sign up with email or with Google/GitHub. You are responsible for keeping your credentials safe and for activity under your account. One account per person; sharing accounts to pool quotas is not allowed. We may suspend accounts used for abuse, spam, or attempts to bypass quotas and rate limits.</p>
+
+      <h2>3. Acceptable use</h2>
+      <ul>
+        <li>Use transcription for lawful purposes only.</li>
+        <li>Do not abuse shared resources: scraping, credential stuffing, spam contact forms, or circumventing quotas and rate limits.</li>
+        <li>Do not misrepresent Voxylis output as certified transcription where accuracy matters (medical, legal); review before relying on it.</li>
+      </ul>
+
+      <h2>4. Free quotas and availability</h2>
+      <p>Browser transcription is limited per tier per calendar month (Free: 100). The service is provided on free infrastructure and may occasionally be slow or unavailable; the status of the API is visible at <a class="inline" href="https://voxylis-api.onrender.com/api/health">/api/health</a>. We do not guarantee uptime during this phase.</p>
+
+      <h2>5. Your content</h2>
+      <p>Your transcripts and settings remain yours. Local history never leaves your machine unless you explicitly use an upload feature from the app's Account page. Server-side rows (account, uploaded history) are deleted when you delete your account, as described in the <a class="inline" href="/privacy">Privacy Policy</a>.</p>
+
+      <h2>6. Third-party providers</h2>
+      <p>Transcription and AI features run on providers you configure (Groq, OpenAI), sign-in on Google/GitHub via Auth0. Their terms apply to your use of those services; Voxylis is not responsible for their availability, pricing, or data handling.</p>
+
+      <h2>7. No warranty, limited liability</h2>
+      <p>The software and service are provided "as is", without warranties of any kind. To the maximum extent permitted by law, Voxylis is not liable for indirect or consequential damages, including lost work from transcription errors. Nothing here limits rights you have under applicable consumer law.</p>
+
+      <h2>8. Changes and termination</h2>
+      <p>We may update these terms; material changes take effect after the new version is linked from the website footer, and continued use means acceptance. We may suspend accounts that violate these terms. You may stop using the service and delete your account at any time.</p>
+    </div>
   </div>
 </section>
 
@@ -112,45 +145,10 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
       </div>
     </div>
-    <div class="footer-bot"><span>Voxylis &copy; 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
   </div>
 </footer>
-
-<!-- Production API origin (Render). Must load BEFORE api.js. -->
-<script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
 <script src="/static/js/api.js"></script>
-<!-- Error monitoring: no-op unless a browser DSN is configured. -->
 <script src="/static/js/sentry-init.js" defer></script>
-<script>
-const FALLBACK_POSTS = [
-  {slug:"introducing-voxylis-3-0", date:"2026-09-23", category:"Product Update", title:"Introducing Voxylis 3.0", excerpt:"A real desktop window, API keys in the OS credential store, and local SQLite history.", read_time:"4 min read"},
-  {slug:"bitterest-lesson-voice-ai", date:"2026-08-28", category:"Engineering", title:"The Bitterest Lesson in Voice AI", excerpt:"Why scaling data and compute beat every clever algorithmic trick we tried - and what that means for the future of voice input.", read_time:"6 min read"},
-  {slug:"ai-too-good-to-be-true", date:"2026-08-10", category:"Product", title:"AI: Too Good to Be True, Too Bad to Type", excerpt:"AI writing assistants are everywhere - but typing is still the bottleneck. Voice input is the unlock.", read_time:"5 min read"},
-  {slug:"where-your-data-goes", date:"2026-07-22", category:"Engineering", title:"Where your audio and transcripts actually go", excerpt:"A precise walkthrough of every place a recording touches disk or the network, and how to remove all of it.", read_time:"5 min read"}
-];
-
-function renderPosts(posts) {
-  const grid = document.getElementById('blog-grid');
-  if (!posts || posts.length === 0) {
-    grid.innerHTML = '<div class="blog-empty"><h3>No posts yet</h3><p>Check back soon for updates from the Voxylis team.</p></div>';
-    return;
-  }
-  grid.innerHTML = posts.map(p => {
-    const d = new Date(p.date);
-    const dateStr = d.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
-    return '<a href="/blog/' + p.slug + '" class="blog-card">' +
-      '<div class="meta"><span class="tag">' + (p.category||'General') + '</span><span>' + dateStr + '</span><span>' + (p.read_time||'3 min') + ' read</span></div>' +
-      '<h3>' + p.title + '</h3>' +
-      '<div class="excerpt">' + p.excerpt + '</div>' +
-      '<span class="read-more">Read more &rarr;</span>' +
-    '</a>';
-  }).join('');
-}
-
-voxyFetch('/api/blog').then(r => r.ok ? r.json() : Promise.reject()).then(data => {
-  const posts = Array.isArray(data) ? data : (data.posts || []);
-  renderPosts(posts);
-}).catch(() => renderPosts(FALLBACK_POSTS));
-</script>
 </body>
 </html>

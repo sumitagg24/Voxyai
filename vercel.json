@@ -11,6 +11,8 @@
     { "source": "/blog", "destination": "/blog.html" },
     { "source": "/about", "destination": "/about.html" },
     { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
     { "source": "/auth", "destination": "/auth.html" },
     { "source": "/download", "destination": "/download.html" },
     { "source": "/blog/:slug", "destination": "/blog-post.html" },

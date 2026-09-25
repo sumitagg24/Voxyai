@@ -136,6 +136,21 @@ def test_social_login_requires_explicit_consent_before_session():
     assert "pendingIdToken = ''" in text
 
 
+def test_legal_pages_exist_for_oauth_consent_screen():
+    """Google's OAuth consent screen links the app's privacy policy and
+    terms. Both pages must exist, state the social-sign-in data (name,
+    email, photo), and be linked from every footer."""
+    privacy = (STATIC / "privacy.html").read_text(encoding="utf-8")
+    terms = (STATIC / "terms.html").read_text(encoding="utf-8")
+    for needle in ("profile photo", "never stored", "hello@voxylis.com"):
+        assert needle in privacy, f"privacy.html missing: {needle}"
+    assert "as is" in terms
+    for page in ("index", "download", "pricing", "about", "blog", "contact"):
+        footer = (STATIC / f"{page}.html").read_text(encoding="utf-8")
+        assert 'href="/privacy"' in footer, f"{page}.html footer missing Privacy"
+        assert 'href="/terms"' in footer, f"{page}.html footer missing Terms"
+
+
 def test_version_json_is_served_by_the_backend_too(app_client):
     """The static host resolves the file; Flask needs its own route."""
     client, _ = app_client
@@ -158,6 +173,8 @@ def test_version_json_is_served_by_the_backend_too(app_client):
         "/auth",
         "/download",
         "/dashboard",
+        "/privacy",
+        "/terms",
         "/docs/installation",
         "/docs/configuration",
         "/docs/troubleshooting",

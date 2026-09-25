@@ -16,6 +16,8 @@ checks = [
     ("GET", "/contact", None, 200),
     ("GET", "/auth", None, 200),
     ("GET", "/download", None, 200),
+    ("GET", "/privacy", None, 200),
+    ("GET", "/terms", None, 200),
     ("GET", "/dashboard", None, 200),
     ("GET", "/static/css/dashboard.css", None, 200),
     ("GET", "/static/js/dashboard.js", None, 200),
