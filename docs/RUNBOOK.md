@@ -7,9 +7,10 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 | Piece | Host | URL | Cost |
 |---|---|---|---|
 | Website (static) | Vercel | https://voxylis-web.vercel.app | free |
-| API (Flask) | PythonAnywhere | https://<PA_USER>.pythonanywhere.com | free |
-| Database | SQLite file on the API host | `/home/<PA_USER>/voxylis-data/voxylis.db` | free |
-| Backups | PA scheduled task + weekly download | `~/voxylis-backups`, keep 14 | free |
+| API (Flask) | Render free (Docker) | https://voxylis-api.onrender.com | free |
+| Database | SQLite, replicated to B2 by Litestream | `/app/web/data/voxylis.db` + B2 replica | free |
+| Backups | Litestream continuous replica + weekly download | B2 bucket, keep replica | free 10 GB |
+| Keep-alive | UptimeRobot free, 5-min `GET /api/health` | doubles as uptime alert | free |
 | Auth | Auth0 free (google-oauth2 + github) | tenant `dev-g4w68c5tpeyhxh3d.us.auth0.com` | free |
 | Email | Gmail SMTP (app password) | — | free ≤500/day |
 | Errors | Sentry free | — | free ≤5k/mo |
@@ -25,12 +26,15 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 
 ## Backup & restore (tested _<date>_)
 
-- Daily 03:00 UTC scheduled task:
-  `cd ~/voxyai && ~/.virtualenvs/voxylis/bin/python -m web.backup --backup-dir ~/voxylis-backups --keep 14`
-- Weekly: download newest backup via Files tab (off-machine copy).
-- Restore drill: stop web app → `--restore <file> --force` on a scratch copy →
-  confirm `PRAGMA integrity_check` ok → Reload.
-- Retention: 14 daily. Restore owner: _<name>_.
+- Continuous: Litestream replicates every SQLite write to the B2 bucket
+  (see `docker-entrypoint.sh` + `LITESTREAM_*` env). A Render restart restores
+  from the replica automatically on boot.
+- Weekly: download `voxylis.db` from the B2 bucket (off-provider copy).
+- Restore drill: `litestream restore -o /tmp/restore.db
+  s3://<bucket>/voxylis.db` → `PRAGMA integrity_check` ok.
+  (Local/tooling path `python -m web.backup` still works for manual snapshots.)
+- Retention: B2 keeps the live replica; keep 4 weekly downloads.
+  Restore owner: _<name>_.
 
 ## Retention decisions
 

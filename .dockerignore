@@ -1,0 +1,29 @@
+# Keep the Docker build context small: only web/, config/, requirements and the
+# entrypoint are COPYed. Everything else (venv, builds, logs, local DBs)
+# must never enter an image.
+.git/
+venv/
+.venv/
+__pycache__/
+*.pyc
+dist/
+build/
+installer/output/
+logs/
+*.log
+.vscode/
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+.env.*
+web/data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+screenshots/
+landing-verify.png
+.freebuff/
+.playwright-mcp/

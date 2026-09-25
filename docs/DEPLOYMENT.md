@@ -63,6 +63,31 @@ add it to `CORS_ORIGINS` rather than relaxing CORS to a wildcard.
 Single-instance only: rate limits are in-process and the database is SQLite.
 Do not scale horizontally without first moving both to a shared store.
 
+### C2. Backend on Render free tier ($0, no card) — recommended while pre-revenue
+
+Render free spins the service down after 15 min idle, has an ephemeral disk,
+and its free Postgres expires after 30 days — so the setup compensates all
+three without spending anything:
+
+1. **Keep-alive (the cron trick):** UptimeRobot free pings
+   `GET /api/health` every 5 min. Pings are inbound traffic, so the service
+   never idles out; one always-on service uses ~720 of the 750 free
+   hours/month. Do NOT add a second free service or the month's budget breaks.
+2. **Durability without Postgres:** SQLite is replicated to Backblaze B2
+   (free 10 GB) by Litestream — `docker-entrypoint.sh` restores on boot and
+   `litestream replicate` runs beside gunicorn. Set `AWS_ACCESS_KEY_ID`,
+   `AWS_SECRET_ACCESS_KEY`, `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`
+   (the B2 S3 endpoint, e.g. `https://s3.us-west-004.backblazeb2.com`).
+   Without those four vars the entrypoint just runs gunicorn (local behavior).
+3. **Port:** Render injects `$PORT`; `gunicorn.conf.py` already binds it and
+   `Dockerfile` uses `-c gunicorn.conf.py` (never a hard-coded port).
+   `render.yaml` pins `GUNICORN_WORKERS=2` (free instances are 0.1 CPU/512 MB).
+4. Deploy via `render.yaml` (Blueprint) or Dashboard → New Web Service →
+   Docker → Free. Secrets (`sync: false`) go in Dashboard → Environment.
+
+Render may still restart free services at any time — Litestream restores the
+DB on boot, so a restart costs seconds, not data.
+
 ---
 
 ## D. Database

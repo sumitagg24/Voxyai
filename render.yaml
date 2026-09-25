@@ -1,0 +1,86 @@
+# Voxylis API on Render free tier (no card, $0).
+#
+# HOW TO USE (browser only):
+#   1. dashboard.render.com → New → Web Service → select sumitagg24/Voxyai
+#      → Runtime: Docker → plan: Free → Create. (Or "New → Blueprint" and
+#      point at this file.)
+#   2. Dashboard → Environment → fill every key marked `sync: false` below.
+#   3. UptimeRobot (free) → monitor https://<your-name>.onrender.com/api/health
+#      every 5 min. This is the keep-alive: Render spins free services down
+#      after 15 min idle, and a 5-min ping keeps exactly one service inside the
+#      750 free-hours/month budget (~720 h) with zero cold starts.
+#
+# Durability: free disks are ephemeral, so SQLite is replicated to Backblaze
+# B2 (free 10 GB) by Litestream — see docker-entrypoint.sh. Fill the four
+# LITESTREAM/AWS_* keys or the DB resets on every restart.
+
+services:
+  - type: web
+    name: voxylis-api
+    runtime: docker
+    plan: free
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: VOXYLIS_ENV
+        value: production
+      - key: GUNICORN_WORKERS
+        value: 2
+      - key: LOG_LEVEL
+        value: info
+      - key: VOXYLIS_DB_PATH
+        value: /app/web/data/voxylis.db
+      - key: FRONTEND_URL
+        value: https://voxylis-web.vercel.app
+      - key: CORS_ORIGINS
+        value: https://voxylis-web.vercel.app
+      - key: EMAIL_PROVIDER
+        value: smtp
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USE_TLS
+        value: true
+      - key: AUTH0_DOMAIN
+        value: dev-g4w68c5tpeyhxh3d.us.auth0.com
+      - key: AUTH0_CLIENT_ID
+        value: yAAtiPLoCmlzGixp9HUSnUjfI4V83qfG
+      - key: AUTH0_DESKTOP_CLIENT_ID
+        value: uhCL7jpmMZX3JRhTMVhZhYrbipbHDQdr
+      # --- secrets: fill in Render Dashboard → Environment ---
+      - key: SECRET_KEY
+        sync: false
+      - key: OWNER_EMAILS
+        sync: false
+      - key: MODEL_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_DSN_BROWSER
+        sync: false
+      # --- Litestream → B2 (SQLite durability on the ephemeral disk) ---
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: LITESTREAM_BUCKET
+        sync: false
+      - key: LITESTREAM_ENDPOINT
+        sync: false
