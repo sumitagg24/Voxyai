@@ -109,7 +109,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         <div class="col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
         <div class="col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
         <div class="col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
-        <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
+        <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
       </div>
     </div>
     <div class="footer-bot"><span>Voxylis &copy; 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
@@ -121,6 +121,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 <script src="/static/js/api.js"></script>
 <!-- Error monitoring: no-op unless a browser DSN is configured. -->
 <script src="/static/js/sentry-init.js" defer></script>
+<script src="/static/js/cookie-consent.js" defer></script>
 <script>
 const FALLBACK_POSTS = [
   {slug:"introducing-voxylis-3-0", date:"2026-09-23", category:"Product Update", title:"Introducing Voxylis 3.0", excerpt:"A real desktop window, API keys in the OS credential store, and local SQLite history.", read_time:"4 min read"},

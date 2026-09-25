@@ -201,10 +201,10 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
       <div class="msg-success" id="verify-success"></div>
       <div class="msg-error" id="verify-error"></div>
 
-      <div class="auth-footer">
+        <div class="auth-footer">
         <div class="divider-row"><span>or</span></div>
         <button class="qr-link" id="qr-open" type="button">📷 Scan a QR code to sign in</button>
-        <div style="margin-top:16px"><a href="/">Back to home</a></div>
+        <div style="margin-top:16px"><a href="/">Back to home</a> · <a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
       </div>
     </div>
   </div>
@@ -260,6 +260,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 <script src="/static/js/api.js"></script>
 <!-- Error monitoring: no-op unless a browser DSN is configured. -->
 <script src="/static/js/sentry-init.js" defer></script>
+<script src="/static/js/cookie-consent.js" defer></script>
 <script>
 // Tab switching
 document.querySelectorAll('.auth-tab').forEach(tab => {

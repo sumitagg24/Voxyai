@@ -140,7 +140,17 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
       <h2>7. Third parties</h2>
       <p>We cannot promise what upstream providers do with data you send them: Groq and OpenAI (speech/AI), Google and GitHub (sign-in), Auth0 (identity), Resend/Gmail (email delivery) and Sentry (error reports, only with consent) each have their own policies. The desktop app supports whichever speech provider you configure; there is no Voxylis-hosted transcription service.</p>
 
-      <h2>8. Changes</h2>
+      <h2 id="cookies">8. Cookie Policy</h2>
+      <p>Voxylis uses a minimum of browser storage. <b>Necessary storage is always active</b> — without it you cannot stay signed in:</p>
+      <ul>
+        <li><b>Sign-in session</b> (local storage) — keeps you logged in. Deleted on sign-out.</li>
+        <li><b>API host choice</b> (local storage) — remembers a custom backend address if you set one.</li>
+        <li><b>Cookie consent choice itself</b> (local storage) — remembers which categories you allowed.</li>
+      </ul>
+      <p><b>Preferences, analytics and marketing are off by default.</b> We run no analytics SDK and no advertising trackers today; those categories exist in the consent dialog so that if we ever add one, it stays off until you allow it. Third parties you interact with during login (Auth0, Google, GitHub) and embedded fonts/CDN (Google Fonts, jsDelivr) apply their own policies while in use.</p>
+      <p>Change your mind any time: click <b>Cookie choices</b> in the footer to re-open the banner.</p>
+
+      <h2>9. Changes</h2>
       <p>If this policy changes materially, the effective date above moves and the new version is linked from the website footer before it takes effect.</p>
     </div>
   </div>
@@ -154,7 +164,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         <div class="col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
         <div class="col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
         <div class="col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
-        <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
+        <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
       </div>
     </div>
     <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
@@ -162,5 +172,6 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 </footer>
 <script src="/static/js/api.js"></script>
 <script src="/static/js/sentry-init.js" defer></script>
+<script src="/static/js/cookie-consent.js" defer></script>
 </body>
 </html>

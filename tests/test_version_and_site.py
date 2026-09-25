@@ -151,6 +151,40 @@ def test_legal_pages_exist_for_oauth_consent_screen():
         assert 'href="/terms"' in footer, f"{page}.html footer missing Terms"
 
 
+def test_cookie_banner_is_honest_and_wired_everywhere():
+    """The banner must match reality: no analytics/marketing cookies exist,
+    so both stay OFF by default and optional loaders must gate on consent.
+    Every page loads the script and links the cookie policy + re-opener."""
+    js = (STATIC / "js" / "cookie-consent.js").read_text(encoding="utf-8")
+    for marker in (
+        "voxy_cookie_consent",
+        "Reject non-essential",
+        "Customize",
+        "/privacy#cookies",
+        "voxyCookieConsent",
+        "voxyShowCookieBanner",
+        "Not used today",
+    ):
+        assert marker in js, f"cookie-consent.js missing: {marker}"
+    pages = [
+        "index",
+        "download",
+        "pricing",
+        "about",
+        "blog",
+        "contact",
+        "auth",
+        "dashboard",
+        "privacy",
+        "terms",
+    ]
+    for page in pages:
+        text = (STATIC / f"{page}.html").read_text(encoding="utf-8")
+        assert "js/cookie-consent.js" in text, f"{page}.html missing banner script"
+    privacy = (STATIC / "privacy.html").read_text(encoding="utf-8")
+    assert 'id="cookies"' in privacy
+
+
 def test_version_json_is_served_by_the_backend_too(app_client):
     """The static host resolves the file; Flask needs its own route."""
     client, _ = app_client
@@ -180,6 +214,7 @@ def test_version_json_is_served_by_the_backend_too(app_client):
         "/docs/troubleshooting",
         "/static/css/base.css",
         "/static/js/api.js",
+        "/static/js/cookie-consent.js",
         "/api/features",
         "/api/pricing",
         "/api/stats/public",
