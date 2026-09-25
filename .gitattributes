@@ -1,0 +1,8 @@
+# Line endings: shell scripts, Dockerfiles and YAML consumed on Linux must
+# stay LF even when checked out on Windows (CRLF breaks `#!/bin/sh`).
+*.sh text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+render.yaml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
