@@ -17,6 +17,7 @@
     var m = window.location.search.match(/[?&]api=([^&]+)/);
     if (m) base = decodeURIComponent(m[1]);
     if (window.VOXYLIS_API_BASE) base = window.VOXYLIS_API_BASE;
+    else if (window.VOXY_API_BASE) base = window.VOXY_API_BASE;
     if (!base) base = localStorage.getItem('voxy_api_base') || '';
     if (base) {
       try { localStorage.setItem('voxy_api_base', base); } catch (e) {}
