@@ -87,6 +87,30 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 .qr-right p{font-size:14px;color:var(--ink2);line-height:1.6}
 .qr-status{margin-top:16px;font-size:14px;font-weight:600}
 .qr-approve-btn{width:100%;padding:12px;margin-top:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host)}
+/* Consent screen: shown after the provider verifies you, before any Voxylis
+   session is created. Nothing is stored unless you press Continue. */
+.consent-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.consent-overlay.open{display:flex}
+.consent-dialog{background:#fff;border-radius:14px;max-width:480px;width:100%;padding:32px;position:relative}
+.consent-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+.consent-dialog h3{margin:0 0 4px;font-size:22px;letter-spacing:-0.02em}
+.consent-sub{font-size:14px;color:var(--muted);margin-bottom:20px}
+.consent-profile{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line2);border-radius:10px;margin-bottom:16px}
+.consent-profile img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--bg2)}
+.consent-profile .who{min-width:0}
+.consent-profile .who b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.consent-profile .who span{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.consent-list{list-style:none;margin:0 0 8px;display:flex;flex-direction:column;gap:10px}
+.consent-list li{display:flex;gap:10px;font-size:14px;color:var(--ink2);align-items:flex-start}
+.consent-list li::before{content:"•";color:var(--ink);font-weight:700}
+.consent-list li b{color:var(--ink)}
+.consent-note{font-size:13px;color:var(--muted);margin:12px 0 20px;line-height:1.6}
+.consent-actions{display:flex;gap:12px}
+.consent-actions button{flex:1;padding:12px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host)}
+.consent-cancel{background:transparent;color:var(--ink);border:1px solid var(--line2)}
+.consent-cancel:hover{background:var(--bg2)}
+.consent-continue{background:var(--ink);color:#fff;border:1px solid var(--ink)}
+.consent-continue:hover{background:#000}
 </style>
 </head>
 <body>
@@ -208,6 +232,29 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
 </div>
 
 <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+<!-- Consent screen: provider verified you; Voxylis has stored nothing yet.
+     Continue creates the session, Cancel discards everything. -->
+<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Allow Voxylis to use your account info">
+  <div class="consent-dialog">
+    <button class="consent-close" id="consent-close" type="button" aria-label="Cancel">×</button>
+    <h3>Continue as <span id="consent-name">you</span>?</h3>
+    <p class="consent-sub" id="consent-provider-line">Voxylis wants to use your account info.</p>
+    <div class="consent-profile">
+      <img id="consent-photo" alt="" style="display:none">
+      <div class="who"><b id="consent-name-2">—</b><span id="consent-email">—</span></div>
+    </div>
+    <ul class="consent-list">
+      <li><span><b>Name and email address</b> — to create your Voxylis account and sign you in.</span></li>
+      <li><span><b>Profile photo</b> — shown in the dialog only, never stored.</span></li>
+      <li><span><b>Nothing else</b> — Voxylis cannot see your password, contacts, repos or files.</span></li>
+    </ul>
+    <p class="consent-note" id="consent-note">You can delete your account and everything stored at any time from Settings → Privacy. Continuing creates a Voxylis session on this device.</p>
+    <div class="consent-actions">
+      <button class="consent-cancel" id="consent-cancel" type="button">Cancel</button>
+      <button class="consent-continue" id="consent-continue" type="button">Continue</button>
+    </div>
+  </div>
+</div>
 <!-- Production API origin (Render). Must load BEFORE api.js. -->
 <script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
 <script src="/static/js/api.js"></script>
@@ -447,6 +494,10 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
 // ---- Social Login (Google + GitHub via Auth0) ----
 let AUTH0 = { enabled: false, domain: '', clientId: '' };
 let pendingApproveCode = '';
+// Consent gate: set when a social login starts, consumed by the consent
+// dialog. No Voxylis session exists until the user presses Continue there.
+let pendingProvider = 'your provider';
+let pendingIdToken = '';
 try { pendingApproveCode = (new URLSearchParams(location.search).get('qr') || '').toUpperCase(); } catch (e) {}
 
 function b64url(buf) {
@@ -493,6 +544,7 @@ async function loadAuth0Config() {
 async function startSocialLogin(connection) {
   showSocialError('');
   if (!AUTH0.enabled) { showSocialError('Social login is not configured yet. Use email signup below.'); return; }
+  pendingProvider = connection === 'github' ? 'GitHub' : 'Google';
   try {
     const verifier = randStr(64);
     const challenge = await pkceChallenge(verifier);
@@ -529,6 +581,81 @@ async function finishAuth0Login(idToken) {
   location.href = '/dashboard';
 }
 
+// Decode an ID token payload for DISPLAY ONLY (no verification — the server
+// verifies the signature before creating any session).
+function decodeIdToken(idToken) {
+  try {
+    const parts = String(idToken || '').split('.');
+    if (parts.length < 2) return {};
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(b64)) || {};
+  } catch (e) { return {}; }
+}
+
+function restoreSocialButtons() {
+  const g = document.getElementById('google-btn');
+  const h = document.getElementById('github-btn');
+  g.disabled = false;
+  h.disabled = false;
+  if (g.dataset.label) g.innerHTML = g.dataset.label;
+  if (h.dataset.label) h.innerHTML = h.dataset.label;
+}
+
+// Show WHAT Voxylis receives and wait for explicit consent. The provider has
+// verified the user at this point, but Voxylis has stored nothing.
+function showConsent(idToken) {
+  pendingIdToken = idToken;
+  const claims = decodeIdToken(idToken);
+  const name = (claims.name || claims.nickname || (claims.email || '').split('@')[0] || 'you').toString().slice(0, 80);
+  const email = (claims.email || '').toString().slice(0, 120);
+  const photo = (claims.picture || '').toString();
+  document.getElementById('consent-name').textContent = name;
+  document.getElementById('consent-name-2').textContent = name;
+  document.getElementById('consent-email').textContent = email || 'no email shared';
+  document.getElementById('consent-provider-line').textContent =
+    'Voxylis wants to use your ' + pendingProvider + ' account info.';
+  const img = document.getElementById('consent-photo');
+  if (photo && /^https:\/\//.test(photo)) { img.src = photo; img.style.display = ''; }
+  else { img.removeAttribute('src'); img.style.display = 'none'; }
+  const note = document.getElementById('consent-note');
+  if (email && claims.email_verified === false) {
+    note.textContent = 'Note: your ' + pendingProvider + ' email is unverified — ' +
+      'Voxylis will refuse sign-in until you verify it there. You can still cancel with nothing stored.';
+  } else {
+    note.textContent = 'You can delete your account and everything stored at any time from ' +
+      'Settings → Privacy. Continuing creates a Voxylis session on this device.';
+  }
+  document.getElementById('consent-overlay').classList.add('open');
+}
+
+function closeConsent(cancelled) {
+  document.getElementById('consent-overlay').classList.remove('open');
+  if (!cancelled) return;
+  // Cancel = explicit refusal: discard the token, restore the buttons,
+  // and say plainly that nothing was created or stored.
+  pendingIdToken = '';
+  restoreSocialButtons();
+  showSocialError('Sign-in cancelled — nothing was created or stored.');
+}
+
+document.getElementById('consent-continue').addEventListener('click', async () => {
+  const token = pendingIdToken;
+  pendingIdToken = '';
+  document.getElementById('consent-overlay').classList.remove('open');
+  if (!token) { showSocialError('Login session expired. Please try again.'); return; }
+  try {
+    await finishAuth0Login(token);
+  } catch (e) {
+    restoreSocialButtons();
+    showSocialError(e.message);
+  }
+});
+document.getElementById('consent-cancel').addEventListener('click', () => closeConsent(true));
+document.getElementById('consent-close').addEventListener('click', () => closeConsent(true));
+document.getElementById('consent-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'consent-overlay') closeConsent(true);
+});
+
 async function handleAuth0Callback() {
   const q = new URLSearchParams(location.search);
   const code = q.get('code');
@@ -542,6 +669,8 @@ async function handleAuth0Callback() {
   if (!verifier || q.get('state') !== savedState) { showSocialError('Login session expired. Please try again.'); return true; }
   document.getElementById('google-btn').disabled = true;
   document.getElementById('github-btn').disabled = true;
+  document.getElementById('google-btn').dataset.label = document.getElementById('google-btn').innerHTML;
+  document.getElementById('github-btn').dataset.label = document.getElementById('github-btn').innerHTML;
   document.getElementById('google-btn').textContent = 'Signing you in…';
   document.getElementById('github-btn').textContent = 'Signing you in…';
   try {
@@ -558,13 +687,12 @@ async function handleAuth0Callback() {
     });
     const tokens = await tokenRes.json();
     if (!tokenRes.ok || !tokens.id_token) throw new Error((tokens && (tokens.error_description || tokens.error)) || 'Token exchange failed');
-    await finishAuth0Login(tokens.id_token);
+    // Provider verified you. Pause here: show WHAT Voxylis receives and ask
+    // for consent BEFORE creating any session. Cancel discards everything.
+    showConsent(tokens.id_token);
   } catch (e) {
+    restoreSocialButtons();
     showSocialError(e.message);
-    document.getElementById('google-btn').disabled = false;
-    document.getElementById('github-btn').disabled = false;
-    document.getElementById('google-btn').innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg> Continue with Google';
-    document.getElementById('github-btn').innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg> Continue with GitHub';
   }
   return true;
 }

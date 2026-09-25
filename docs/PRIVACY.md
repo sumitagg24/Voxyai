@@ -85,6 +85,16 @@ An account is optional. Local dictation works without one. If you sign in:
   request from its Account page — nothing is uploaded automatically;
 * deleting your account removes the server-side rows and any uploaded history.
 
+### Social sign-in consent (Google / GitHub)
+
+After the provider verifies you, the website shows a consent screen listing
+exactly what Voxylis receives — your name, email address and profile photo —
+before any Voxylis session exists. **Continue** creates the account/session;
+**Cancel** (or closing the dialog) discards the provider token and stores
+nothing. The photo is shown in the dialog only and never stored; the server
+keeps your name, email and provider id, and refuses sign-in when the provider
+email is unverified.
+
 ## Removing everything
 
 1. **Settings → Privacy** — turn history off, delete all history, export first

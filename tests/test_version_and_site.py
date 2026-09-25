@@ -111,6 +111,31 @@ def test_download_page_reads_the_version_from_one_source():
     assert not re.search(r"v\d+\.\d+\.\d+", visible)
 
 
+def test_social_login_requires_explicit_consent_before_session():
+    """No Voxylis session may exist until the user presses Continue.
+
+    The provider verifies the user first; then auth.html must show WHAT
+    Voxylis receives (name, email, photo) with Continue/Cancel, and only the
+    Continue handler may call finishAuth0Login. Cancel must discard the
+    token and state plainly that nothing was stored.
+    """
+    text = (STATIC / "auth.html").read_text(encoding="utf-8")
+    for marker in (
+        "consent-overlay",
+        "consent-continue",
+        "consent-cancel",
+        "showConsent(",
+        "pendingIdToken",
+        "nothing was created or stored",
+    ):
+        assert marker in text, f"auth.html missing consent gate: {marker}"
+    # The token-exchange success path must park at the consent dialog,
+    # never create the session directly.
+    assert "showConsent(tokens.id_token)" in text
+    # Cancel path discards the token instead of proceeding.
+    assert "pendingIdToken = ''" in text
+
+
 def test_version_json_is_served_by_the_backend_too(app_client):
     """The static host resolves the file; Flask needs its own route."""
     client, _ = app_client
