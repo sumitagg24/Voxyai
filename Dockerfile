@@ -24,9 +24,10 @@ RUN curl -fsSL -o /tmp/litestream.tar.gz \
 COPY requirements-server.txt .
 RUN pip install --no-cache-dir -r requirements-server.txt gunicorn
 
-# Copy application
+# Copy application (gunicorn.conf.py lives at the repo root — the CMD needs it)
 COPY web/ web/
 COPY config/ config/
+COPY gunicorn.conf.py .
 
 # Create data directory
 RUN mkdir -p web/data
