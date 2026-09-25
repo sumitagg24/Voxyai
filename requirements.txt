@@ -45,6 +45,10 @@ sentry-sdk>=2.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 
+# Auth0 ID-token verification (RS256 via JWKS in web/app.py)
+PyJWT>=2.8.0
+cryptography>=42.0.0
+
 # Optional: For building executables
 pyinstaller>=6.1.0
 

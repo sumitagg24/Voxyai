@@ -17,3 +17,8 @@ werkzeug>=3.0.0
 requests>=2.31.0
 python-dotenv>=1.0.0
 sentry-sdk>=2.0.0
+# Auth0 ID-token verification (RS256 via JWKS in web/app.py).
+# Missing entirely before v3.0.0 fix: every real social login failed with
+# "Invalid Auth0 token" because `import jwt` raised ModuleNotFoundError.
+PyJWT>=2.8.0
+cryptography>=42.0.0
