@@ -1,0 +1,19 @@
+# Voxylis — SERVER-ONLY dependencies (free hosting, e.g. PythonAnywhere)
+#
+# The full requirements.txt includes DESKTOP packages (PyQt5, pynput,
+# sounddevice, scipy …) that a hosted Flask API never imports — web/app.py
+# needs only the packages below (verified: `python -c "import web.app"`).
+# Installing the desktop stack on a free host wastes quota and breaks builds
+# (system libraries like PortAudio/X11 are missing there).
+#
+# Usage (PythonAnywhere Bash console, after mkvirtualenv):
+#   pip install -r ~/voxyai/requirements-server.txt
+
+flask>=3.0.0
+flask-cors>=4.0.0
+flask-caching>=2.1.0
+flask-limiter>=3.5.0
+werkzeug>=3.0.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+sentry-sdk>=2.0.0
