@@ -10,7 +10,8 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 | API (Flask) | Render free (Docker) | https://voxylis-api.onrender.com | free |
 | Database | SQLite, replicated to B2 by Litestream | `/app/web/data/voxylis.db` + B2 replica | free |
 | Backups | Litestream continuous replica + weekly download | B2 bucket, keep replica | free 10 GB |
-| Keep-alive | UptimeRobot free, 5-min `GET /api/health` | doubles as uptime alert | free |
+| Keep-alive | UptimeRobot free, 5-min `GET /api/health` ("Voxylis API") | doubles as uptime alert | free |
+| Backup ping | cron-job.org every 10 min (backup only; pause if Render hours run hot) | — | free |
 | Auth | Auth0 free (google-oauth2 + github) | tenant `dev-g4w68c5tpeyhxh3d.us.auth0.com` | free |
 | Email | Gmail SMTP (app password) | — | free ≤500/day |
 | Errors | Sentry free | — | free ≤5k/mo |
