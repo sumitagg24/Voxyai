@@ -96,10 +96,50 @@ def dev_tier_change_enabled() -> bool:
 
 
 def payments_configured() -> bool:
-    """True when a payment provider is wired up (webhook + secret)."""
+    """True when a payment provider is wired up (webhook + checkout).
+
+    Backwards-compatible alias for :func:`dodo_configured`: Dodo Payments is
+    the only supported provider, so this is true exactly when Dodo is.
+    """
+    return dodo_configured()
+
+
+def dodo_api_key() -> str:
+    """Optional Dodo Payments API key (server-side use only, never exposed)."""
     import os
 
-    return bool((os.environ.get("STRIPE_WEBHOOK_SECRET") or "").strip())
+    return (os.environ.get("DODO_PAYMENTS_API_KEY") or "").strip()
+
+
+def dodo_webhook_secret() -> str:
+    """Shared secret used to verify Dodo webhook signatures (``whsec_...``)."""
+    import os
+
+    return (os.environ.get("DODO_WEBHOOK_SECRET") or "").strip()
+
+
+def dodo_checkout_urls() -> dict:
+    """Public hosted-checkout links per paid tier (empty string when unset)."""
+    import os
+
+    return {
+        TIER_PRO: (os.environ.get("DODO_CHECKOUT_URL_PRO") or "").strip(),
+        TIER_BUSINESS: (os.environ.get("DODO_CHECKOUT_URL_BUSINESS") or "").strip(),
+    }
+
+
+def dodo_configured() -> bool:
+    """True when Dodo Payments is wired up: webhook secret plus at least one
+    hosted-checkout URL.
+
+    A secret alone cannot collect money (nothing to buy through) and a
+    checkout link alone cannot be trusted (no way to verify payment), so both
+    halves are required before the site offers checkout or the webhook path
+    applies tier changes.
+    """
+    if not dodo_webhook_secret():
+        return False
+    return any(url for url in dodo_checkout_urls().values())
 
 
 def _record(conn, user_id: int, old_tier: str, new_tier: str, source: str, actor: str, note: str) -> None:
@@ -233,8 +273,12 @@ def tier_summary(user_id: int, get_tier, count_transcriptions) -> dict:
             "percentage": percentage,
         },
         # The client must not offer a self-service upgrade that cannot work.
+        # When configured, checkout_urls hands the browser the hosted Dodo
+        # checkout links (public URLs, safe to expose); otherwise they are
+        # empty and the frontend shows honest "unavailable" copy instead.
         "can_self_upgrade": payments_configured(),
         "checkout_available": payments_configured(),
+        "checkout_urls": public_checkout_urls(),
     }
 
 
@@ -242,14 +286,46 @@ def self_service_upgrade_available() -> bool:
     return payments_configured()
 
 
+def public_checkout_urls() -> dict:
+    """Checkout links safe for any client, logged out or not.
+
+    Real hosted URLs only when Dodo is fully configured; empty strings
+    otherwise, so the frontend shows honest "unavailable" copy instead of a
+    dead link. Same shape as the ``checkout_urls`` in :func:`tier_summary`.
+    """
+    if not payments_configured():
+        return {TIER_PRO: "", TIER_BUSINESS: ""}
+    return dodo_checkout_urls()
+
+
 def describe_policy() -> dict:
     """Non-secret policy description for /api/health and diagnostics."""
+    urls = dodo_checkout_urls()
     return {
         "environment": environment(),
         "payments_configured": payments_configured(),
         "dev_tier_change_enabled": dev_tier_change_enabled(),
         "self_service_upgrade_available": self_service_upgrade_available(),
+        "provider": "dodo",
+        "dodo_configured": dodo_configured(),
+        "dodo_checkout_configured": {tier: bool(url) for tier, url in urls.items()},
     }
+
+
+def dodo_plan_to_tier(plan_ref: str) -> str:
+    """Map a Dodo product/plan reference to a Voxylis tier.
+
+    The reference is whatever the merchant configured on the Dodo product
+    (product id, name, or metadata); matching is case-insensitive substring so
+    ``"Voxylis Business Monthly"`` and ``"business"`` both resolve. Unknown or
+    empty references default to Pro — a successful payment must grant *some*
+    paid tier, and Pro is the lower one. Expired/cancelled subscriptions never
+    reach this helper: the webhook downgrades those to free directly.
+    """
+    ref = (plan_ref or "").strip().lower()
+    if "business" in ref:
+        return TIER_BUSINESS
+    return TIER_PRO
 
 
 def resolve_actor_source(actor_is_admin: bool) -> Optional[str]:

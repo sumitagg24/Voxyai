@@ -47,6 +47,58 @@ _MODE_PROMPTS = {
     "creative": "Rewrite the following text with creative flair — vivid language, varied sentence structure, engaging tone. Preserve the original meaning. Output ONLY the enhanced text, nothing else.",
 }
 
+#: Modes accepted by POST /api/history (enhancement modes + translate:<iso>).
+_HISTORY_MODES = frozenset(_MODE_PROMPTS)
+
+#: ISO 639-1 codes accepted by POST /api/history (plus common variants).
+_HISTORY_LANGUAGES = frozenset(
+    {
+        "en",
+        "hi",
+        "hi-en",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "ru",
+        "ar",
+        "ur",
+        "bn",
+        "pa",
+        "gu",
+        "ta",
+        "te",
+        "ml",
+        "mr",
+        "ja",
+        "zh",
+        "ko",
+        "tr",
+        "nl",
+        "pl",
+        "vi",
+        "th",
+        "id",
+        "ms",
+        "sv",
+        "no",
+        "da",
+        "fi",
+        "cs",
+        "hu",
+        "ro",
+        "uk",
+        "el",
+        "he",
+        "auto",
+    }
+)
+
+#: Free-tier history-write cap per hour (abuse guard; well above normal use and
+#: above the 100/month STT quota so the P1.5 regression test can exceed 100).
+_HISTORY_FREE_HOURLY_CAP = 500
+
 
 @usage_bp.route("/api/qa", methods=["POST"])
 @limiter.limit("30 per minute", key_func=get_remote_address)
@@ -276,6 +328,54 @@ def history():
         if not text:
             return jsonify({"success": False, "error": "Text is required"}), 400
 
+        mode = (_text(data.get("mode")) or "formal").lower()
+        if mode not in _HISTORY_MODES and not (
+            mode.startswith("translate:") and mode.split(":", 1)[1] in _HISTORY_LANGUAGES
+        ):
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid mode. Choose from: {', '.join(sorted(_HISTORY_MODES))} "
+                        "or translate:<language>",
+                    }
+                ),
+                400,
+            )
+        language = (_text(data.get("language")) or "en").lower()
+        if language not in _HISTORY_LANGUAGES:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Invalid language. Choose an ISO code such as: {', '.join(sorted(_HISTORY_LANGUAGES))}",
+                    }
+                ),
+                400,
+            )
+
+        # Free-tier abuse guard (history writes are cheap but not free to store).
+        # Paid/owner tiers skip the hourly cap; the generic 30/min limiter still
+        # applies to everyone.
+        try:
+            tier = get_user_tier(user_id)
+        except Exception:
+            tier = TIER_FREE
+        if tier == TIER_FREE:
+            conn = _get_db()
+            try:
+                recent = conn.execute(
+                    "SELECT COUNT(*) AS c FROM usage_records WHERE user_id = ? AND feature = 'history_write' "
+                    "AND created_at >= datetime('now', '-1 hour')",
+                    (user_id,),
+                ).fetchone()["c"]
+            except Exception:
+                recent = 0
+            finally:
+                conn.close()
+            if recent >= _HISTORY_FREE_HOURLY_CAP:
+                return jsonify({"success": False, "error": "History write limit reached, try again later."}), 429
+
         conn = _get_db()
         conn.execute(
             "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
@@ -283,12 +383,15 @@ def history():
                 user_id,
                 text,
                 1 if data.get("enhanced") else 0,
-                data.get("mode", "formal"),
-                data.get("language", "en"),
+                mode,
+                language,
             ),
         )
         conn.commit()
         conn.close()
+        # History rows never consume STT quota (P1.5): quota counts
+        # usage_records feature='transcription' only.
+        record_usage(user_id, "history_write")
         return jsonify({"success": True, "message": "Transcription saved"})
 
     # GET
@@ -459,6 +562,7 @@ def subscription():
                     },
                     "can_self_upgrade": subscription_service.self_service_upgrade_available(),
                     "checkout_available": subscription_service.payments_configured(),
+                    "checkout_urls": subscription_service.public_checkout_urls(),
                 },
             }
         )

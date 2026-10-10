@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request
 from flask_limiter.util import get_remote_address
 
 from web import observability
-from web.auth_helpers import _sanitize, _text
+from web.auth_helpers import _sanitize, _text, normalize_email
 from web.content.blog_posts import LEGACY_BLOG_SLUGS
 from web.db import _get_db
 from web.extensions import cache, limiter
@@ -300,7 +300,7 @@ def contact_submit():
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def newsletter_subscribe():
     data = request.json or {}
-    email = _text(data.get("email"))
+    email = normalize_email(_text(data.get("email")))
 
     if not email:
         return jsonify({"success": False, "error": "Email is required"}), 400
@@ -309,7 +309,7 @@ def newsletter_subscribe():
         return jsonify({"success": False, "error": "Invalid email address"}), 400
 
     conn = _get_db()
-    existing = conn.execute("SELECT id FROM newsletter_subscribers WHERE email = ?", (email,)).fetchone()
+    existing = conn.execute("SELECT id FROM newsletter_subscribers WHERE LOWER(email) = LOWER(?)", (email,)).fetchone()
     if existing:
         conn.close()
         return jsonify({"success": True, "message": "You are already subscribed."})

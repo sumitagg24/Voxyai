@@ -9,11 +9,12 @@ import requests as http_requests  # noqa: F401  (re-exported for backwards compa
 
 from flask import Flask, g, jsonify, request
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from web import observability
 from web.auth_helpers import _verify_session, get_user_tier
 from web.db import _init_db, get_db_path
-from web.extensions import cache, limiter
+from web.extensions import cache, cache_config, limiter, limiter_storage_uri, trust_proxy
 from web.services import email_service, subscription_service
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,13 @@ def create_app() -> Flask:
     """Build and configure the Flask application (all behavior preserved)."""
 
     app = Flask(__name__, static_folder="static")
+    # Behind a proxy (Render, Fly, nginx) TLS is terminated upstream and the
+    # client IP arrives in X-Forwarded-For. Honour exactly one proxy hop — and
+    # only when TRUST_PROXY says one is there — so rate limits key on the real
+    # client instead of the proxy. Never enable with direct client connections:
+    # the header would be client-controlled and limits trivially bypassable.
+    if trust_proxy():
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
     # CORS origins are env-configurable so a separately-hosted frontend
     # (e.g. https://<your-name>.onrender.com) can reach the API. Same-origin
     # localhost:5000 is the default; Flask serves web/static itself.
@@ -114,17 +122,19 @@ def create_app() -> Flask:
         "yes",
         "on",
     )
-    CORS(app, origins=_cors_origins, supports_credentials=_cors_credentials)
+    CORS(app, origins=_cors_origins, supports_credentials=_cors_credentials, expose_headers=["X-Session-Rotated"])
 
-    cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 300}
-    cache.init_app(app, config=cache_config)
+    cache.init_app(app, config=cache_config())
 
-    # Rate limiting (memory-backed; per-instance limits on serverless hosts)
+    # Rate limiting. The store is REDIS_URL when set (shared, exact counts),
+    # otherwise in-process memory — which is per-worker, so the effective
+    # default limits scale with GUNICORN_WORKERS (documented in DEPLOYMENT §C).
+    app.config["RATELIMIT_STORAGE_URI"] = limiter_storage_uri()
     limiter.init_app(app)
 
     app.config["JSON_SORT_KEYS"] = False
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
-    app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # 1 MB request cap
+    app.config["MAX_CONTENT_LENGTH"] = 33554432  # 32 MB request cap (audio uploads)
     app.config["SECRET_KEY"] = _resolve_secret_key()
 
     # Error monitoring. No DSN (or no SDK) simply means monitoring is off: the API
@@ -134,18 +144,56 @@ def create_app() -> Flask:
     # email provider means every verification and password reset is lost.
     email_service.warn_if_unconfigured()
 
+    #: Paths the monitoring hook never touches the database for: static
+    #: assets, the version stamp and the health check carry no session, so a
+    #: lookup would be pure overhead (and a DB failure there must never be
+    #: able to break a health check).
+    _MONITORING_SKIP_PATHS = frozenset({"/version.json", "/api/health", "/favicon.ico"})
+
+    def _monitoring_tier(user_id: int) -> str:
+        """Tier for the monitoring hook, cached per request on ``flask.g``.
+
+        The hook and the endpoint each resolve the tier independently; without
+        the cache a single authenticated request pays for the lookup twice.
+        ``g`` is request-scoped, so nothing leaks across requests.
+        """
+        try:
+            cached = getattr(g, "_tier_cache", None)
+        except RuntimeError:  # outside a request context: just look it up
+            return get_user_tier(user_id)
+        if isinstance(cached, dict) and user_id in cached:
+            return cached[user_id]
+        tier = get_user_tier(user_id)
+        try:
+            if not isinstance(getattr(g, "_tier_cache", None), dict):
+                g._tier_cache = {}
+            g._tier_cache[user_id] = tier
+        except RuntimeError:
+            pass
+        return tier
+
     @app.before_request
     def attach_monitoring_context():
-        """Tag the Sentry scope with the internal user id (never the email)."""
+        """Tag the Sentry scope with the internal user id (never the email).
+
+        Strictly read-only: rotation lives in the endpoint's own
+        ``_verify_session`` call so it happens at most once per request.
+        Static assets, /version.json, /api/health and the favicon skip the
+        database entirely. Database errors are swallowed silently — a
+        monitoring hook must never fail, slow, or log-noise a request.
+        """
 
         if not observability.is_enabled():
+            return None
+        path = request.path
+        if path in _MONITORING_SKIP_PATHS or path.startswith("/static"):
             return None
         try:
             session_id = request.headers.get("X-Session-Id", "")
             if session_id:
-                user_id = _verify_session(session_id)
+                user_id = _verify_session(session_id, rotate=False)
                 if user_id is not None:
-                    observability.set_user(user_id, get_user_tier(user_id))
+                    observability.set_user(user_id, _monitoring_tier(user_id))
         except Exception:
             pass
         return None
@@ -183,12 +231,26 @@ def create_app() -> Flask:
     from web.routes.content import content_bp
     from web.routes.pages import pages_bp
     from web.routes.usage import usage_bp
+    from web.routes.webhooks import webhooks_bp
 
     app.register_blueprint(pages_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(usage_bp)
     app.register_blueprint(content_bp)
+    app.register_blueprint(webhooks_bp)
+
+    # Health, version and static assets are exempt from the default rate
+    # limits: uptime monitors and browsers hit these constantly, and none of
+    # them does expensive work. Route-specific limits (none on these views)
+    # are unaffected; only the extension-wide defaults are skipped.
+    for _exempt_endpoint in ("content.version_json", "content.health", "static"):
+        try:
+            _exempt_view = app.view_functions.get(_exempt_endpoint)
+            if _exempt_view is not None:
+                limiter.exempt(_exempt_view)
+        except Exception:
+            pass
 
     @app.errorhandler(404)
     def not_found(error):
@@ -215,6 +277,36 @@ def create_app() -> Flask:
         except Exception:
             pass
         return jsonify({"error": "Server error"}), 500
+
+    @app.errorhandler(413)
+    def request_too_large(error):
+        """JSON 413 for oversized bodies/uploads (never Flask HTML on /api/*)."""
+        return jsonify({"success": False, "error": "Request too large (max 32 MB)"}), 413
+
+    @app.errorhandler(429)
+    def rate_limited(error):
+        """JSON 429 for rate-limited routes (never Flask HTML on /api/*)."""
+        retry_after = None
+        try:
+            retry_after = getattr(error, "retry_after", None)
+        except Exception:
+            retry_after = None
+        payload = {"success": False, "error": "Rate limit exceeded, try again later."}
+        resp = jsonify(payload)
+        resp.status_code = 429
+        if retry_after:
+            try:
+                resp.headers["Retry-After"] = str(int(retry_after))
+            except Exception:
+                pass
+        return resp
+
+    @app.errorhandler(400)
+    def bad_request(error):
+        """JSON 400 for malformed requests (never Flask HTML on /api/*)."""
+        if request.path.startswith("/api/"):
+            return jsonify({"success": False, "error": "Bad request"}), 400
+        return jsonify({"success": False, "error": "Bad request"}), 400
 
     # Fresh state on every create_app()/reload (tests reload web.app per case).
     try:
@@ -288,6 +380,7 @@ from web.auth_helpers import (  # noqa: F401,E402
     is_admin,
     is_email_verified,
     is_owner,
+    normalize_email,
     record_usage,
     require_admin,
     require_auth,

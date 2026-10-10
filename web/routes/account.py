@@ -3,6 +3,8 @@
 import json
 import logging
 
+from datetime import timedelta
+
 from flask import Blueprint, jsonify, request
 from flask_limiter.util import get_remote_address
 
@@ -11,11 +13,13 @@ from web.auth_helpers import (
     _extract_session,
     _hash_password,
     _load_onboarding,
+    _session_created_at,
     _text,
     _valid_name,
     _valid_password,
     _verify_session,
     get_user_entitlements,
+    is_auth0_account,
     is_owner,
     require_auth,
 )
@@ -208,15 +212,24 @@ def update_profile(user_id):
         return jsonify({"success": False, "error": "User not found"}), 404
 
     if new_password:
-        if not current_password:
-            conn.close()
-            return jsonify({"success": False, "error": "Current password required"}), 400
-        if not _check_password(user["password_hash"], current_password):
-            conn.close()
-            return jsonify({"success": False, "error": "Incorrect current password"}), 400
-        if not _valid_password(new_password):
-            conn.close()
-            return jsonify({"success": False, "error": "New password must be 8-128 characters"}), 400
+        if is_auth0_account(user["password_hash"]):
+            # Auth0-provisioned accounts have no local password yet: there is
+            # no current password to check, so setting the first one only
+            # needs to meet the policy. The session revocation and the
+            # notification email below still run, exactly as for a change.
+            if not _valid_password(new_password):
+                conn.close()
+                return jsonify({"success": False, "error": "New password must be 8-128 characters"}), 400
+        else:
+            if not current_password:
+                conn.close()
+                return jsonify({"success": False, "error": "Current password required"}), 400
+            if not _check_password(user["password_hash"], current_password):
+                conn.close()
+                return jsonify({"success": False, "error": "Incorrect current password"}), 400
+            if not _valid_password(new_password):
+                conn.close()
+                return jsonify({"success": False, "error": "New password must be 8-128 characters"}), 400
         pw_hash = _hash_password(new_password)
         conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user_id))
         # A password change signs out every *other* device and keeps this one.
@@ -263,8 +276,6 @@ def delete_account(user_id):
     password = _text(data.get("password"))
     confirm = _text(data.get("confirm")).upper()
 
-    if not password:
-        return jsonify({"success": False, "error": "Password required"}), 400
     if confirm != "DELETE":
         return (
             jsonify(
@@ -297,9 +308,32 @@ def delete_account(user_id):
             ),
             403,
         )
-    if not _check_password(user["password_hash"], password):
-        conn.close()
-        return jsonify({"success": False, "error": "Incorrect password"}), 401
+    if is_auth0_account(user["password_hash"]):
+        # Auth0 accounts have no local password (``password_hash="auth0:..."``
+        # never verifies), so a password check would 401 forever. Instead the
+        # typed DELETE confirmation above plus a freshly minted session prove
+        # intent: the session must have been created less than 5 minutes ago
+        # (i.e. the user just re-authenticated with the identity provider).
+        created = _session_created_at(_extract_session())
+        if created is None or utcnow() - created > timedelta(minutes=5):
+            conn.close()
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Sign in again, then retry deleting your account within 5 minutes.",
+                        "code": "reauth_required",
+                    }
+                ),
+                403,
+            )
+    else:
+        if not password:
+            conn.close()
+            return jsonify({"success": False, "error": "Password required"}), 400
+        if not _check_password(user["password_hash"], password):
+            conn.close()
+            return jsonify({"success": False, "error": "Incorrect password"}), 401
 
     name = user["name"]
     address = user["email_or_phone"]

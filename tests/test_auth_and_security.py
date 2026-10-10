@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from tests.conftest import REPO_ROOT, ApiUser, login, signup
 
-
 # ── account lifecycle ────────────────────────────────────────────────────────
 
 
@@ -36,6 +35,31 @@ def test_duplicate_signup_is_rejected(app_client):
     again = signup(client, "dupe@gmail.com")
     assert again.status_code == 400
     assert "already exists" in again.get_json()["error"].lower()
+
+
+def test_email_case_variants_are_the_same_account(app_client):
+    """P1.2: signup Mixed@Gmail.com then login mixed@gmail.com works; dupes 400."""
+    client, web_app = app_client
+    created = signup(client, "Mixed@gmail.com")
+    assert created.status_code == 201
+    assert created.get_json()["email_or_phone"] == "mixed@gmail.com"
+
+    second_login = login(client, "mixed@gmail.com")
+    assert second_login.status_code == 200
+    upper_login = login(client, "MIXED@GMAIL.COM")
+    assert upper_login.status_code == 200
+
+    dupe = signup(client, "MIXED@gmail.com")
+    assert dupe.status_code == 400
+    assert "already exists" in dupe.get_json()["error"].lower()
+
+    conn = web_app._get_db()
+    count = conn.execute(
+        "SELECT COUNT(*) AS c FROM users WHERE LOWER(email_or_phone) = LOWER(?)",
+        ("mixed@gmail.com",),
+    ).fetchone()["c"]
+    conn.close()
+    assert count == 1
 
 
 def test_password_policy_and_disposable_domains(app_client):
@@ -90,6 +114,52 @@ def test_session_rotates_after_a_day(app_client):
     assert old == 0, "rotated session should no longer exist under the old id"
 
 
+def test_session_rotation_with_observability_enabled_is_not_double_rotated(app_client, monkeypatch):
+    """Regression (P1.1): monitoring hook is read-only; rotation happens once.
+
+    With observability forced on, a 48h-old session must still authenticate
+    (200), announce the SAME new id in both the X-Session-Rotated header and
+    /api/auth/verify JSON, and the NEW id must work on follow-up.
+    """
+    client, web_app = app_client
+    user = ApiUser(client, "rotate-obs@gmail.com")
+    conn = web_app._get_db()
+    conn.execute(
+        "UPDATE sessions SET created_at = datetime('now', '-48 hours') WHERE id = ?",
+        (user.session_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(web_app.observability, "is_enabled", lambda: True)
+    old_id = user.session_id
+    response = client.post("/api/auth/verify", json={"session_id": old_id})
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["valid"] is True
+    rotated_header = response.headers.get("X-Session-Rotated", "")
+    assert rotated_header, "expected X-Session-Rotated header on rotation"
+    assert payload["session_id"] == rotated_header
+    assert rotated_header != old_id
+
+    # Exactly one live session for the user, under the new id.
+    conn = web_app._get_db()
+    rows = conn.execute("SELECT id FROM sessions WHERE user_id = ?", (user.user_id,)).fetchall()
+    conn.close()
+    assert [r["id"] for r in rows] == [rotated_header]
+
+    # Follow-up with the NEW id succeeds without further rotation.
+    second = client.post("/api/auth/verify", json={"session_id": rotated_header})
+    assert second.status_code == 200
+    assert second.get_json()["valid"] is True
+    assert second.get_json()["session_id"] == rotated_header
+    assert not second.headers.get("X-Session-Rotated", "")
+
+    # CORS must expose the rotation header to the browser.
+    cors = client.get("/api/health", headers={"Origin": "http://localhost:5000"})
+    assert "X-Session-Rotated" in cors.headers.get("Access-Control-Expose-Headers", "")
+
+
 def test_protected_endpoints_require_auth(app_client):
     client, _ = app_client
     for path in ("/api/me", "/api/settings", "/api/history", "/api/hotkeys"):
@@ -120,13 +190,62 @@ def test_free_tier_quota_is_enforced(app_client):
     user = ApiUser(client, "quota@gmail.com")
     conn = web_app._get_db()
     for _ in range(web_app.FREE_MONTHLY_TRANSCRIPTIONS):
-        conn.execute("INSERT INTO transcriptions (user_id, text) VALUES (?, ?)", (user.user_id, "x"))
+        conn.execute(
+            "INSERT INTO usage_records (user_id, feature, count) VALUES (?, 'transcription', 1)",
+            (user.user_id,),
+        )
     conn.commit()
     conn.close()
 
     allowed, used, limit = web_app.check_transcription_quota(user.user_id)
     assert allowed is False
     assert used == limit == web_app.FREE_MONTHLY_TRANSCRIPTIONS
+
+
+def test_history_rows_do_not_consume_stt_quota(app_client):
+    """P1.5: free user can POST history beyond 100 rows; quota tracks usage_records."""
+    client, web_app = app_client
+    user = ApiUser(client, "historyfree@gmail.com")
+    # 100+ history rows via the API must NOT exhaust the STT quota.
+    for i in range(105):
+        response = client.post("/api/history", json={"text": f"history note {i}"}, headers=user.headers)
+        if response.status_code == 429:
+            # Generic 30/min limiter: reset and continue (quota itself must not block).
+            web_app.limiter.reset()
+            response = client.post("/api/history", json={"text": f"history note {i}"}, headers=user.headers)
+        assert response.status_code == 200, (i, response.status_code, response.get_data(as_text=True)[:200])
+    allowed, used, _ = web_app.check_transcription_quota(user.user_id)
+    assert allowed is True, "history writes must not consume STT quota"
+    assert used == 0
+
+    # Real STT usage (usage_records feature='transcription') DOES enforce quota.
+    conn = web_app._get_db()
+    for _ in range(web_app.FREE_MONTHLY_TRANSCRIPTIONS):
+        conn.execute(
+            "INSERT INTO usage_records (user_id, feature, count) VALUES (?, 'transcription', 1)",
+            (user.user_id,),
+        )
+    conn.commit()
+    conn.close()
+    allowed, used, limit = web_app.check_transcription_quota(user.user_id)
+    assert allowed is False
+    assert used == limit == web_app.FREE_MONTHLY_TRANSCRIPTIONS
+
+
+def test_history_post_validates_mode_and_language(app_client):
+    """P1.5: unknown mode/language are 400; translate:<iso> is accepted."""
+    from tests.conftest import ApiUser as _ApiUser
+
+    client, _ = app_client
+    user = _ApiUser(client, "historyvalid@gmail.com")
+    assert client.post("/api/history", json={"text": "x", "mode": "nope"}, headers=user.headers).status_code == 400
+    assert client.post("/api/history", json={"text": "x", "language": "xx"}, headers=user.headers).status_code == 400
+    ok = client.post(
+        "/api/history",
+        json={"text": "bonjour", "mode": "translate:fr", "language": "fr"},
+        headers=user.headers,
+    )
+    assert ok.status_code == 200
 
 
 # ── security posture ─────────────────────────────────────────────────────────
@@ -151,10 +270,32 @@ def test_cors_is_never_wildcard(app_client):
 
 
 def test_oversized_request_body_is_rejected(app_client):
-    client, _ = app_client
-    payload = {"text": "x" * (2 * 1024 * 1024)}
+    client, web_app = app_client
+    assert web_app.app.config["MAX_CONTENT_LENGTH"] == 33554432
+    payload = {"text": "x" * (33 * 1024 * 1024)}
     response = client.post("/api/enhance", json=payload)
-    assert response.status_code in (400, 413)
+    assert response.status_code == 413
+    body = response.get_json()
+    assert body is not None and "error" in body
+    assert "html" not in response.content_type.lower()
+
+
+def test_rate_limited_responses_are_json(app_client):
+    """P1.4: a rate-limited API route must return JSON 429, never Flask HTML."""
+    client, _ = app_client
+    seen_429 = None
+    for i in range(15):
+        resp = client.post(
+            "/api/auth/signup",
+            json={"name": "Flood", "email_or_phone": f"json429-{i}@gmail.com", "password": "correct-horse-battery"},
+        )
+        if resp.status_code == 429:
+            seen_429 = resp
+            break
+    assert seen_429 is not None, "expected signup to rate-limit within 15 attempts"
+    assert "html" not in seen_429.content_type.lower()
+    body = seen_429.get_json()
+    assert body is not None and "error" in body
 
 
 def test_errors_do_not_leak_internals(app_client):
@@ -457,8 +598,8 @@ def test_unverified_owner_claim_gets_no_owner_privileges_via_any_surface(app_cli
     conn = web_app._get_db()
     user_id = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (owner_email,)).fetchone()["id"]
     conn.executemany(
-        "INSERT INTO transcriptions (user_id, text, created_at) VALUES (?, ?, datetime('now'))",
-        [(user_id, f"entry {i}") for i in range(100)],
+        "INSERT INTO usage_records (user_id, feature, count) VALUES (?, 'transcription', 1)",
+        [(user_id,) for _ in range(100)],
     )
     conn.commit()
     conn.close()

@@ -129,7 +129,8 @@ def test_webhook_path_refuses_until_payments_are_configured(app_client):
 
 def test_unverified_webhook_is_rejected(app_client, monkeypatch):
     _, web_app = app_client
-    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    monkeypatch.setenv("DODO_WEBHOOK_SECRET", "whsec_dGVzdA==")
+    monkeypatch.setenv("DODO_CHECKOUT_URL_PRO", "https://checkout.example/pro")
     conn = web_app._get_db()
     with pytest.raises(web_app.subscription_service.TierChangeDenied) as excinfo:
         web_app.subscription_service.apply_tier_change(

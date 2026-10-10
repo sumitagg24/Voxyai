@@ -123,13 +123,41 @@ async function loadSubscriptionData() {
                     badgeEl.textContent = s.tier ? s.tier.charAt(0).toUpperCase() + s.tier.slice(1) : 'Free';
                     badgeEl.className = 'tier-badge tier-' + (s.tier || 'free');
                 }
-                // Update manage button
+                // Update manage button: hosted Dodo checkout when the backend
+                // offers it, honest disabled copy when paid plans are
+                // unavailable on this deployment.
                 const btn = document.getElementById('managePlanBtn');
+                const note = document.getElementById('planNote');
+                const urls = s.checkout_urls || {};
                 if (btn && s.tier === 'owner') {
                     btn.textContent = 'Owner Access';
                     btn.removeAttribute('href');
                     btn.style.pointerEvents = 'none';
                     btn.style.opacity = '0.7';
+                } else if (btn && s.checkout_available && (urls.pro || urls.business)) {
+                    const target = s.tier === 'pro' ? (urls.business || urls.pro) : (urls.pro || urls.business);
+                    let link = target;
+                    // Best-effort email prefill for the hosted form; the
+                    // parameter is ignored when the provider does not support it.
+                    try {
+                        const meResp = await voxyFetch('/api/me');
+                        const me = meResp && meResp.ok ? await meResp.json() : null;
+                        const email = me && me.user && me.user.email_or_phone;
+                        if (email && email.indexOf('@') !== -1) link += (link.indexOf('?') === -1 ? '?' : '&') + 'email=' + encodeURIComponent(email);
+                    } catch (e) { /* prefill is best-effort */ }
+                    btn.textContent = s.tier === 'pro' ? 'Upgrade to Business' : 'Upgrade to Pro';
+                    btn.href = link;
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                    btn.removeAttribute('title');
+                    if (note) note.textContent = '';
+                } else if (btn && !s.checkout_available) {
+                    btn.textContent = 'Paid plans unavailable';
+                    btn.removeAttribute('href');
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.7';
+                    btn.title = 'Paid plans are not purchasable yet on this deployment';
+                    if (note) note.textContent = 'Paid plans are not purchasable yet on this deployment — no payment provider is connected, and no card details are collected.';
                 } else if (btn && s.tier !== 'free') {
                     btn.textContent = 'Manage Plan';
                 }

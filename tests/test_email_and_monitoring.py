@@ -339,6 +339,27 @@ def test_forgot_password_emails_only_existing_accounts(outbox):
     assert "reset_token=" not in found.get_data(as_text=True)
 
 
+def test_forgot_password_is_case_insensitive(outbox):
+    """P1.2: signup MixedCase then forgot-password lowercase still delivers."""
+    provider, web_app = outbox
+    with web_app.app.test_client() as client:
+        created = client.post(
+            "/api/auth/signup",
+            json={
+                "name": "Case User",
+                "email_or_phone": "CaseUser@gmail.com",
+                "password": "correct-horse-battery",
+            },
+        )
+        assert created.status_code == 201
+        provider.outbox.clear()
+        response = client.post("/api/auth/forgot-password", json={"email": "caseuser@GMAIL.com"})
+        assert response.status_code == 200
+        assert response.get_json()["success"] is True
+    assert _sent_kinds(provider) == ["password_reset"]
+    assert provider.outbox[0].to == "caseuser@gmail.com"
+
+
 def test_reset_link_is_single_use_and_signs_out_every_device(outbox):
     provider, web_app = outbox
     with web_app.app.test_client() as client:
@@ -593,7 +614,10 @@ def test_owner_account_cannot_be_deleted_from_the_app(outbox):
 def _fill_quota(web_app, user_id: int, count: int) -> None:
     conn = web_app._get_db()
     for _ in range(count):
-        conn.execute("INSERT INTO transcriptions (user_id, text) VALUES (?, ?)", (user_id, "x"))
+        conn.execute(
+            "INSERT INTO usage_records (user_id, feature, count) VALUES (?, 'transcription', 1)",
+            (user_id,),
+        )
     conn.commit()
     conn.close()
 

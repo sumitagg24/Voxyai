@@ -107,7 +107,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
   <div class="wrap">
     <div class="eyebrow">Voxylis / Pricing</div>
     <h1>Simple, transparent pricing</h1>
-    <p>Start free. Paid plans are described below but are <b>not purchasable yet</b> — there is no payment provider connected to this deployment, and no card details are collected.</p>
+    <p id="paidNote">Start free. Paid plans are described below but are <b>not purchasable yet</b> — there is no payment provider connected to this deployment, and no card details are collected.</p>
   </div>
 </header>
 
@@ -138,7 +138,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         <li>Advanced speech modes</li>
         <li>Everything in Free</li>
       </ul>
-      <a href="/contact" class="card-btn">Ask to be notified</a>
+      <a href="/contact" class="card-btn" id="proCheckoutBtn">Ask to be notified</a>
     </div>
     <div class="pricing-card">
       <div class="tier">Business</div>
@@ -151,7 +151,7 @@ a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
         <li>Team features</li>
         <li>Custom integrations</li>
       </ul>
-      <a href="/contact" class="card-btn outline">Talk to us</a>
+      <a href="/contact" class="card-btn outline" id="businessCheckoutBtn">Talk to us</a>
     </div>
   </div>
 </section>
@@ -205,6 +205,36 @@ document.querySelectorAll('.faq-item').forEach(item=>{
     if(!isOpen)item.classList.add('open');
   });
 });
+</script>
+<script>
+// Dodo checkout wiring. The static markup above is the honest unconfigured
+// state ("not purchasable yet"); only when the backend reports
+// checkout_available with hosted links do the buttons become real checkout
+// links. Anonymous visitors get the plain link (no email to prefill).
+(function () {
+  function apiBase() {
+    try {
+      if (window.VOXYLIS_API_BASE) return String(window.VOXYLIS_API_BASE).replace(/\/+$/, '');
+      var m = window.location.search.match(/[?&]api=([^&]+)/);
+      if (m) return decodeURIComponent(m[1]).replace(/\/+$/, '');
+      return (localStorage.getItem('voxy_api_base') || '').replace(/\/+$/, '');
+    } catch (e) { return ''; }
+  }
+  fetch(apiBase() + '/api/subscription').then(function (res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }).then(function (data) {
+    var s = (data && data.subscription) || {};
+    if (!s.checkout_available) return;
+    var urls = s.checkout_urls || {};
+    var note = document.getElementById('paidNote');
+    if (note) note.innerHTML = 'Start free. Paid plans check out securely through Dodo Payments — no card details ever touch Voxylis servers.';
+    var pro = document.getElementById('proCheckoutBtn');
+    if (pro && urls.pro) { pro.href = urls.pro; pro.textContent = 'Choose Pro'; }
+    var biz = document.getElementById('businessCheckoutBtn');
+    if (biz && urls.business) { biz.href = urls.business; biz.textContent = 'Choose Business'; }
+  }).catch(function () { /* unconfigured or offline: honest static copy stays */ });
+})();
 </script>
 <script src="/static/js/cookie-consent.js" defer></script>
 </body>

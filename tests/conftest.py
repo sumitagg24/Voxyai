@@ -36,7 +36,10 @@ def app_client(tmp_path, monkeypatch):
     monkeypatch.delenv("VOXYLIS_ENV", raising=False)
     monkeypatch.delenv("FLASK_ENV", raising=False)
     monkeypatch.delenv("ALLOW_DEV_TIER_CHANGE", raising=False)
-    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
+    monkeypatch.delenv("DODO_PAYMENTS_API_KEY", raising=False)
+    monkeypatch.delenv("DODO_WEBHOOK_SECRET", raising=False)
+    monkeypatch.delenv("DODO_CHECKOUT_URL_PRO", raising=False)
+    monkeypatch.delenv("DODO_CHECKOUT_URL_BUSINESS", raising=False)
     monkeypatch.setenv("SECRET_KEY", "test-secret-key-that-is-long-enough-0001")
 
     import web.app as web_app

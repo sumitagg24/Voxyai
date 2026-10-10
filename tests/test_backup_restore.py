@@ -212,3 +212,47 @@ def test_cli_takes_a_backup_and_restores_it(tmp_path, capsys):
     db.unlink()
     assert backup_mod.main(["--restore", saved, "--db", str(db)]) == 0
     assert _rows(db) == []
+
+
+# ── prune ordering on coarse-mtime filesystems ───────────────────────────────
+
+
+def test_backup_suffix_parsing():
+    from pathlib import Path as _Path
+
+    assert backup_mod._backup_suffix(_Path("voxylis-20240101-000000.db")) == 0
+    assert backup_mod._backup_suffix(_Path("voxylis-20240101-000000-3.db")) == 3
+    assert backup_mod._backup_suffix(_Path("voxylis-20240101-000000-10.db")) == 10
+    # The stamp itself ends in digits: only the group after the full stamp counts.
+    assert backup_mod._backup_suffix(_Path("voxylis-20240101-000000-007.db")) == 7
+    assert backup_mod._backup_suffix(_Path("something-else.db")) == 0
+
+
+def test_prune_orders_same_second_backups_by_numeric_suffix(tmp_path):
+    """Same-second backups must prune oldest-first even when the filesystem
+    timestamp cannot tell them apart.
+
+    ``-10`` sorts before ``-2`` lexicographically, so a name tie-break prunes
+    the newest file and lets the oldest survive. The numeric suffix keeps
+    creation order.
+    """
+    import os
+
+    backup_dir = tmp_path / "b"
+    backup_dir.mkdir()
+    # Creation order, oldest first. Lexicographic order disagrees on purpose.
+    names = [
+        "voxylis-20240101-000000-2.db",
+        "voxylis-20240101-000000-9.db",
+        "voxylis-20240101-000000-10.db",
+    ]
+    stamp = 1700000000
+    for name in names:
+        path = backup_dir / name
+        path.write_bytes(b"x")
+        os.utime(path, (stamp, stamp))
+    assert len({p.stat().st_mtime_ns for p in backup_dir.glob("voxylis-*.db")}) == 1
+
+    assert backup_mod._prune(backup_dir, keep=2) == 1
+    remaining = {p.name for p in backup_dir.glob("voxylis-*.db")}
+    assert remaining == set(names[1:]), remaining

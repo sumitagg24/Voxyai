@@ -28,6 +28,7 @@ from web.auth_helpers import (
     get_user_tier,
     is_admin,
     is_owner,
+    normalize_email,
     require_admin,
     require_auth,
 )
@@ -129,7 +130,7 @@ def auth_auth0():
         logger.warning("Auth0 token verification failed: %s", e)
         return jsonify({"success": False, "error": "Invalid Auth0 token"}), 401
 
-    email = (claims.get("email") or "").strip().lower()
+    email = normalize_email(claims.get("email") or "")
     if not email or "@" not in email:
         return jsonify({"success": False, "error": "No email in Auth0 profile"}), 400
     # Identity linking is only safe when the IdP has actually verified the
@@ -147,7 +148,7 @@ def auth_auth0():
     if sub:
         user = conn.execute("SELECT id FROM users WHERE auth0_sub = ?", (sub,)).fetchone()
     if user is None:
-        user = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (email,)).fetchone()
+        user = conn.execute("SELECT id FROM users WHERE LOWER(email_or_phone) = LOWER(?)", (email,)).fetchone()
     if user is None:
         cur = conn.execute(
             "INSERT INTO users (name, email_or_phone, password_hash, "
@@ -332,7 +333,7 @@ def admin_users(user_id):
 def auth_signup():
     data = request.json or {}
     name = _text(data.get("name"))
-    email_or_phone = _text(data.get("email_or_phone"))
+    email_or_phone = normalize_email(_text(data.get("email_or_phone")))
     password = _text(data.get("password"))
 
     if not name or not email_or_phone or not password:
@@ -377,7 +378,7 @@ def auth_signup():
         )
 
     conn = _get_db()
-    existing = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (email_or_phone,)).fetchone()
+    existing = conn.execute("SELECT id FROM users WHERE LOWER(email_or_phone) = LOWER(?)", (email_or_phone,)).fetchone()
     if existing:
         conn.close()
         return jsonify({"success": False, "error": "Account already exists"}), 400
@@ -445,7 +446,7 @@ def auth_signup():
 @limiter.limit("10 per 15 minutes", key_func=get_remote_address)
 def auth_login():
     data = request.json or {}
-    email_or_phone = _text(data.get("email_or_phone"))
+    email_or_phone = normalize_email(_text(data.get("email_or_phone")))
     password = _text(data.get("password"))
 
     if not email_or_phone or not password:
@@ -453,7 +454,7 @@ def auth_login():
 
     conn = _get_db()
     user = conn.execute(
-        "SELECT id, name, password_hash FROM users WHERE email_or_phone = ?",
+        "SELECT id, name, password_hash FROM users WHERE LOWER(email_or_phone) = LOWER(?)",
         (email_or_phone,),
     ).fetchone()
     conn.close()
@@ -500,9 +501,9 @@ def auth_login():
 
 @auth_bp.route("/api/auth/verify", methods=["POST"])
 def auth_verify():
-    data = request.json or {}
-    session_id = data.get("session_id", "")
-    if not session_id:
+    data = request.get_json(silent=True) or {}
+    session_id = data.get("session_id", "") or request.headers.get("X-Session-Id", "")
+    if not session_id or not isinstance(session_id, str):
         return jsonify({"valid": False, "error": "Missing session_id"}), 400
 
     user_id = _verify_session(session_id)
@@ -551,12 +552,12 @@ def auth_logout():
 @limiter.limit("5 per hour", key_func=get_remote_address)
 def forgot_password():
     data = request.json or {}
-    email = _text(data.get("email")).lower()
+    email = normalize_email(_text(data.get("email")))
     if not email or not _EMAIL_RE.match(email):
         return jsonify({"success": False, "error": "Valid email required"}), 400
 
     conn = _get_db()
-    user = conn.execute("SELECT id FROM users WHERE email_or_phone = ?", (email,)).fetchone()
+    user = conn.execute("SELECT id FROM users WHERE LOWER(email_or_phone) = LOWER(?)", (email,)).fetchone()
     if user is None:
         conn.close()
         return jsonify({"success": True, "message": "If an account exists, a reset link has been sent."})

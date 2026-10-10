@@ -50,6 +50,22 @@ services:
         value: yAAtiPLoCmlzGixp9HUSnUjfI4V83qfG
       - key: AUTH0_DESKTOP_CLIENT_ID
         value: uhCL7jpmMZX3JRhTMVhZhYrbipbHDQdr
+      # --- proxy / rate-limiting: Render terminates TLS and forwards the
+      # client IP in X-Forwarded-For; TRUST_PROXY lets ProxyFix honour it so
+      # limits key on the real client instead of the proxy.
+      - key: TRUST_PROXY
+        value: true
+      # --- Dodo Payments (see docs/DEPLOYMENT.md § H): secret + at least one
+      # checkout URL, or the site keeps "not purchasable yet" copy.
+      - key: DODO_CHECKOUT_URL_PRO
+        sync: false
+      - key: DODO_CHECKOUT_URL_BUSINESS
+        sync: false
+      # --- shared rate-limit store (optional): unset means in-process memory
+      # limits, which are per-worker (GUNICORN_WORKERS=2 splits them). Set a
+      # Redis URL for exact shared counting (needs the `redis` package).
+      - key: REDIS_URL
+        sync: false
       # --- secrets: fill in Render Dashboard → Environment ---
       - key: SECRET_KEY
         sync: false
@@ -72,6 +88,10 @@ services:
       - key: SENTRY_DSN
         sync: false
       - key: SENTRY_DSN_BROWSER
+        sync: false
+      - key: DODO_PAYMENTS_API_KEY
+        sync: false
+      - key: DODO_WEBHOOK_SECRET
         sync: false
       # --- Litestream → B2 (SQLite durability on the ephemeral disk) ---
       - key: AWS_ACCESS_KEY_ID

@@ -689,20 +689,34 @@ class VoicePage(BasePage):
         self.volume_label.setText(f"{self.volume.value()}%")
 
     def _load_devices(self) -> None:
-        if self.device_combo.count():
-            return
-        self.device_combo.addItem("System default", None)
+        if not self.device_combo.count():
+            self.device_combo.addItem("System default", None)
+            try:
+                devices = self.orchestrator.recorder.list_devices()
+                for index, device in enumerate(devices):
+                    name = device.get("name") if isinstance(device, dict) else getattr(device, "name", "")
+                    inputs = (
+                        device.get("max_input_channels", 0)
+                        if isinstance(device, dict)
+                        else getattr(device, "max_input_channels", 0)
+                    )
+                    if name and inputs:
+                        self.device_combo.addItem(str(name), index)
+            except Exception:
+                pass
+        # Always reflect the persisted selection (None/empty = System default).
         try:
-            devices = self.orchestrator.recorder.list_devices()
-            for index, device in enumerate(devices):
-                name = device.get("name") if isinstance(device, dict) else getattr(device, "name", "")
-                inputs = (
-                    device.get("max_input_channels", 0)
-                    if isinstance(device, dict)
-                    else getattr(device, "max_input_channels", 0)
-                )
-                if name and inputs:
-                    self.device_combo.addItem(str(name), index)
+            saved = self.orchestrator.get_config("audio_device", None)
+            if saved in ("", None):
+                self.device_combo.setCurrentIndex(0)
+            else:
+                try:
+                    saved_index = int(saved) if not isinstance(saved, int) else saved
+                except (TypeError, ValueError):
+                    self.device_combo.setCurrentIndex(0)
+                    return
+                found = self.device_combo.findData(saved_index)
+                self.device_combo.setCurrentIndex(found if found >= 0 else 0)
         except Exception:
             pass
 
@@ -1292,9 +1306,11 @@ class AccountPage(BasePage):
             try:
                 from utils import credentials
 
-                session_id = credentials.credential_store.get("auth0_session") or credentials.credential_store.get(
-                    "session_id"
-                ) or ""
+                session_id = (
+                    credentials.credential_store.get("auth0_session")
+                    or credentials.credential_store.get("session_id")
+                    or ""
+                )
             except Exception:
                 session_id = ""
         for key in ("user_email", "tier", "user_role", "session_id"):

@@ -57,7 +57,9 @@ def _sign(payload: str) -> str:
 
 def unsubscribe_token(user_id: int, email: str) -> str:
     """Mint ``{purpose}.{user_id}.{base64(email)}.{signature}``."""
-    address = (email or "").strip().lower()
+    from web.auth_helpers import normalize_email
+
+    address = normalize_email(email)
     payload = f"{_PURPOSE}.{int(user_id)}.{base64.urlsafe_b64encode(address.encode()).decode().rstrip('=')}"
     return f"{payload}.{_sign(payload)}"
 
@@ -92,16 +94,14 @@ def read_unsubscribe_token(token: str) -> Optional[Tuple[int, str]]:
 
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        """
+    conn.execute("""
         CREATE TABLE IF NOT EXISTS email_preferences (
             user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             marketing_opt_in  INTEGER NOT NULL DEFAULT 0,
             source            TEXT    NOT NULL DEFAULT '',
             updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
         )
-        """
-    )
+        """)
 
 
 def set_marketing_opt_in(
@@ -152,7 +152,9 @@ def opt_out_by_token(conn: sqlite3.Connection, token: str) -> Optional[str]:
     if row is None:
         return None
     current = (row["email_or_phone"] if not hasattr(row, "keys") else row["email_or_phone"]) or ""
-    if current.strip().lower() != email.strip().lower():
+    from web.auth_helpers import normalize_email
+
+    if normalize_email(current) != normalize_email(email):
         return None
     set_marketing_opt_in(conn, user_id, False, source="unsubscribe-link")
     masked = email[:1] + "***" + email[email.find("@") :] if "@" in email else "***"

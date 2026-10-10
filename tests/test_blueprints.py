@@ -14,13 +14,14 @@ def test_all_route_modules_importable():
         "web.routes.account",
         "web.routes.usage",
         "web.routes.content",
+        "web.routes.webhooks",
     ):
         importlib.import_module(name)
 
 
 def test_blueprints_registered_and_routes_present(app_client):
     client, web_app = app_client
-    for bp in ("pages", "auth", "account", "usage", "content"):
+    for bp in ("pages", "auth", "account", "usage", "content", "webhooks"):
         assert bp in web_app.app.blueprints, f"blueprint {bp} not registered"
     rules = {r.rule for r in web_app.app.url_map.iter_rules()}
     expected = {
@@ -80,6 +81,7 @@ def test_blueprints_registered_and_routes_present(app_client):
         "/api/public-config",
         "/api/health",
         "/unsubscribe",
+        "/api/webhooks/dodo",
     }
     missing = expected - rules
     assert not missing, f"missing routes: {sorted(missing)}"

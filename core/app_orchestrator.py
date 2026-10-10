@@ -108,6 +108,12 @@ class AppOrchestrator:
             log_warning(f"Crash reporting unavailable: {type(exc).__name__}")
 
         self.recorder = AudioRecorder()
+        # P1.3: honour the persisted microphone selection (None/empty = default).
+        try:
+            _saved_device = self.config.get("audio_device", None)
+            self.recorder.device_id = None if _saved_device in (None, "") else _saved_device
+        except Exception:
+            pass
         self.transcriber: Optional[Transcriber] = None
         self.enhancer: Optional[TextEnhancer] = None
         self.injector = TextInjector()
@@ -703,8 +709,35 @@ class AppOrchestrator:
                     log_warning("Rejected mode hotkeys: " + "; ".join(problems))
                     return False
                 value = mapping
+            if key == "audio_device":
+                # None/empty means the OS default. Otherwise the index must
+                # exist in sounddevice.query_devices(); never persist a dead id.
+                if value in (None, ""):
+                    value = None
+                else:
+                    try:
+                        index = int(value) if not isinstance(value, int) else value
+                    except (TypeError, ValueError):
+                        log_warning(f"Rejected audio_device '{value}': not an integer index")
+                        return False
+                    try:
+                        import sounddevice as sd
+
+                        devices = sd.query_devices()
+                        if not isinstance(index, int) or not (0 <= index < len(devices)):
+                            log_warning(f"Rejected audio_device '{value}': no such device index")
+                            return False
+                    except Exception as exc:
+                        log_warning(f"Rejected audio_device '{value}': cannot verify devices ({type(exc).__name__})")
+                        return False
+                    value = index
 
             self.config[key] = value
+            if key == "audio_device" and hasattr(self, "recorder") and self.recorder is not None:
+                try:
+                    self.recorder.device_id = value
+                except Exception:
+                    pass
             if key == "hotkey" and self.hotkey_listener:
                 self.hotkey_listener.set_hotkey(value)
             if key == "toggle_mode" and self.hotkey_listener:

@@ -151,16 +151,41 @@ def backup(
     return result
 
 
+def _backup_suffix(path: Path) -> int:
+    """Numeric collision suffix of a backup file name (``None`` → 0).
+
+    ``backup()`` names files ``voxylis-<stamp>.db`` then
+    ``voxylis-<stamp>-1.db``, ``-2.db``, … within the same second. The stamp
+    itself ends in digits, so the suffix is only the group after the full
+    ``voxylis-<8 digits>-<6 digits>`` stamp; anything unparseable sorts as 0
+    (oldest) rather than crashing the prune run.
+    """
+    import re
+
+    match = re.fullmatch(r"voxylis-\d{8}-\d{6}(?:-(\d+))?\.db", path.name)
+    if not match:
+        return 0
+    try:
+        return int(match.group(1)) if match.group(1) is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
 def _prune(backup_dir: Path, keep: int) -> int:
     """Delete the oldest backups beyond the newest ``keep``; returns count."""
     if keep < 0:
         keep = 0
-    # Sort by modification time, newest last: two runs can land in the same
-    # second (the collision suffix in the name then breaks lexicographic
-    # ordering), and a copied-in backup may carry a skewed mtime.
+    # Order oldest-first by whole-second mtime, breaking ties with the numeric
+    # collision suffix. Comparing raw ``st_mtime_ns`` is exact on fine-grained
+    # filesystems but meaningless where the timestamp granularity is coarse:
+    # several backups then share one second and the fallback ordering decides
+    # who survives. A lexicographic name tie-break misorders ``-10`` before
+    # ``-2`` (so the newest file can sort first and be pruned while the oldest
+    # survives); the parsed numeric suffix keeps creation order. The trailing
+    # name keeps the sort fully deterministic for hand-placed files.
     backups = sorted(
         backup_dir.glob("voxylis-*.db"),
-        key=lambda path: (path.stat().st_mtime_ns, path.name),
+        key=lambda path: (path.stat().st_mtime_ns // 1_000_000_000, _backup_suffix(path), path.name),
     )
     removed = 0
     for stale in backups[: len(backups) - keep]:

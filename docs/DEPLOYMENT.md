@@ -59,7 +59,9 @@ host, add it to `CORS_ORIGINS` rather than relaxing CORS to a wildcard.
 | CORS | `CORS_ORIGINS` | comma-separated | Required | No wildcard is accepted |
 | Cookies | `SESSION_COOKIE_*` | n/a | Not used | Sessions travel in the `X-Session-Id` header, not a cookie. `CORS_SUPPORTS_CREDENTIALS` defaults to false |
 | Workers | `GUNICORN_WORKERS` | int | No | Defaults to `cpu_count * 2 + 1` |
-| Proxy | forward `X-Forwarded-For` | – | Required behind a proxy | Rate limits key on the client IP |
+| Proxy | `TRUST_PROXY` | `true` behind a proxy | Required behind a proxy | `render.yaml` sets `true`: Render terminates TLS, so `ProxyFix(app, x_for=1)` honours `X-Forwarded-For` and rate limits key on the real client IP. Never set `true` when clients connect directly — the header would be spoofable |
+| Rate-limit store | `REDIS_URL` | redis URL | No | Unset means in-process memory limits, which are **per-worker**: with `GUNICORN_WORKERS=2` each worker counts separately, so effective limits are roughly doubled. Set a Redis URL (and `pip install redis`) for exact shared counting |
+| Page cache | `CACHE_TYPE` | flask-caching type | No | Defaults to `SimpleCache` (per-worker memory). Set `RedisCache` with `CACHE_REDIS_URL` for a shared cache |
 
 Single-instance only: rate limits are in-process and the database is SQLite.
 Do not scale horizontally without first moving both to a shared store.
@@ -229,17 +231,39 @@ does not use Auth0 at all.
 
 ---
 
-## H. Payment provider — **NOT IMPLEMENTED**
+## H. Payment provider — Dodo Payments
 
-There is no checkout. The pricing page says paid plans are not purchasable yet,
-and `POST /api/subscription/upgrade` refuses self-service changes: a tier can
-only change through a verified webhook, an audited admin action, or a
-development override that production ignores.
+Paid plans are sold through Dodo hosted checkout and applied by a verified
+Dodo webhook (`POST /api/webhooks/dodo`). Three values, all set on the API
+host (see `render.yaml` for the key list):
 
-If you add a provider, `STRIPE_WEBHOOK_SECRET` is the single value the backend
-already reads (`payments_configured()`). Until it is set, every webhook-sourced
-change is refused with `payments_not_configured` (HTTP 503). Do not flip the
-pricing page to "buy" until a real, signature-verified webhook path exists.
+| Item | Variable | Type | Required |
+|---|---|---|---|
+| Webhook secret | `DODO_WEBHOOK_SECRET` | `whsec_...` signing secret | Yes — verifies every delivery (Standard-Webhooks HMAC-SHA256 over `{id}.{timestamp}.{raw_body}`, 5-minute window) |
+| Pro checkout | `DODO_CHECKOUT_URL_PRO` | hosted checkout URL from the Dodo dashboard | At least one of the two checkout URLs |
+| Business checkout | `DODO_CHECKOUT_URL_BUSINESS` | hosted checkout URL from the Dodo dashboard | At least one of the two checkout URLs |
+| API key | `DODO_PAYMENTS_API_KEY` | server key | No — reserved for future server-side Dodo calls |
+
+Behaviour: `dodo_configured()` (and the `checkout_available` / `can_self_upgrade`
+flags in `GET /api/subscription`) is true only when the secret **and** at least
+one checkout URL are set — a secret alone cannot sell anything, and links alone
+cannot be trusted. Until then the pricing page keeps its honest "not
+purchasable yet" copy, the dashboard shows the plan as unavailable, and the
+webhook answers `503`. `POST /api/subscription/upgrade` still refuses
+self-service changes: a tier changes only through a verified webhook, an
+audited admin action, or a development override that production ignores.
+
+Webhook setup in the Dodo dashboard: subscribe to payment and subscription
+events and point them at `https://<your-api>/api/webhooks/dodo`. Event mapping:
+`payment.succeeded` / `subscription.active` / `subscription.renewed` grant the
+tier matching the product (contains "business" → Business, else Pro);
+`*.expired` / `*.cancelled` drop back to free; anything else is acknowledged
+without a tier change. The customer is matched by checkout `metadata.user_id`
+first, then by customer email. Replays are dropped via `processed_events`
+(`event_id` UNIQUE) and answered 2xx as duplicates.
+
+Verify: `curl /api/health` → `subscription_policy.dodo_configured`; complete a
+test checkout and confirm `tier_audit` gains a `payment_webhook` row.
 
 ---
 

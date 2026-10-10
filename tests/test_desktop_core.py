@@ -11,7 +11,6 @@ from core.history_store import HistoryStore
 from core.errors import catalog, classify_exception, friendly_error
 from utils import credentials, paths
 
-
 # ── paths ────────────────────────────────────────────────────────────────────
 
 
@@ -382,6 +381,7 @@ def _config_only_orchestrator(tmp_path):
     app.voice_commands = SimpleNamespace(update_custom=lambda value: None)
     app.profiles = SimpleNamespace(update=lambda value: None)
     app.sound = SimpleNamespace(enabled=True, volume=0.7)
+    app.recorder = SimpleNamespace(device_id=None, list_devices=lambda: [])
     return app
 
 
@@ -406,3 +406,39 @@ def test_mode_hotkeys_must_not_collide_or_be_reserved(tmp_path):
 
     assert app.update_config("mode_hotkeys", {"win+alt": "casual"}) is True
     assert app.config["mode_hotkeys"] == {"win+alt": "casual"}
+
+
+def test_audio_device_selection_is_validated_and_persisted(tmp_path, monkeypatch):
+    """P1.3: mic selection persists and invalid indices are rejected."""
+    import sys
+    import types
+
+    app = _config_only_orchestrator(tmp_path)
+    fake_sd = types.ModuleType("sounddevice")
+    fake_sd.query_devices = lambda: [
+        {"name": "Mic A", "max_input_channels": 1},
+        {"name": "Speakers", "max_input_channels": 0},
+        {"name": "Mic B", "max_input_channels": 2},
+    ]
+    monkeypatch.setitem(sys.modules, "sounddevice", fake_sd)
+
+    # Default (None) is always allowed and maps to the OS default.
+    assert app.update_config("audio_device", None) is True
+    assert app.config["audio_device"] is None
+    assert app.recorder.device_id is None
+
+    # Valid input index persists and reaches the recorder.
+    assert app.update_config("audio_device", 2) is True
+    assert app.config["audio_device"] == 2
+    assert app.recorder.device_id == 2
+
+    # Index 0 is valid even though it is falsy (must not collapse to default).
+    assert app.update_config("audio_device", 0) is True
+    assert app.config["audio_device"] == 0
+    assert app.recorder.device_id == 0
+
+    # Out-of-range and non-integer values are rejected without persisting.
+    assert app.update_config("audio_device", 99) is False
+    assert app.update_config("audio_device", "not-a-device") is False
+    assert app.config["audio_device"] == 0
+    assert app.recorder.device_id == 0

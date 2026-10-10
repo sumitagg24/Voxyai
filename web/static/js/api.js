@@ -31,7 +31,13 @@
     try { sid = localStorage.getItem('session_id') || ''; } catch (e) {}
     if (sid && !headers.has('X-Session-Id')) headers.set('X-Session-Id', sid);
     opts.headers = headers;
-    return fetch(window.VOXY_API_BASE + path, opts);
+    return fetch(window.VOXY_API_BASE + path, opts).then(function (resp) {
+      try {
+        var rotated = resp.headers.get('X-Session-Rotated');
+        if (rotated) localStorage.setItem('session_id', rotated);
+      } catch (e) { /* persistence must never break the call */ }
+      return resp;
+    });
   };
   window.voxyBeacon = function (path, payload) {
     var url = window.VOXY_API_BASE + path;

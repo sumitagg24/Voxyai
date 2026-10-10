@@ -1,5 +1,6 @@
 """Database helpers (moved from web/app.py without behavior changes)."""
 
+import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -7,6 +8,8 @@ from pathlib import Path
 
 from web.content.blog_posts import BLOG_POSTS
 from web.services import email_preferences
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_DIR = BASE_DIR / "data"
@@ -202,6 +205,11 @@ def _init_db() -> None:
         cur.execute("ALTER TABLE users ADD COLUMN auth0_sub TEXT")
         conn.commit()
 
+    # P1.2 one-time email-normalization migration: dedupe case-variant
+    # duplicates, lowercase stored addresses, then enforce case-insensitive
+    # uniqueness going forward. Idempotent: re-running finds no duplicates.
+    _dedupe_case_variant_emails(conn)
+
     for owner_email in _owner_emails():
         # Same verified-address rule as _ensure_owner(): the startup sweep must
         # not promote an unverified claim on the owner address either.
@@ -230,6 +238,78 @@ def _init_db() -> None:
         """)
     _seed_blog(conn)
     conn.close()
+
+
+def _dedupe_case_variant_emails(conn: sqlite3.Connection) -> None:
+    """Merge case-variant duplicate addresses (P1.2, idempotent).
+
+    Keeps the oldest verified row per ``LOWER(address)`` group and deletes the
+    rest, logging each merge. Afterwards all stored emails are lowercased and
+    a ``LOWER()`` unique index prevents future case-variant duplicates.
+    """
+    cur = conn.cursor()
+    # ── users ──────────────────────────────────────────────────────────────
+    try:
+        dupes = cur.execute(
+            "SELECT LOWER(email_or_phone) AS norm, COUNT(*) AS c FROM users " "GROUP BY norm HAVING c > 1"
+        ).fetchall()
+        for dupe in dupes:
+            norm = dupe["norm"] if hasattr(dupe, "keys") else dupe[0]
+            rows = cur.execute(
+                "SELECT id, email_or_phone, email_verified, created_at FROM users "
+                "WHERE LOWER(email_or_phone) = ? ORDER BY email_verified DESC, id ASC",
+                (norm,),
+            ).fetchall()
+            if len(rows) <= 1:
+                continue
+            keep = rows[0]["id"] if hasattr(rows[0], "keys") else rows[0][0]
+            drop_ids = [(r["id"] if hasattr(r, "keys") else r[0]) for r in rows[1:]]
+            placeholders = ",".join("?" for _ in drop_ids)
+            cur.execute(f"DELETE FROM users WHERE id IN ({placeholders})", drop_ids)
+            logger.info(
+                "email-dedupe: merged %d case-variant users for %s into id=%s",
+                len(drop_ids),
+                norm,
+                keep,
+            )
+        # Normalize stored addresses to lowercase (emails only, not phones).
+        cur.execute(
+            "UPDATE users SET email_or_phone = LOWER(email_or_phone) "
+            "WHERE email_or_phone LIKE '%@%' AND email_or_phone != LOWER(email_or_phone)"
+        )
+        cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email_or_phone))")
+    except sqlite3.Error as exc:
+        logger.warning("email-dedupe users skipped: %s", type(exc).__name__)
+    # ── newsletter ─────────────────────────────────────────────────────────
+    try:
+        dupes = cur.execute(
+            "SELECT LOWER(email) AS norm, COUNT(*) AS c FROM newsletter_subscribers " "GROUP BY norm HAVING c > 1"
+        ).fetchall()
+        for dupe in dupes:
+            norm = dupe["norm"] if hasattr(dupe, "keys") else dupe[0]
+            rows = cur.execute(
+                "SELECT id FROM newsletter_subscribers WHERE LOWER(email) = ? ORDER BY id ASC",
+                (norm,),
+            ).fetchall()
+            if len(rows) <= 1:
+                continue
+            keep = rows[0]["id"] if hasattr(rows[0], "keys") else rows[0][0]
+            drop_ids = [(r["id"] if hasattr(r, "keys") else r[0]) for r in rows[1:]]
+            placeholders = ",".join("?" for _ in drop_ids)
+            cur.execute(f"DELETE FROM newsletter_subscribers WHERE id IN ({placeholders})", drop_ids)
+            logger.info(
+                "email-dedupe: merged %d case-variant newsletter rows for %s into id=%s",
+                len(drop_ids),
+                norm,
+                keep,
+            )
+        cur.execute("UPDATE newsletter_subscribers SET email = LOWER(email) WHERE email != LOWER(email)")
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_newsletter_email_lower " "ON newsletter_subscribers(LOWER(email))"
+        )
+    except sqlite3.Error as exc:
+        logger.warning("email-dedupe newsletter skipped: %s", type(exc).__name__)
+    conn.commit()
 
 
 def _seed_blog(conn: sqlite3.Connection) -> None:

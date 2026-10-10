@@ -414,8 +414,11 @@ Returns current subscription status (requires auth).
 ```
 
 Logged-out visitors get Free-tier defaults plus `"authenticated": false`.
-`can_self_upgrade` and `checkout_available` are false whenever no payment
-provider is configured, so a client can hide a control that cannot complete.
+`can_self_upgrade` and `checkout_available` are false whenever Dodo Payments is
+not configured (webhook secret **and** at least one checkout URL), so a client
+can hide a control that cannot complete. When configured, `checkout_urls`
+carries the hosted Dodo links per paid tier (`{"pro": "...", "business": "..."}`)
+for the frontend to open.
 
 ### POST /api/subscription/upgrade
 **This endpoint cannot grant a tier from a client request.** Sending a `tier`
@@ -453,6 +456,23 @@ client → checkout → payment provider → verified webhook → backend
 
 The desktop client never grants itself Pro/Business access, and development
 controls are separated from production controls rather than shipped.
+
+### POST /api/webhooks/dodo
+Dodo Payments delivery endpoint (Standard-Webhooks HMAC-SHA256 over
+`{webhook-id}.{webhook-timestamp}.{raw_body}`, `v1,<base64>` signatures,
+5-minute window).
+
+| Status | Meaning |
+|---|---|
+| `503` | Dodo is not configured (secret and ≥1 checkout URL required) |
+| `400` | missing headers, bad signature/stale timestamp, or unreadable JSON |
+| `200 {"acked": true, "applied": true, "tier": ...}` | verified and applied |
+| `200 {"acked": true, "applied": false, ...}` | verified replay (`"duplicate": true`), ignorable event type, or unknown customer — acknowledged so the provider stops retrying |
+
+`payment.succeeded` / `subscription.active` / `subscription.renewed` grant
+Pro (or Business when the product reference mentions it); `*.expired` /
+`*.cancelled` return the account to free. Every applied change is written to
+`tier_audit` with source `payment_webhook`.
 
 ---
 
