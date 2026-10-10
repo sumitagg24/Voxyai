@@ -26,8 +26,8 @@ from html import escape
 from typing import Dict, Tuple
 
 BRAND = "Voxylis"
-SUPPORT_EMAIL = "support@voxylis.com"
-WEBSITE = "https://voxylis.com"
+SUPPORT_EMAIL = ""
+WEBSITE = "http://localhost:5000"
 
 #: Transactional messages: delivered regardless of marketing preferences.
 TRANSACTIONAL_KINDS = (

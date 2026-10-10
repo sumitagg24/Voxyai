@@ -9,7 +9,7 @@ About dialog) is generated from or reads that value.
 ```
 Voxylis
 ├── Desktop app      PyQt5, Windows-first (main.py)
-├── Website          static HTML/CSS/JS in web/static/ (Vercel or Flask)
+├── Website          static HTML/CSS/JS in web/static/ (served same-origin by Flask on localhost:5000)
 └── Backend API      Flask in web/app.py (+ web/services/, web/tier.py)
 ```
 

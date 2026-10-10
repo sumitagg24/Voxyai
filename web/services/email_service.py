@@ -107,7 +107,12 @@ def email_configured() -> bool:
 
 
 def from_address() -> str:
-    return _env("EMAIL_FROM") or "Voxylis <no-reply@voxylis.com>"
+    """Sender address. Requires EMAIL_FROM; falls back to SMTP_USERNAME.
+
+    No domain default: the product owns no domain, so a voxylis.com sender
+    would fail SPF/DKIM and spam-filter every message.
+    """
+    return _env("EMAIL_FROM") or _env("SMTP_USERNAME") or ""
 
 
 def reply_to() -> str:
@@ -115,11 +120,12 @@ def reply_to() -> str:
 
 
 def support_address() -> str:
-    return _env("SUPPORT_EMAIL") or _env("EMAIL_REPLY_TO") or "support@voxylis.com"
+    return _env("SUPPORT_EMAIL") or _env("EMAIL_REPLY_TO") or ""
 
 
 def site_base_url() -> str:
-    return (_env("FRONTEND_URL") or templates.WEBSITE).rstrip("/")
+    """Base URL for email links. FRONTEND_URL-based only; defaults to localhost."""
+    return (_env("FRONTEND_URL") or "http://localhost:5000").rstrip("/")
 
 
 def describe_configuration() -> Dict[str, object]:

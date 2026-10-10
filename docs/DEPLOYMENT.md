@@ -25,7 +25,7 @@ and gitignored; production values belong in the hosting provider's secret store.
 ```bash
 cp .env.example .env
 python -c "import secrets; print(secrets.token_hex(32))"   # paste into SECRET_KEY
-python -m web.app                                          # http://localhost:5000
+python web/app.py                                           # http://localhost:5000
 python -m pytest tests -q && python -m flake8 .
 ```
 
@@ -34,18 +34,19 @@ the message is logged) and leaves Sentry off. Neither is a production setting.
 
 ---
 
-## B. Vercel (static website)
+## B. Frontend (local-first, same-origin)
 
-The site is a static export: `vercel.json` sets `outputDirectory: web/static`.
+Flask serves `web/static/` itself on `http://localhost:5000` — there is no
+separate static host. Run `pip install -r requirements.txt && python web/app.py`
+(or `py main.py` for the desktop app) and open `http://localhost:5000`.
 
 | Item | Where | Variable | Type | Required | Verify |
 |---|---|---|---|---|---|
-| API origin | `web/static/js/api.js` load order, or per-page `?api=` | `window.VOXYLIS_API_BASE` | https URL | Required if the API is on another host | Open the dashboard; the network tab shows requests to your API |
-| Allowed origin | API host | `CORS_ORIGINS` | comma-separated origins | Required | `curl -H "Origin: https://your-site" -i /api/health` returns that origin, never `*` |
+| API origin | same-origin by default | — | — | No | Dashboard calls `/api/*` on the same host |
+| Allowed origin | API host | `CORS_ORIGINS` | comma-separated origins | Only for a split host | `curl -H "Origin: https://your-site" -i /api/health` returns that origin, never `*` |
 
-Security notes: keep the site on HTTPS. The CSP already allows
-`https://*.ingest.sentry.io` for monitoring; if you move the API to a new host,
-add it to `CORS_ORIGINS` rather than relaxing CORS to a wildcard.
+Security notes: keep any hosted site on HTTPS. If you move the API to a new
+host, add it to `CORS_ORIGINS` rather than relaxing CORS to a wildcard.
 
 ---
 
@@ -54,7 +55,7 @@ add it to `CORS_ORIGINS` rather than relaxing CORS to a wildcard.
 | Item | Variable | Type | Required | Notes |
 |---|---|---|---|---|
 | Signing key | `SECRET_KEY` | 32+ random chars | **Required** | Startup fails without it in production |
-| Database path | `VOXYLIS_DB_PATH` | path on a persistent volume | Required | Docker compose mounts `web-data` at `/app/web/data` |
+| Database path | `VOXYLIS_DB_PATH` | path on a persistent volume | Required | Docker volume mounts `web-data` at `/app/web/data` |
 | CORS | `CORS_ORIGINS` | comma-separated | Required | No wildcard is accepted |
 | Cookies | `SESSION_COOKIE_*` | n/a | Not used | Sessions travel in the `X-Session-Id` header, not a cookie. `CORS_SUPPORTS_CREDENTIALS` defaults to false |
 | Workers | `GUNICORN_WORKERS` | int | No | Defaults to `cpu_count * 2 + 1` |

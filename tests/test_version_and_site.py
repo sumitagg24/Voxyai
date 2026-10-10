@@ -100,13 +100,11 @@ def test_download_page_reads_the_version_from_one_source():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
     assert "data-voxylis-version" in text
     assert "/version.json" in text
-    # Buttons carry direct links to the published release assets, so a click
-    # starts the download immediately instead of navigating to GitHub. Those
-    # link targets necessarily contain the release number; the *displayed*
-    # version text must still be filled from version.json at runtime, so strip
-    # the link tags before checking that no release number is baked into the
-    # visible markup (it would silently go stale on a bump).
-    assert "releases/download/v" in text
+    # No hard-coded release asset: buttons start at the releases page and are
+    # re-pointed only when /api/download/urls reports available=true. The
+    # *displayed* version text is filled from version.json at runtime, so no
+    # release number may be baked into visible markup (it would go stale).
+    assert "releases/download/v" not in text
     visible = re.sub(r"<a\b[^>]*>", "", text)
     assert not re.search(r"v\d+\.\d+\.\d+", visible)
 
@@ -142,8 +140,9 @@ def test_legal_pages_exist_for_oauth_consent_screen():
     email, photo), and be linked from every footer."""
     privacy = (STATIC / "privacy.html").read_text(encoding="utf-8")
     terms = (STATIC / "terms.html").read_text(encoding="utf-8")
-    for needle in ("profile photo", "never stored", "hello@voxylis.com"):
+    for needle in ("profile photo", "never stored", "/contact"):
         assert needle in privacy, f"privacy.html missing: {needle}"
+    assert "voxylis.com" not in privacy.lower(), "privacy.html must not claim an unowned domain"
     assert "as is" in terms
     for page in ("index", "download", "pricing", "about", "blog", "contact"):
         footer = (STATIC / f"{page}.html").read_text(encoding="utf-8")

@@ -75,7 +75,7 @@ def environment() -> str:
         value = (os.environ.get(name) or "").strip().lower()
         if value:
             return "production" if value in ("production", "prod", "live") else "development"
-    # Vercel/Render/Fly all set these; treat a hosted runtime as production.
+    # Render/Fly all set these; treat a hosted runtime as production.
     for name in ("VERCEL", "RENDER", "FLY_APP_NAME", "DYNO", "WEBSITE_SITE_NAME"):
         if os.environ.get(name):
             return "production"

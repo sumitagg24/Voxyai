@@ -75,20 +75,19 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_DIR = BASE_DIR / "data"
 #: Overridable so tests and containers can point at a scratch database.
 #: Note: web/data is gitignored — the production database is created on the
-#: host (Docker volume / Vercel filesystem), never committed.
+#: host (Docker volume), never committed.
 DB_PATH = Path(os.environ.get("VOXYLIS_DB_PATH") or (DB_DIR / "voxylis.db"))
 
 app = Flask(__name__, static_folder="static")
-# CORS origins are env-configurable so the statically-hosted frontend
-# (e.g. https://voxylis-web.vercel.app) can reach a separately-hosted API.
+# CORS origins are env-configurable so a separately-hosted frontend
+# (e.g. https://<your-name>.onrender.com) can reach the API. Same-origin
+# localhost:5000 is the default; Flask serves web/static itself.
 # Set CORS_ORIGINS as a comma-separated list to override the defaults.
 _cors_origins = [
     o.strip()
     for o in os.environ.get(
         "CORS_ORIGINS",
-        "https://voxylis.com,https://www.voxylis.com,"
-        "https://voxylis-web.vercel.app,"
-        "http://localhost:5000,http://localhost:3000",
+        "http://localhost:5000,http://127.0.0.1:5000",
     ).split(",")
     if o.strip()
 ]
@@ -3005,21 +3004,77 @@ def newsletter_subscribe():
 #: Where visitors are sent when no packaged artifact has been published yet.
 RELEASES_PAGE_URL = RELEASES_URL
 
+#: Cache for the GitHub latest-release lookup (1h TTL).
+_DOWNLOAD_CACHE: dict = {"at": 0.0, "payload": None}
+
+
+def _github_latest_assets():
+    """Return {asset_name: download_url} for the latest GitHub release.
+
+    Cached 1h; any failure returns {} so the endpoint degrades to env
+    overrides + releases-page fallback instead of 500ing.
+    """
+    import time as _time
+
+    now = _time.time()
+    cached = _DOWNLOAD_CACHE.get("payload")
+    if cached is not None and now - float(_DOWNLOAD_CACHE.get("at", 0)) < 3600:
+        return cached
+    assets: dict = {}
+    try:
+        resp = http_requests.get(
+            f"{REPOSITORY_URL}/releases/latest",
+            headers={"Accept": "application/vnd.github+json"},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+            except ValueError:
+                data = {}
+            for asset in data.get("assets", []) or []:
+                name = asset.get("name") or ""
+                url = asset.get("browser_download_url") or ""
+                if name and url:
+                    assets[name] = url
+    except Exception as exc:
+        logger.warning("GitHub latest-release lookup failed: %s", exc)
+    _DOWNLOAD_CACHE["at"] = now
+    _DOWNLOAD_CACHE["payload"] = assets
+    return assets
+
 
 @app.route("/api/download/urls", methods=["GET"])
 def download_urls():
     """Resolve real download targets, and say plainly which ones exist.
 
-    The previous build hard-coded
-    ``releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe``. That release was never
-    published, so the site pointed every Windows visitor at a 404 while the page
-    claimed an installer was available. A URL is now advertised only when it has
-    been configured, and ``available`` lets the page tell the truth instead of
-    guessing.
+    v3.0.0 IS published: the latest release assets are resolved via the
+    GitHub API (cached 1h). DOWNLOAD_URL_* env vars override any platform
+    when set. ``available`` lets the page tell the truth instead of guessing.
     """
     windows = (os.environ.get("DOWNLOAD_URL_WINDOWS") or "").strip()
     macos = (os.environ.get("DOWNLOAD_URL_MACOS") or "").strip()
     linux = (os.environ.get("DOWNLOAD_URL_LINUX") or "").strip()
+    if not (windows and macos and linux):
+        github_assets = _github_latest_assets()
+        if not windows:
+            for name, url in github_assets.items():
+                lower = name.lower()
+                if lower.endswith(".exe") and ("setup" in lower or "voxylis" in lower):
+                    windows = url
+                    break
+        if not macos:
+            for name, url in github_assets.items():
+                lower = name.lower()
+                if lower.endswith(".zip") or (lower.endswith(".dmg")):
+                    macos = url
+                    break
+        if not linux:
+            for name, url in github_assets.items():
+                lower = name.lower()
+                if lower.endswith(".tar.gz") or lower.endswith(".AppImage") or lower.endswith(".deb"):
+                    linux = url
+                    break
     return jsonify(
         {
             "windows": windows or RELEASES_PAGE_URL,
@@ -3166,12 +3221,10 @@ def download_track():
 
 @app.route("/version.json", methods=["GET"])
 def version_json():
-    """Serve the canonical version to the website on either host.
+    """Serve the canonical version to the website.
 
-    The static deployment (Vercel, outputDirectory web/static) resolves this
-    file directly, but the Flask deployment needs an explicit route or the
-    download page's version fetch fails silently and the page falls back to
-    stale text.
+    Flask serves web/static itself, but the explicit route keeps
+    /version.json working regardless of static-file handling.
     """
     return jsonify(
         {

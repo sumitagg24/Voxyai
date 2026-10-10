@@ -8,13 +8,11 @@
 <meta name="description" content="Voxylis is a Windows dictation app. Hold a shortcut, speak, and clean text is typed into any application using your own speech-to-text provider.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="canonical" href="https://voxylis.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Voxylis">
 <meta property="og:title" content="Voxylis — Voice That Writes Itself">
 <meta property="og:description" content="Voxylis is a Windows dictation app. Hold a shortcut, speak, and clean text is typed into any application using your own speech-to-text provider.">
-<meta property="og:url" content="https://voxylis.com/">
-<meta property="og:image" content="https://voxylis.com/og-image.png">
+<meta property="og:image" content="/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -416,7 +414,7 @@ button{font-family:inherit;cursor:pointer}
         <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
       </div>
     </div>
-    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" style="color:inherit">Contact</a></span></div>
   </div>
 </footer>
 
@@ -427,9 +425,9 @@ button{font-family:inherit;cursor:pointer}
     <h2 style="font-size:clamp(40px,6vw,80px);font-weight:700;letter-spacing:-0.03em;line-height:1.05">Speak.<br>Voxylis writes.</h2>
     <p style="margin-top:28px;font-size:18px;color:var(--ink2);max-width:560px;line-height:1.6">Download Voxylis for Windows, macOS, or Linux. Your voice is ready when you are.</p>
     <div style="margin-top:40px;display:flex;gap:16px;flex-wrap:wrap" id="downloadBtns">
-      <a href="https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe" download="Voxylis-Setup-3.0.0.exe" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
-      <a href="https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.zip" download="Voxylis-3.0.0.zip" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
-      <a href="https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.tar.gz" download="Voxylis-3.0.0.tar.gz" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
+      <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn" id="dl-win" onclick="trackDownload('windows')">Download for Windows</a>
+      <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn ghost" id="dl-mac" onclick="trackDownload('macos')">Download for macOS</a>
+      <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn ghost" id="dl-linux" onclick="trackDownload('linux')">Download for Linux</a>
     </div>
     <div class="plat-tags" style="margin-top:20px">
       <span class="plat-tag" id="tag-win">Windows 10+</span>

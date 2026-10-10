@@ -111,7 +111,7 @@ def sync() -> list:
         "releases_url": RELEASES_URL,
     }
     # One served mirror is enough: web/static/version.json is what the deployed
-    # site (Vercel outputDirectory web/static) and the Flask /version.json route
+    # site (web/static) and the Flask /version.json route
     # both use. A second copy under web/downloads only drifted.
     target = root / "web" / "static" / "version.json"
     target.parent.mkdir(parents=True, exist_ok=True)

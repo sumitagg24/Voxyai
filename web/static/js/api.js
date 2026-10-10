@@ -2,8 +2,8 @@
  * Same-origin by default: the Flask backend serves the frontend and the
  * /api/* routes together, so relative calls just work.
  *
- * To point this static site at a separately-hosted backend (e.g. the
- * Vercel frontend talking to a Render/Railway API), do ANY of:
+ * To point this static site at a separately-hosted backend (e.g. a
+ * separately-hosted frontend talking to a Render API), do ANY of:
  *   - set window.VOXYLIS_API_BASE = 'https://your-backend.example.com'
  *     in a script tag BEFORE api.js loads, or
  *   - open any page once with ?api=https://your-backend.example.com

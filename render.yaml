@@ -33,9 +33,9 @@ services:
       - key: VOXYLIS_DB_PATH
         value: /app/web/data/voxylis.db
       - key: FRONTEND_URL
-        value: https://voxylis-web.vercel.app
+        value: https://voxylis-api.onrender.com
       - key: CORS_ORIGINS
-        value: https://voxylis-web.vercel.app
+        value: http://localhost:5000,https://voxylis-api.onrender.com
       - key: EMAIL_PROVIDER
         value: smtp
       - key: SMTP_HOST

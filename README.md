@@ -55,7 +55,7 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 
 Prefer to browse? The [releases page](https://github.com/sumitagg24/Voxyai/releases)
 lists every version with checksums, and the website's
-[download page](https://voxylis-web.vercel.app/download) auto-detects your OS.
+[download page](http://localhost:5000/download) auto-detects your OS.
 
 The installer is per-user by default (no administrator prompt), creates a Start
 Menu entry, and offers optional desktop shortcut and run-at-login tasks. The
@@ -76,7 +76,8 @@ cd voxyai
 py -m venv venv
 venv\Scripts\activate            # Windows (source venv/bin/activate on Unix)
 py -m pip install -r requirements.txt
-py main.py
+py main.py                       # desktop app
+python web/app.py                # local website + API on http://localhost:5000
 ```
 
 Requirements: Windows 10/11, Python 3.10+ (64-bit), a microphone, and one
@@ -266,10 +267,10 @@ The backend is designed for a single instance with SQLite. Rate limits are
 in-memory, so limiting stops being meaningful if you run several workers across
 hosts — add a shared store first.
 
-Deploying the static site (`vercel.json`) separately from the API: point the
-frontend at the backend with `window.VOXYLIS_API_BASE` or
-`/dashboard?api=https://your-backend.example.com`, and add that origin to
-`CORS_ORIGINS`.
+Local dev is `pip install -r requirements.txt && python web/app.py`
+(or `py main.py` for the desktop app); deployment is optional Render free tier
+(see `docs/DEPLOYMENT.md`). Flask serves the site + API same-origin on
+`http://localhost:5000`.
 
 ## Tests and lint
 

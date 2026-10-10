@@ -6,7 +6,7 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 
 | Piece | Host | URL | Cost |
 |---|---|---|---|
-| Website (static) | Vercel | https://voxylis-web.vercel.app | free |
+| Website + API | Flask same-origin | http://localhost:5000 | local |
 | API (Flask) | Render free (Docker) | https://voxylis-api.onrender.com | free |
 | Database | SQLite, replicated to B2 by Litestream | `/app/web/data/voxylis.db` + B2 replica | free |
 | Backups | Litestream continuous replica + weekly download | B2 bucket, keep replica | free 10 GB |
@@ -20,9 +20,9 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 
 ## Daily operations
 
-- UptimeRobot alerts → open `https://<PA_USER>.pythonanywhere.com/api/health`.
+- UptimeRobot alerts → open `https://<your-name>.onrender.com/api/health`.
   `email.configured` and `monitoring.enabled` are reported there.
-- PA Web tab → Log files → `error log` for tracebacks; Sentry for grouped errors.
+- Render Dashboard → Logs for tracebacks; Sentry for grouped errors.
 - Contact-form spam → `contact_messages` table; decide retention below.
 
 ## Backup & restore (tested _<date>_)
@@ -47,10 +47,9 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 
 ## Incident basics
 
-1. Site down? Check UptimeRobot → PA Web tab → Reload → error log.
+1. Site down? Check UptimeRobot → Render Dashboard → Logs.
 2. Login broken? `GET /api/auth/auth0/config` must show `enabled:true`;
    check Auth0 Logs (Dashboard → Monitoring → Logs).
 3. Mail not arriving? `/api/health` `email.configured`; Gmail app password
    expires if the Google password changes — regenerate it.
-4. Bad deploy? PA Web → Reload previous code via `git pull` + Reload;
-   Vercel → Deployments → promote previous Ready build.
+4. Bad deploy? Render → Manual Deploy → Rollback to a previous deploy.

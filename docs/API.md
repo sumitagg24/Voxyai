@@ -1,6 +1,6 @@
 # Voxylis API Documentation
 
-Base URL: `https://voxylis.com` (production) or `http://localhost:5000` (development)
+Base URL: `http://localhost:5000` (local) or `https://<your-name>.onrender.com` (optional Render free tier)
 
 All responses are JSON. Authentication uses `X-Session-Id` header or `session_id` in request body.
 

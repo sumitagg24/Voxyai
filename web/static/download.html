@@ -7,13 +7,11 @@
 <meta name="description" content="Download Voxylis for Windows, macOS, or Linux. Voice-to-text transcription in any language your speech provider recognises, with AI enhancement.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="canonical" href="https://voxylis.com/download">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Voxylis">
 <meta property="og:title" content="Download Voxylis — Voice to Text for Every Platform">
 <meta property="og:description" content="Download Voxylis for Windows, macOS, or Linux. Voice-to-text transcription in any language your speech provider recognises, with AI enhancement.">
-<meta property="og:url" content="https://voxylis.com/download">
-<meta property="og:image" content="https://voxylis.com/og-image.png">
+<meta property="og:image" content="/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -173,8 +171,8 @@ button{font-family:inherit;cursor:pointer}
         </div>
         <h3>Windows</h3>
         <div class="version">Windows 10+ · <span data-voxylis-version>latest</span></div>
-        <div class="size" id="dl-win-note">Installer (.exe) — clicking starts the download</div>
-        <a href="https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe" download="Voxylis-Setup-3.0.0.exe" class="btn download-lg" id="dl-win" onclick="trackDownload('windows')">⬇ Download for Windows</a>
+        <div class="size" id="dl-win-note">Checking availability…</div>
+        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn download-lg" id="dl-win" onclick="trackDownload('windows')">⬇ Download for Windows</a>
         <ul class="features">
           <li>System-wide hotkey</li>
           <li>Auto-start on boot</li>
@@ -189,8 +187,8 @@ button{font-family:inherit;cursor:pointer}
         </div>
         <h3>macOS</h3>
         <div class="version">macOS 12+ · <span data-voxylis-version>latest</span> source</div>
-        <div class="size">Source .zip — clicking starts the download</div>
-        <a href="https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.zip" download="Voxylis-3.0.0.zip" class="btn download-lg" id="dl-macos" onclick="trackDownload('macos')">⬇ Download for macOS</a>
+        <div class="size" id="dl-macos-note">Checking availability…</div>
+        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn download-lg" id="dl-macos" onclick="trackDownload('macos')">⬇ Download for macOS</a>
         <ul class="features">
           <li>Python 3.10+ source bundle</li>
           <li>One-command setup (run.sh)</li>
@@ -205,8 +203,8 @@ button{font-family:inherit;cursor:pointer}
         </div>
         <h3>Linux</h3>
         <div class="version">Ubuntu 20.04+ / Fedora / Arch · <span data-voxylis-version>latest</span> source</div>
-        <div class="size">Source .tar.gz — clicking starts the download</div>
-        <a href="https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.tar.gz" download="Voxylis-3.0.0.tar.gz" class="btn download-lg" id="dl-linux" onclick="trackDownload('linux')">⬇ Download for Linux</a>
+        <div class="size" id="dl-linux-note">Checking availability…</div>
+        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn download-lg" id="dl-linux" onclick="trackDownload('linux')">⬇ Download for Linux</a>
         <ul class="features">
           <li>Python 3.10+ source bundle</li>
           <li>One-command setup (run.sh)</li>
@@ -284,7 +282,7 @@ button{font-family:inherit;cursor:pointer}
         <div class="col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
       </div>
     </div>
-    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span>hello@voxylis.com</span></div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" style="color:inherit">Contact</a></span></div>
   </div>
 </footer>
 
@@ -321,15 +319,35 @@ button{font-family:inherit;cursor:pointer}
   }
 })();
 
-// Load download URLs from API. The buttons already carry direct download links
-// (release asset / source archive) so a click starts the file immediately and
-// never navigates away. A platform link is only re-pointed when the API reports
-// a configured artifact for it; otherwise the direct fallback stays untouched.
+// Load download URLs from the API truth (available flags). No hard-coded
+// release asset: buttons start at the releases page and are re-pointed only
+// when the API reports a real artifact; otherwise an honest source-build
+// fallback is shown.
 function applyDownloadUrls(d) {
   var avail = d.available || {};
-  if (d.windows && avail.windows) { var w = document.getElementById('dl-win'); w.href = d.windows; w.setAttribute('download', ''); }
-  if (d.macos && avail.macos) { var m = document.getElementById('dl-macos'); m.href = d.macos; m.setAttribute('download', ''); }
-  if (d.linux && avail.linux) { var l = document.getElementById('dl-linux'); l.href = d.linux; l.setAttribute('download', ''); }
+  var releases = d.releases_url || 'https://github.com/sumitagg24/Voxyai/releases';
+  function setBtn(id, noteId, url, ok, okNote, fallbackNote) {
+    var btn = document.getElementById(id);
+    var note = document.getElementById(noteId);
+    if (ok && url) {
+      btn.href = url;
+      btn.setAttribute('download', '');
+      if (note) note.textContent = okNote;
+    } else {
+      btn.href = releases;
+      btn.removeAttribute('download');
+      if (note) note.textContent = fallbackNote;
+    }
+  }
+  setBtn('dl-win', 'dl-win-note', d.windows, avail.windows,
+    'Installer (.exe) — clicking starts the download',
+    'No packaged installer yet — see releases or build from source');
+  setBtn('dl-macos', 'dl-macos-note', d.macos, avail.macos,
+    'Packaged download — clicking starts the file',
+    'Source build — clone the repo and run run.sh (see releases)');
+  setBtn('dl-linux', 'dl-linux-note', d.linux, avail.linux,
+    'Packaged download — clicking starts the file',
+    'Source build — clone the repo and run run.sh (see releases)');
 }
 fetch((window.VOXY_API_BASE||'')+'/api/download/urls')
   .then(function(r){return r.json()})

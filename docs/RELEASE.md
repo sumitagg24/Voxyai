@@ -98,7 +98,7 @@ manifest is refused by the updater — never publish an unverifiable entry.
 - [ ] Lint and full test suite pass on the tagged commit
 - [ ] `SENTRY_DSN` (and `SENTRY_DSN_BROWSER`) set if error monitoring is wanted;
       `EMAIL_PROVIDER` + `EMAIL_API_KEY` set so verification and reset mail is
-      actually delivered; `python -m web.app` logs no email warning on startup
+      actually delivered; `python web/app.py` logs no email warning on startup
 - [ ] `DOWNLOAD_URL_WINDOWS` set **only** once the matching release artifact
       exists, so the site does not link to a 404
 - [ ] Version mirrors synced; no stale version string anywhere
