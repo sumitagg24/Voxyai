@@ -6,8 +6,7 @@ services:
     environment:
       - FLASK_ENV=production
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
-      # Full LLM fallback chain: Muse → OpenRouter → Groq → OpenAI.
-      - MODEL_API_KEY=${MODEL_API_KEY:-}
+      # Full LLM fallback chain: OpenRouter → Groq → OpenAI.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}

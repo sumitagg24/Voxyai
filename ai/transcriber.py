@@ -17,7 +17,7 @@ import wave
 import numpy as np
 from typing import Optional, Tuple
 from utils.logger import log_info, log_error, log_debug, log_warning
-from config.constants import SAMPLE_RATE
+from config.constants import SAMPLE_RATE, OPENAI_API_TIMEOUT
 
 # ── Whisper language code → BCP-47 map (subset) ───────────────────────────
 # Whisper returns short codes; we map them to full ISO 639-1 codes
@@ -147,7 +147,7 @@ class Transcriber:
             try:
                 from groq import Groq
 
-                self.client = Groq(api_key=self.groq_api_key)
+                self.client = Groq(api_key=self.groq_api_key, timeout=OPENAI_API_TIMEOUT)
                 self.backend = "groq"
                 if not self.model:
                     self.model = "whisper-large-v3-turbo"
@@ -160,7 +160,7 @@ class Transcriber:
             try:
                 from openai import OpenAI
 
-                self.client = OpenAI(api_key=self.openai_api_key)
+                self.client = OpenAI(api_key=self.openai_api_key, timeout=OPENAI_API_TIMEOUT)
                 self.backend = "openai"
                 if not self.model:
                     self.model = "whisper-1"

@@ -8,6 +8,7 @@ from typing import Optional
 from ai.prompt_templates import get_enhancement_prompt, get_command_prompt
 from ai.language_detector import language_detector
 from utils.logger import log_info, log_error, log_debug, log_warning
+from config.constants import OPENAI_API_TIMEOUT
 
 
 class TextEnhancer:
@@ -30,7 +31,7 @@ class TextEnhancer:
             try:
                 from groq import Groq
 
-                self.client = Groq(api_key=self.groq_api_key)
+                self.client = Groq(api_key=self.groq_api_key, timeout=OPENAI_API_TIMEOUT)
                 self.backend = "groq"
                 if not self.model:
                     self.model = self.GROQ_MODELS[0]
@@ -44,7 +45,7 @@ class TextEnhancer:
             try:
                 from openai import OpenAI
 
-                self.client = OpenAI(api_key=self.openai_api_key)
+                self.client = OpenAI(api_key=self.openai_api_key, timeout=OPENAI_API_TIMEOUT)
                 self.backend = "openai"
                 if not self.model:
                     self.model = self.OPENAI_MODELS[0]

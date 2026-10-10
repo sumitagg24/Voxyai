@@ -55,8 +55,6 @@ services:
         sync: false
       - key: OWNER_EMAILS
         sync: false
-      - key: MODEL_API_KEY
-        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: OPENAI_API_KEY

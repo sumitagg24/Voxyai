@@ -1,24 +1,25 @@
 """Provider inventory and credential safety (all mocked, no network).
 
-Inventory verified from the code (v3.0.0)
------------------------------------------
-Web LLM chain (Q&A and enhancement share it), in fallback order:
+Inventory (post P0.2):
+----------------------
+Web LLM chain (Q&A and enhancement share web/services/llm_service.py),
+in fallback order:
 
-1. Muse Spark      — ``MODEL_API_KEY``       → https://api.meta.ai/v1, model ``muse-spark-1.3``
-2. OpenRouter      — ``OPENROUTER_API_KEY``  → https://openrouter.ai/api/v1, ``llama-3.3-70b-instruct:free``
-3. Groq            — ``GROQ_API_KEY``        → SDK default, ``llama-3.3-70b-versatile``
-4. OpenAI          — ``OPENAI_API_KEY``      → SDK default, ``gpt-4o-mini``
+1. OpenRouter      — ``OPENROUTER_API_KEY``  → https://openrouter.ai/api/v1, ``llama-3.3-70b-instruct:free``
+2. Groq            — ``GROQ_API_KEY``        → SDK default, ``llama-3.3-70b-versatile``
+3. OpenAI          — ``OPENAI_API_KEY``      → SDK default, ``gpt-4o-mini``
 
-Web transcription chain: Muse Voice Transcribe (``MODEL_API_KEY``, multipart
-REST) → Groq Whisper (``GROQ_API_KEY``, ``whisper-large-v3-turbo``); 503 with
-neither.
+Web transcription chain: Groq Whisper (``GROQ_API_KEY``,
+``whisper-large-v3-turbo``) → OpenAI Whisper (``OPENAI_API_KEY``,
+``whisper-1``); 503 with neither.
+
+The fabricated "Muse" provider (MODEL_API_KEY → https://api.meta.ai/v1,
+muse-spark-1.3 / muse-voice-transcribe-1.0) was removed: those endpoints do
+not exist. These tests fail if Muse references return or the inventory drifts.
 
 Desktop: Groq → OpenAI whisper (``ai/transcriber.py``), keys resolved from the
 credential vault (DPAPI → keyring → obfuscated) with the environment as
 fallback (``utils/credentials.load_api_keys``).
-
-No Muse transcription "plugin" or any other provider exists; these tests fail
-if the inventory drifts.
 """
 
 from __future__ import annotations
@@ -34,13 +35,14 @@ from tests.conftest import ApiUser
 
 REPO = Path(__file__).resolve().parent.parent
 WEB_APP = REPO / "web" / "app.py"
+LLM_SERVICE = REPO / "web" / "services" / "llm_service.py"
 
-ENV_KEYS = ("MODEL_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY")
+ENV_KEYS = ("OPENROUTER_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY")
 CLIENT_SECRETS = ENV_KEYS + ("gsk_", "sk-", "Bearer ")
 
 
 def _clear_provider_keys(monkeypatch):
-    for name in ENV_KEYS:
+    for name in ENV_KEYS + ("MODEL_API_KEY",):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -113,14 +115,11 @@ def _make_verified(client, web_app, identifier: str) -> ApiUser:
 
 
 def test_web_llm_chain_matches_the_documented_inventory():
-    source = WEB_APP.read_text(encoding="utf-8")
+    source = LLM_SERVICE.read_text(encoding="utf-8")
     for fragment in (
-        "MODEL_API_KEY",
         "OPENROUTER_API_KEY",
         "GROQ_API_KEY",
         "OPENAI_API_KEY",
-        "https://api.meta.ai/v1",
-        "muse-spark-1.3",
         "openrouter.ai/api/v1",
         "meta-llama/llama-3.3-70b-instruct:free",
         "llama-3.3-70b-versatile",
@@ -129,49 +128,64 @@ def test_web_llm_chain_matches_the_documented_inventory():
         assert fragment in source, f"provider inventory drift: {fragment} missing"
 
 
+def test_fabricated_muse_provider_is_gone():
+    for path in (WEB_APP, LLM_SERVICE, REPO / ".env.example", REPO / "render.yaml"):
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        assert "api.meta.ai" not in text, f"Muse endpoint still referenced in {path.name}"
+        assert "muse-spark-1.3" not in text, f"Muse model still referenced in {path.name}"
+        assert "muse-voice-transcribe" not in text, f"Muse transcribe still referenced in {path.name}"
+    app_source = WEB_APP.read_text(encoding="utf-8")
+    assert "MODEL_API_KEY" not in app_source, "MODEL_API_KEY must be removed from web/app.py"
+    service_source = LLM_SERVICE.read_text(encoding="utf-8")
+    assert "MODEL_API_KEY" not in service_source, "MODEL_API_KEY must be removed from llm_service.py"
+
+
 def test_no_undeclared_provider_base_url_is_configured():
-    """Only the two documented base URLs may exist in web/app.py."""
+    """Only the OpenRouter base URL may exist in the LLM service."""
     import re
 
-    source = WEB_APP.read_text(encoding="utf-8")
+    source = LLM_SERVICE.read_text(encoding="utf-8")
     base_urls = set(re.findall(r'base_url\s*=\s*"([^"]+)"', source))
-    assert base_urls == {"https://api.meta.ai/v1", "https://openrouter.ai/api/v1"}
+    assert base_urls <= {"https://openrouter.ai/api/v1"}, f"unexpected base URLs: {base_urls}"
+    assert "https://openrouter.ai/api/v1" in source
 
 
 # ── web LLM chain (Q&A / enhancement), fully mocked ─────────────────────────
 
 
-def test_qa_uses_muse_first_with_its_documented_model(app_client, monkeypatch):
+def test_qa_uses_openrouter_first_with_its_documented_model(app_client, monkeypatch):
     client, web_app = app_client
     _clear_provider_keys(monkeypatch)
-    monkeypatch.setenv("MODEL_API_KEY", "mk_test_primary")
-    user = _make_pro(client, web_app, "qamuse@gmail.com")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or_test_primary")
+    user = _make_pro(client, web_app, "qaopenrouter@gmail.com")
 
-    _RecordingClient.reset(text="muse answer")
+    _RecordingClient.reset(text="openrouter answer")
     with _fake_module("openai", OpenAI=_RecordingClient):
         response = client.post("/api/qa", json={"question": "hi"}, headers=user.headers)
 
     assert response.status_code == 200
-    assert response.get_json()["answer"] == "muse answer"
-    assert _RecordingClient.calls[0]["api_key"] == "mk_test_primary"
-    assert _RecordingClient.calls[0]["base_url"] == "https://api.meta.ai/v1"
-    assert _RecordingClient.create_calls[0]["model"] == "muse-spark-1.3"
+    assert response.get_json()["answer"] == "openrouter answer"
+    assert _RecordingClient.calls[0]["api_key"] == "or_test_primary"
+    assert _RecordingClient.calls[0]["base_url"] == "https://openrouter.ai/api/v1"
+    assert _RecordingClient.create_calls[0]["model"] == "meta-llama/llama-3.3-70b-instruct:free"
 
 
-def test_qa_falls_through_to_groq_when_muse_fails(app_client, monkeypatch):
+def test_qa_falls_through_to_groq_when_openrouter_fails(app_client, monkeypatch):
     client, web_app = app_client
     _clear_provider_keys(monkeypatch)
-    monkeypatch.setenv("MODEL_API_KEY", "mk_test_broken")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or_test_broken")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_test_fallback")
     user = _make_pro(client, web_app, "qafallback@gmail.com")
 
-    _RecordingClient.reset(fail_keys=("mk_test_broken",))  # muse down, groq up
+    _RecordingClient.reset(fail_keys=("or_test_broken",))  # openrouter down, groq up
     with _fake_module("openai", OpenAI=_RecordingClient):
         with _fake_module("groq", Groq=_RecordingClient):
             response = client.post("/api/qa", json={"question": "hi"}, headers=user.headers)
 
     assert response.get_json()["answer"] == "stub answer"
-    assert _RecordingClient.calls[0]["api_key"] == "mk_test_broken"  # muse tried first
+    assert _RecordingClient.calls[0]["api_key"] == "or_test_broken"  # openrouter tried first
     assert _RecordingClient.calls[1]["api_key"] == "gsk_test_fallback"
     assert _RecordingClient.create_calls[1]["model"] == "llama-3.3-70b-versatile"
 
@@ -204,30 +218,33 @@ def test_enhancement_is_refused_with_503_when_no_provider_is_configured(app_clie
     assert web_app._call_llm_for_qa("anything").startswith("I'm sorry")
 
 
-def test_openrouter_sits_between_muse_and_groq(app_client, monkeypatch):
+def test_openrouter_groq_openai_fallback_order(app_client, monkeypatch):
     client, web_app = app_client
     _clear_provider_keys(monkeypatch)
-    monkeypatch.setenv("MODEL_API_KEY", "mk_test_x")
     monkeypatch.setenv("OPENROUTER_API_KEY", "or_test_x")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_test_x")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk_test_x")
     user = _make_pro(client, web_app, "qarouter@gmail.com")
 
-    _RecordingClient.reset(fail_keys=("mk_test_x", "or_test_x"))
+    _RecordingClient.reset(fail_keys=("or_test_x", "gsk_test_x"))
     with _fake_module("openai", OpenAI=_RecordingClient):
         with _fake_module("groq", Groq=_RecordingClient):
             response = client.post("/api/qa", json={"question": "hi"}, headers=user.headers)
 
-    assert response.get_json()["answer"] == "stub answer"  # groq rescued the request
-    # Muse is tried first, OpenRouter second, Groq third.
-    models = [call["model"] for call in _RecordingClient.create_calls[:2]]
-    assert models == ["muse-spark-1.3", "meta-llama/llama-3.3-70b-instruct:free"]
-    assert _RecordingClient.calls[2]["api_key"] == "gsk_test_x"
+    assert response.get_json()["answer"] == "stub answer"  # openai rescued the request
+    # OpenRouter tried first, Groq second, OpenAI third.
+    models = [call["model"] for call in _RecordingClient.create_calls[:3]]
+    assert models == [
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "llama-3.3-70b-versatile",
+        "gpt-4o-mini",
+    ]
 
 
 def test_provider_failures_never_log_the_key(app_client, monkeypatch, caplog):
     client, web_app = app_client
     _clear_provider_keys(monkeypatch)
-    monkeypatch.setenv("MODEL_API_KEY", "mk_supervaluable_secret")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or_supervaluable_secret")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_supervaluable_secret")
 
     _RecordingClient.reset(error=RuntimeError("quota exhausted"))
@@ -235,8 +252,64 @@ def test_provider_failures_never_log_the_key(app_client, monkeypatch, caplog):
         with _fake_module("groq", Groq=_RecordingClient):
             web_app._call_llm_for_qa("anything")
 
-    assert "mk_supervaluable_secret" not in caplog.text
+    assert "or_supervaluable_secret" not in caplog.text
     assert "gsk_supervaluable_secret" not in caplog.text
+
+
+def test_llm_clients_enforce_explicit_timeouts(monkeypatch):
+    """Server clients must carry an explicit timeout (connect=5s, read=30s)."""
+    import importlib
+
+    import web.services.llm_service as svc
+
+    importlib.reload(svc)
+    captured = {}
+
+    class _TimeoutClient(_RecordingClient):
+        pass
+
+    def _capture_openai(**kwargs):
+        captured["openai"] = dict(kwargs)
+        return _RecordingClient(**kwargs)
+
+    def _capture_groq(**kwargs):
+        captured["groq"] = dict(kwargs)
+        return _RecordingClient(**kwargs)
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or_timeout")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_timeout")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk_timeout")
+    _RecordingClient.reset(text="ok", fail_keys=("or_timeout",))
+    with _fake_module("openai", OpenAI=_capture_openai):
+        with _fake_module("groq", Groq=_capture_groq):
+            svc.chat("hello")
+
+    assert "timeout" in captured["openai"], "OpenAI client missing explicit timeout"
+    assert "timeout" in captured["groq"], "Groq client missing explicit timeout"
+    assert captured["openai"]["timeout"] is not None
+    assert captured["groq"]["timeout"] is not None
+
+
+def test_desktop_clients_use_openai_api_timeout(isolated_home, monkeypatch):
+    """ai/transcriber.py and ai/enhancer.py must thread OPENAI_API_TIMEOUT."""
+    import config.constants as constants
+
+    assert constants.OPENAI_API_TIMEOUT, "OPENAI_API_TIMEOUT must be defined and used"
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_desktop_timeout")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    seen = {}
+
+    class _DesktopGroq:
+        def __init__(self, **kwargs):
+            seen.update(kwargs)
+
+    with _fake_module("groq", Groq=_DesktopGroq):
+        from ai.transcriber import Transcriber
+
+        Transcriber()
+
+    assert seen.get("timeout") == constants.OPENAI_API_TIMEOUT
 
 
 # ── web transcription chain ─────────────────────────────────────────────────
@@ -297,41 +370,47 @@ def test_transcribe_without_any_speech_key_returns_503(app_client, monkeypatch):
         content_type="multipart/form-data",
     )
     assert response.status_code == 503
-    assert "MODEL_API_KEY" in response.get_json()["error"]
+    assert "GROQ_API_KEY" in response.get_json()["error"]
 
 
-def test_transcribe_muse_failure_falls_through_to_groq(app_client, monkeypatch):
+def test_transcribe_groq_failure_falls_through_to_openai(app_client, monkeypatch):
     client, web_app = app_client
     _clear_provider_keys(monkeypatch)
-    monkeypatch.setenv("MODEL_API_KEY", "mk_test_speech")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_test_speech")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk_test_speech")
     user = _make_verified(client, web_app, "bothspeech@gmail.com")
 
-    def _broken_post(*args, **kwargs):
-        raise RuntimeError("muse transcribe 500")
-
-    monkeypatch.setattr(web_app.http_requests, "post", _broken_post)
-
-    class _WhisperClient:
+    class _FailingGroq:
         def __init__(self, **kwargs):
             pass
 
         @property
         def audio(self):
             return SimpleNamespace(
-                transcriptions=SimpleNamespace(create=lambda **kw: SimpleNamespace(text="groq heard this"))
+                transcriptions=SimpleNamespace(create=lambda **kw: (_ for _ in ()).throw(RuntimeError("groq 500")))
             )
 
-    with _fake_module("groq", Groq=_WhisperClient):
-        response = client.post(
-            "/api/transcribe",
-            data={"audio": (io.BytesIO(_wav_bytes()), "clip.wav")},
-            headers=user.headers,
-            content_type="multipart/form-data",
-        )
+    class _OpenAIWhisper:
+        def __init__(self, **kwargs):
+            pass
+
+        @property
+        def audio(self):
+            return SimpleNamespace(
+                transcriptions=SimpleNamespace(create=lambda **kw: SimpleNamespace(text="openai heard this"))
+            )
+
+    with _fake_module("groq", Groq=_FailingGroq):
+        with _fake_module("openai", OpenAI=_OpenAIWhisper):
+            response = client.post(
+                "/api/transcribe",
+                data={"audio": (io.BytesIO(_wav_bytes()), "clip.wav")},
+                headers=user.headers,
+                content_type="multipart/form-data",
+            )
 
     assert response.status_code == 200
-    assert response.get_json()["provider"] == "groq-whisper"
+    assert response.get_json()["provider"] == "openai-whisper"
 
 
 # ── desktop credential loading ───────────────────────────────────────────────
@@ -399,10 +478,10 @@ def test_no_provider_key_or_scheme_reaches_the_client_bundle():
 
 def test_health_and_public_config_do_not_echo_provider_keys(app_client, monkeypatch):
     client, _ = app_client
-    for name, value in zip(ENV_KEYS, ("mk_x", "or_x", "gsk_x", "sk_x")):
+    for name, value in zip(ENV_KEYS, ("or_x", "gsk_x", "sk_x")):
         monkeypatch.setenv(name, value)
     for path in ("/api/health", "/api/public-config"):
         response = client.get(path)
         assert response.status_code == 200
-        assert "mk_x" not in response.get_data(as_text=True)
+        assert "or_x" not in response.get_data(as_text=True)
         assert "gsk_x" not in response.get_data(as_text=True)

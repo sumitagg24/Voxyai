@@ -32,7 +32,6 @@ os.environ.setdefault("AUTH0_CLIENT_ID", "yAAtiPLoCmlzGixp9HUSnUjfI4V83qfG")
 os.environ.setdefault("AUTH0_DESKTOP_CLIENT_ID", "uhCL7jpmMZX3JRhTMVhZhYrbipbHDQdr")
 
 # Server STT/QA chain (your provider keys, server-side only)
-os.environ.setdefault("MODEL_API_KEY", "")
 os.environ.setdefault("GROQ_API_KEY", "")
 os.environ.setdefault("OPENAI_API_KEY", "")
 os.environ.setdefault("OPENROUTER_API_KEY", "")

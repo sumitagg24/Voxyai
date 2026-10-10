@@ -42,7 +42,7 @@ from web.tier import (
     OWNER_MONTHLY_TRANSCRIPTIONS,
     TIER_QUOTAS,
 )
-from web.services import email_preferences, email_service, subscription_service
+from web.services import email_preferences, email_service, subscription_service, llm_service
 from web import observability
 
 logger = logging.getLogger(__name__)
@@ -2285,97 +2285,12 @@ def qa_endpoint():
 
 
 def _call_llm_for_qa(question: str) -> str:
-    """Call Muse Spark → OpenRouter → Groq → OpenAI (fallback chain) for Q&A."""
-    model_key = os.environ.get("MODEL_API_KEY", "")
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    openai_key = os.environ.get("OPENAI_API_KEY", "")
-
-    if model_key:
-        try:
-            import openai
-
-            client = openai.OpenAI(api_key=model_key, base_url="https://api.meta.ai/v1")
-            resp = client.chat.completions.create(
-                model="muse-spark-1.3",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support).",
-                    },
-                    {"role": "user", "content": question},
-                ],
-                max_tokens=512,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("Muse Spark Q&A failed: %s", e)
-
-    if openrouter_key:
-        try:
-            import openai
-
-            client = openai.OpenAI(api_key=openrouter_key, base_url="https://openrouter.ai/api/v1")
-            resp = client.chat.completions.create(
-                model="meta-llama/llama-3.3-70b-instruct:free",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support).",
-                    },
-                    {"role": "user", "content": question},
-                ],
-                max_tokens=512,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("OpenRouter Q&A failed: %s", e)
-
-    if groq_key:
-        try:
-            import groq
-
-            client = groq.Groq(api_key=groq_key)
-            resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately. If the question is about Voxylis, reference its features (voice-to-text, AI enhancement, wake word, multi-language support).",
-                    },
-                    {"role": "user", "content": question},
-                ],
-                max_tokens=512,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("Groq Q&A failed: %s", e)
-
-    if openai_key:
-        try:
-            import openai
-
-            client = openai.OpenAI(api_key=openai_key)
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are Voxy, a helpful AI assistant built into the Voxylis voice-to-text app. Answer questions concisely and accurately.",
-                    },
-                    {"role": "user", "content": question},
-                ],
-                max_tokens=512,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("OpenAI Q&A failed: %s", e)
-
-    return "I'm sorry, the AI service is currently unavailable. Please try again later or configure a MODEL_API_KEY, OPENROUTER_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY in your settings."
+    """Call LLM for Q&A using centralized service (OpenRouter -> Groq -> OpenAI)."""
+    try:
+        return llm_service.chat(question)
+    except RuntimeError as e:
+        logger.warning("All LLM providers failed for Q&A: %s", e)
+        return "I'm sorry, the AI service is currently unavailable. Please try again later or configure a GROQ_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY in your settings."
 
 
 # ============================================
@@ -2443,93 +2358,17 @@ def enhance_endpoint():
 
 def _any_llm_key_configured() -> bool:
     """True when at least one provider credential exists for enhancement/Q&A."""
-    return any(
-        (os.environ.get(name) or "").strip()
-        for name in ("MODEL_API_KEY", "OPENROUTER_API_KEY", "GROQ_API_KEY", "OPENAI_API_KEY")
-    )
+    return llm_service.is_configured()
 
 
 def _call_llm_for_enhancement(text: str, mode: str) -> str:
-    """Call Muse Spark → OpenRouter → Groq → OpenAI (fallback chain) for text enhancement."""
-    model_key = os.environ.get("MODEL_API_KEY", "")
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    openai_key = os.environ.get("OPENAI_API_KEY", "")
+    """Call LLM for text enhancement using centralized service."""
     system_prompt = _MODE_PROMPTS.get(mode, _MODE_PROMPTS["formal"])
-
-    if model_key:
-        try:
-            import openai
-
-            client = openai.OpenAI(api_key=model_key, base_url="https://api.meta.ai/v1")
-            resp = client.chat.completions.create(
-                model="muse-spark-1.3",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=2048,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("Muse Spark enhancement failed: %s", e)
-
-    if openrouter_key:
-        try:
-            import openai
-
-            client = openai.OpenAI(api_key=openrouter_key, base_url="https://openrouter.ai/api/v1")
-            resp = client.chat.completions.create(
-                model="meta-llama/llama-3.3-70b-instruct:free",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=2048,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("OpenRouter enhancement failed: %s", e)
-
-    if groq_key:
-        try:
-            import groq
-
-            client = groq.Groq(api_key=groq_key)
-            resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=2048,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("Groq enhancement failed: %s", e)
-
-    if openai_key:
-        try:
-            import openai
-
-            client = openai.OpenAI(api_key=openai_key)
-            resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=2048,
-                temperature=0.7,
-            )
-            return resp.choices[0].message.content.strip()
-        except Exception as e:
-            logger.warning("OpenAI enhancement failed: %s", e)
-
-    return text
+    try:
+        return llm_service.chat(text, system_prompt=system_prompt, max_tokens=2048, temperature=0.7)
+    except RuntimeError as e:
+        logger.warning("All LLM providers failed for enhancement: %s", e)
+        return text
 
 
 # ============================================
@@ -2541,7 +2380,7 @@ def _call_llm_for_enhancement(text: str, mode: str) -> str:
 @require_verified_email
 @limiter.limit("20 per minute", key_func=get_remote_address)
 def transcribe_endpoint(user_id):
-    """Transcribe uploaded audio: Muse Voice Transcribe -> Groq Whisper (fallback chain).
+    """Transcribe uploaded audio: Groq Whisper -> OpenAI Whisper (fallback chain).
 
     Requires a confirmed email address: this endpoint spends provider credit and
     writes a server-side record, so an unverified throwaway address must not be
@@ -2591,112 +2430,41 @@ def transcribe_endpoint(user_id):
     if len(audio_bytes) > 32 * 1024 * 1024:
         return jsonify({"error": "Audio file exceeds 32 MB limit"}), 413
 
-    # --- Muse Voice Transcribe (primary) ---
-    model_key = os.environ.get("MODEL_API_KEY", "")
-    if model_key:
-        try:
-            resp = http_requests.post(
-                "https://api.meta.ai/v1/asr/transcribe",
-                headers={
-                    "Authorization": f"Bearer {model_key}",
-                    "Accept": "application/json",
-                },
-                files={
-                    "request": (
-                        None,
-                        json.dumps(
-                            {
-                                "model": "muse-voice-transcribe-1.0",
-                                "audioEncoding": "WAV",
-                                "mode": mode,
-                            }
-                        ),
-                        "application/json",
-                    ),
-                    "audio": (audio_file.filename, audio_bytes, audio_file.content_type or "audio/wav"),
-                },
-                timeout=30,
-            )
-            resp.raise_for_status()
-            result = resp.json()
+    if not llm_service.is_transcribe_configured():
+        return jsonify({"error": "Transcription unavailable. Configure GROQ_API_KEY or OPENAI_API_KEY."}), 503
 
-            transcript = ""
-            turns = result.get("turns", [])
-            if turns:
-                transcript = " ".join(t.get("transcript", "") for t in turns)
-            elif "transcript" in result:
-                transcript = result["transcript"]
+    try:
+        result = llm_service.transcribe(audio_bytes, audio_file.filename, mode)
+        transcript = result["transcript"]
+        provider = result["provider"]
 
-            if transcript.strip():
-                try:
-                    conn = _get_db()
-                    conn.execute(
-                        "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
-                        (user_id, transcript.strip(), 0, mode, request.form.get("language", "en")),
-                    )
-                    conn.commit()
-                    conn.close()
-                    record_usage(user_id, "transcription", count=1)
-                    _notify_usage_threshold(user_id)
-                except Exception as save_err:
-                    logger.warning("Failed to record transcription: %s", save_err)
-
-                return jsonify(
-                    {
-                        "status": "success",
-                        "transcript": transcript.strip(),
-                        "provider": "muse-voice-transcribe",
-                        "mode": mode,
-                    }
+        if transcript.strip():
+            try:
+                conn = _get_db()
+                conn.execute(
+                    "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
+                    (user_id, transcript.strip(), 0, mode, request.form.get("language", "en")),
                 )
-        except Exception as e:
-            logger.warning("Muse Voice Transcribe failed, falling back to Groq: %s", e)
-            observability.capture_pipeline_failure("transcribe", e, provider="muse-voice-transcribe")
+                conn.commit()
+                conn.close()
+                record_usage(user_id, "transcription", count=1)
+                _notify_usage_threshold(user_id)
+            except Exception as save_err:
+                logger.warning("Failed to record transcription: %s", save_err)
 
-    # --- Groq Whisper (fallback) ---
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    if groq_key:
-        try:
-            import groq
-
-            client = groq.Groq(api_key=groq_key)
-            # Reset file pointer for Groq
-            audio_file.seek(0)
-            groq_mode = "segments" if mode == "DIARIZATION" else None
-            resp = client.audio.transcriptions.create(
-                file=(audio_file.filename, audio_bytes, audio_file.content_type or "audio/wav"),
-                model="whisper-large-v3-turbo",
-                response_format="verbose_json",
-                **({"timestamp_granularities": ["segment"]} if groq_mode else {}),
+            return jsonify(
+                {
+                    "status": "success",
+                    "transcript": transcript.strip(),
+                    "provider": provider,
+                    "mode": mode,
+                }
             )
-            transcript = resp.text if hasattr(resp, "text") else str(resp)
-            if transcript.strip():
-                try:
-                    conn = _get_db()
-                    conn.execute(
-                        "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
-                        (user_id, transcript.strip(), 0, mode, request.form.get("language", "en")),
-                    )
-                    conn.commit()
-                    conn.close()
-                    record_usage(user_id, "transcription", count=1)
-                    _notify_usage_threshold(user_id)
-                except Exception as save_err:
-                    logger.warning("Failed to record transcription: %s", save_err)
+    except RuntimeError as e:
+        logger.warning("All transcription providers failed: %s", e)
+        observability.capture_pipeline_failure("transcribe", e, provider="all")
 
-                return jsonify(
-                    {
-                        "status": "success",
-                        "transcript": transcript.strip(),
-                        "provider": "groq-whisper",
-                        "mode": mode,
-                    }
-                )
-        except Exception as e:
-            logger.warning("Groq Whisper failed: %s", e)
-            observability.capture_pipeline_failure("transcribe", e, provider="groq-whisper")
-
-    return jsonify({"error": "Transcription unavailable. Configure MODEL_API_KEY or GROQ_API_KEY."}), 503
+    return jsonify({"error": "Transcription unavailable. Configure GROQ_API_KEY or OPENAI_API_KEY."}), 503
 
 
 # ============================================

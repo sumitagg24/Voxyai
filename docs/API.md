@@ -480,17 +480,17 @@ with a confirmed email address; see the email verification gate below)
 {
   "status": "success",
   "transcript": "the recognised text",
-  "provider": "muse-voice-transcribe",
+  "provider": "groq-whisper",
   "mode": "PUSH_TO_TALK"
 }
 ```
 
-`provider` is `groq-whisper` when the primary provider failed and the fallback
+`provider` is `openai-whisper` when the primary provider failed and the fallback
 succeeded, so a silent degradation is visible to the caller.
 
 **Errors:** `401` (no session), `403 "code": "email_not_verified"`, `400` (no or
 empty audio), `403` (monthly quota reached, with `used`/`limit`/`upgrade_url`),
-`413` (over 32 MB), `503` when neither `MODEL_API_KEY` nor `GROQ_API_KEY` is
+`413` (over 32 MB), `503` when neither `GROQ_API_KEY` nor `OPENAI_API_KEY` is
 configured on the server.
 
 **Rate Limit:** 20 per minute
