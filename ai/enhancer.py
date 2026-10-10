@@ -95,15 +95,9 @@ class TextEnhancer:
             if not text or not text.strip():
                 return text
 
-            # Tier-based mode enforcement
-            if settings:
-                from config.constants import get_user_tier, TIER_ENHANCEMENT_MODES
-
-                tier = get_user_tier(settings)
-                allowed = TIER_ENHANCEMENT_MODES.get(tier, TIER_ENHANCEMENT_MODES["free"])
-                if mode not in allowed:
-                    log_info(f"Mode '{mode}' not allowed for tier '{tier}', falling back to formal")
-                    mode = "formal"
+            # No local tier enforcement: the server and the user's own
+            # provider key are the real boundaries. The desktop reads
+            # entitlements from GET /api/me and degrades offline to local mode.
 
             # Detect language from text
             lang_code, script, confidence = language_detector.detect_from_text(text)

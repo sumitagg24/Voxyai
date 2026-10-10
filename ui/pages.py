@@ -1315,7 +1315,9 @@ class AccountPage(BasePage):
         try:
             from utils import credentials
 
-            session_id = credentials.credential_store.get("session_id")
+            session_id = credentials.credential_store.get("auth0_session") or credentials.credential_store.get(
+                "session_id"
+            )
         except Exception:
             session_id = None
         if not session_id:
@@ -1333,8 +1335,11 @@ class AccountPage(BasePage):
             tier = (payload.get("subscription") or {}).get("tier", "free")
             self.orchestrator.update_config("tier", tier)
             self.refresh()
-        except Exception as exc:
-            QMessageBox.warning(self, "Could not reach the server", str(exc))
+        except Exception:
+            # Offline: the server is the tier authority, so without it the
+            # desktop runs in local mode (own provider key, no tier gates).
+            self.plan_label.setText("Local mode (offline) — using your own provider key.")
+            self.refresh()
 
 
 # ── Diagnostics ──────────────────────────────────────────────────────────────

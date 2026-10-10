@@ -2100,62 +2100,9 @@ def get_features():
 @app.route("/api/pricing", methods=["GET"])
 @cache.cached(timeout=3600)
 def get_pricing():
-    return jsonify(
-        {
-            "status": "success",
-            "tiers": [
-                {
-                    "id": "free",
-                    "name": "Free",
-                    "price": 0,
-                    "period": "month",
-                    "description": "Perfect for getting started",
-                    "features": [
-                        "100 transcriptions/month",
-                        "Languages your speech provider supports",
-                        "Formal enhancement mode",
-                        "Community support",
-                    ],
-                    "cta": "Get Started",
-                    "popular": False,
-                },
-                {
-                    "id": "pro",
-                    "name": "Pro",
-                    "price": 9.99,
-                    "period": "month",
-                    "description": "For power users",
-                    "features": [
-                        "1,000 transcriptions/month",
-                        "Languages your speech provider supports",
-                        "All five enhancement modes",
-                        "Live Q&A feature",
-                        "Priority support",
-                    ],
-                    "cta": "Start Free Trial",
-                    "popular": True,
-                },
-                {
-                    "id": "business",
-                    "name": "Business",
-                    "price": 29.99,
-                    "period": "month",
-                    "description": "For teams",
-                    "features": [
-                        "5,000 transcriptions/month",
-                        "Everything in Pro",
-                        "Team collaboration",
-                        "API access",
-                        "Custom integrations",
-                        "Dedicated support",
-                        "Advanced analytics",
-                    ],
-                    "cta": "Contact Sales",
-                    "popular": False,
-                },
-            ],
-        }
-    )
+    from web.tier import pricing_payload
+
+    return jsonify(pricing_payload())
 
 
 @app.route("/api/settings", methods=["GET", "POST"])

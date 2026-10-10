@@ -329,17 +329,32 @@ def test_pricing_api_makes_no_unverifiable_language_claims(app_client):
 
 
 def test_pricing_api_matches_enforced_quotas_and_features(app_client):
-    """Advertised copy must agree with web/tier.py and config/constants.py."""
-    from config.constants import ENHANCEMENT_MODES
-    from web.tier import TIER_QUOTAS
+    """Advertised copy must agree with web/tier.py."""
+    from web.tier import TIER_QUOTAS, TIER_ENHANCEMENT_MODES
 
     client, _ = app_client
     tiers = {t["id"]: t for t in client.get("/api/pricing").get_json()["tiers"]}
     assert f"{TIER_QUOTAS['free']:,} transcriptions/month" in tiers["free"]["features"]
     assert "Formal enhancement mode" in tiers["free"]["features"]
-    assert len(ENHANCEMENT_MODES) == 5
-    assert "All five enhancement modes" in tiers["pro"]["features"]
+    assert len(TIER_ENHANCEMENT_MODES["pro"]) == 5
+    pro_modes = ", ".join(sorted(TIER_ENHANCEMENT_MODES["pro"]))
+    assert any(pro_modes in f for f in tiers["pro"]["features"]), tiers["pro"]["features"]
     assert f"{TIER_QUOTAS['pro']:,} transcriptions/month" in tiers["pro"]["features"]
+    # Q&A is Pro+, never free.
+    assert any("Q&A" in f for f in tiers["pro"]["features"])
+    assert not any("Q&A" in f for f in tiers["free"]["features"])
+    # No wake word anywhere.
+    for tier in tiers.values():
+        assert not any("wake" in f.lower() for f in tier["features"]), tier
+
+
+def test_pricing_payload_equals_tier_policy(app_client):
+    """GET /api/pricing must equal web.tier.pricing_payload() exactly."""
+    from web import tier as tier_policy
+
+    client, _ = app_client
+    payload = client.get("/api/pricing").get_json()
+    assert payload == tier_policy.pricing_payload()
 
 
 def test_download_page_does_not_claim_a_language_count():
