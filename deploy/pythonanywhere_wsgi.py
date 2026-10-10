@@ -56,4 +56,4 @@ os.environ.setdefault("SENTRY_DSN_BROWSER", "")
 # ---------------------------------------------------------------------------
 sys.path.insert(0, "/home/<PA_USER>/voxyai")
 
-from web.app import app as application  # noqa: E402
+from web.app import app as application  # noqa: F401,E402
