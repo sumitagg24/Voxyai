@@ -1501,11 +1501,12 @@ class AboutPage(BasePage):
         tagline.setWordWrap(True)
         layout.addWidget(tagline)
 
+        accent = theme.palette()["accent"]
         details = QLabel(
             f"<b>Version:</b> {version.__version__} ({version.UPDATE_CHANNEL})<br>"
             f"<b>Engine:</b> {version.ENGINE_NAME}<br>"
             f"<b>Publisher:</b> {version.PUBLISHER}<br>"
-            f"<b>Project:</b> <a href='{version.REPO_URL}'>{version.REPO_URL}</a><br>"
+            f"<b>Project:</b> <a href='{version.REPO_URL}' style='color:{accent}'>{version.REPO_URL}</a><br>"
             f"{version.COPYRIGHT}"
         )
         details.setOpenExternalLinks(True)

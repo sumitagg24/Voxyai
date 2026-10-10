@@ -72,6 +72,12 @@ def stylesheet(theme: str = "dark") -> str:
     }}
     QMainWindow, QDialog {{ background: {c['bg']}; }}
 
+    /* Labels/checkboxes are transparent so they do not paint their own
+       background rectangles over a card (the Control Room cards must read as
+       one surface, not a patchwork of label boxes). */
+    QLabel, QCheckBox, QRadioButton {{ background: transparent; }}
+    QCheckBox, QRadioButton {{ color: {c['text']}; }}
+
     QLabel#PageTitle {{ font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }}
     QLabel#PageSubtitle {{ color: {c['text_muted']}; font-size: 13px; }}
     QLabel#PageBody {{ font-size: 14px; }}
