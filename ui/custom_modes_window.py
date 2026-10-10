@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QSplitter,
 )
 from PyQt5.QtCore import Qt, pyqtSignal
+from ui import theme
 from utils.logger import log_info
 
 # Built-in modes that cannot be deleted
@@ -38,27 +39,10 @@ class CustomModesWindow(QMainWindow):
     def _init_ui(self):
         self.setWindowTitle("Voxylis — Custom Enhancement Modes")
         self.setGeometry(150, 150, 720, 520)
-        self.setStyleSheet(
-            """
-            QMainWindow, QWidget { background: #1e1e1e; color: #e0e0e0; }
-            QListWidget { background: #252525; border: 1px solid #444;
-                          border-radius: 4px; font-size: 12px; }
-            QListWidget::item { padding: 8px; border-bottom: 1px solid #333; }
-            QListWidget::item:selected { background: #3a3a5c; }
-            QLineEdit, QTextEdit { background: #252525; border: 1px solid #444;
-                                   border-radius: 4px; color: #e0e0e0;
-                                   font-size: 13px; padding: 4px; }
-            QPushButton { background: #3a3a5c; color: #e0e0e0; border: none;
-                          border-radius: 4px; padding: 6px 14px; font-size: 12px; }
-            QPushButton:hover { background: #4a4a7c; }
-            QPushButton#danger { background: #5c2a2a; }
-            QPushButton#danger:hover { background: #7c3a3a; }
-            QPushButton#save { background: #2a5c2a; }
-            QPushButton#save:hover { background: #3a7c3a; }
-            QLabel#heading { font-size: 14px; font-weight: bold; color: #aaaaff; }
-            QLabel#hint { font-size: 11px; color: #888; }
-        """
-        )
+        # Control Room tokens only — the editor must read as the same product
+        # as the main window (dark or light follows the caller, which re-applies
+        # theme.stylesheet(user_theme) after construction).
+        self.setStyleSheet(theme.stylesheet())
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -67,14 +51,14 @@ class CustomModesWindow(QMainWindow):
         root.setSpacing(8)
 
         title = QLabel("Custom Enhancement Modes")
-        title.setObjectName("heading")
+        title.setObjectName("SectionTitle")
         root.addWidget(title)
 
         hint = QLabel(
             "Write a prompt that tells the AI how to transform your speech. "
             "Use {text} as the placeholder for the transcribed text."
         )
-        hint.setObjectName("hint")
+        hint.setObjectName("Hint")
         hint.setWordWrap(True)
         root.addWidget(hint)
 
@@ -94,7 +78,7 @@ class CustomModesWindow(QMainWindow):
         lv.addWidget(add_btn)
 
         self.delete_btn = QPushButton("Delete")
-        self.delete_btn.setObjectName("danger")
+        self.delete_btn.setObjectName("Danger")
         self.delete_btn.clicked.connect(self._on_delete)
         self.delete_btn.setEnabled(False)
         lv.addWidget(self.delete_btn)
@@ -121,7 +105,7 @@ class CustomModesWindow(QMainWindow):
 
         # Example presets
         presets_label = QLabel("Quick presets:")
-        presets_label.setObjectName("hint")
+        presets_label.setObjectName("Hint")
         rv.addWidget(presets_label)
 
         presets_row = QHBoxLayout()
@@ -151,7 +135,7 @@ class CustomModesWindow(QMainWindow):
         rv.addLayout(presets_row)
 
         save_btn = QPushButton("Save Mode")
-        save_btn.setObjectName("save")
+        save_btn.setObjectName("Primary")
         save_btn.clicked.connect(self._on_save_mode)
         rv.addWidget(save_btn)
 

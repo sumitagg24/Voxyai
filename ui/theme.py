@@ -27,7 +27,7 @@ DARK = {
     "warning": "#e8b93b",
     "danger": "#e5484d",
     "danger_hover": "#f2555a",
-    "recording": "#ff5c5c",   # ONLY for REC/live/destructive
+    "recording": "#ff5c5c",  # ONLY for REC/live/destructive
     "focus": "#ff5c5c",
 }
 
@@ -51,6 +51,10 @@ LIGHT = {
     "focus": "#d13b40",
 }
 
+# Single source for font stacks so dialogs building token f-strings match.
+UI_FONT = '"Segoe UI Variable", "Segoe UI", "Inter", system-ui, sans-serif'
+MONO_FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
+
 
 def palette(theme: str = "dark") -> dict:
     return dict(LIGHT if (theme or "dark").lower() == "light" else DARK)
@@ -63,16 +67,17 @@ def stylesheet(theme: str = "dark") -> str:
     QWidget {{
         background: {c['bg']};
         color: {c['text']};
-        font-family: "Segoe UI Variable", "Segoe UI", "Inter", system-ui, sans-serif;
+        font-family: {UI_FONT};
         font-size: 13px;
     }}
     QMainWindow, QDialog {{ background: {c['bg']}; }}
 
     QLabel#PageTitle {{ font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }}
     QLabel#PageSubtitle {{ color: {c['text_muted']}; font-size: 13px; }}
+    QLabel#PageBody {{ font-size: 14px; }}
     QLabel#SectionTitle {{ font-size: 14px; font-weight: 600; color: {c['text']}; }}
     QLabel#Hint {{ color: {c['text_muted']}; font-size: 12px; }}
-    QLabel#Mono {{ font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace; font-size: 12px; color: {c['text_muted']}; }}
+    QLabel#Mono {{ font-family: {MONO_FONT}; font-size: 12px; color: {c['text_muted']}; }}
     QLabel#StatValue {{ font-size: 26px; font-weight: 700; }}
     QLabel#StatLabel {{ color: {c['text_muted']}; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }}
     QLabel#BadgeOk {{ color: {c['success']}; font-weight: 600; }}
@@ -106,6 +111,7 @@ def stylesheet(theme: str = "dark") -> str:
     QPushButton#Record[recording="true"] {{ background: {c['recording']}; border-color: {c['recording']}; color: #ffffff; }}
     QPushButton#Link {{ background: transparent; border: none; color: {c['accent']}; padding: 2px 4px; text-align: left; }}
     QPushButton#Link:hover {{ text-decoration: underline; }}
+    QPushButton#ShortcutField {{ text-align: left; padding: 8px 12px; }}
 
     QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit {{
         background: {c['bg_input']}; border: 1px solid {c['border_strong']};
@@ -190,6 +196,7 @@ def stylesheet(theme: str = "dark") -> str:
     QWidget#MeterFill {{ background: {c['recording']}; border-radius: 4px; }}
     """
 
+
 def stat_card(title: str) -> str:
     """Stylesheet snippet for a small metric card."""
     c = palette()
@@ -199,67 +206,88 @@ def stat_card(title: str) -> str:
 # ── Component helpers (used by pages.py) ───────────────────────────────────────
 def h1(text: str, parent=None) -> "QLabel":
     from PyQt5.QtWidgets import QLabel
+
     lbl = QLabel(text, parent)
     lbl.setObjectName("PageTitle")
     return lbl
 
+
 def h2(text: str, parent=None) -> "QLabel":
     from PyQt5.QtWidgets import QLabel
+
     lbl = QLabel(text, parent)
     lbl.setObjectName("SectionTitle")
     return lbl
 
+
 def body(text: str, parent=None) -> "QLabel":
     from PyQt5.QtWidgets import QLabel
+
     lbl = QLabel(text, parent)
     lbl.setWordWrap(True)
     return lbl
 
+
 def hint(text: str, parent=None) -> "QLabel":
     from PyQt5.QtWidgets import QLabel
+
     lbl = QLabel(text, parent)
     lbl.setObjectName("Hint")
     return lbl
 
+
 def mono(text: str, parent=None) -> "QLabel":
     from PyQt5.QtWidgets import QLabel
+
     lbl = QLabel(text, parent)
     lbl.setObjectName("Mono")
     return lbl
 
+
 def primary_button(text: str, parent=None) -> "QPushButton":
     from PyQt5.QtWidgets import QPushButton
+
     btn = QPushButton(text, parent)
     btn.setObjectName("Primary")
     return btn
 
+
 def danger_button(text: str, parent=None) -> "QPushButton":
     from PyQt5.QtWidgets import QPushButton
+
     btn = QPushButton(text, parent)
     btn.setObjectName("Danger")
     return btn
 
+
 def record_button(text: str, parent=None) -> "QPushButton":
     from PyQt5.QtWidgets import QPushButton
+
     btn = QPushButton(text, parent)
     btn.setObjectName("Record")
     return btn
 
+
 def link_button(text: str, parent=None) -> "QPushButton":
     from PyQt5.QtWidgets import QPushButton
+
     btn = QPushButton(text, parent)
     btn.setObjectName("Link")
     return btn
 
+
 def field_row(label_text: str, widget, parent=None, hint_text: str = "") -> "QWidget":
     """Label + widget + optional hint in a vertical layout."""
     from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+
     row = QWidget(parent)
     layout = QVBoxLayout(row)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(4)
     lbl = QLabel(label_text)
-    lbl.setStyleSheet(f"font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:{palette()['text_muted']};font-weight:600;")
+    lbl.setStyleSheet(
+        f"font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:{palette()['text_muted']};font-weight:600;"
+    )
     layout.addWidget(lbl)
     layout.addWidget(widget)
     if hint_text:
@@ -268,9 +296,11 @@ def field_row(label_text: str, widget, parent=None, hint_text: str = "") -> "QWi
         layout.addWidget(h)
     return row
 
+
 def section_frame(parent=None) -> "QFrame":
     """A bordered content frame."""
     from PyQt5.QtWidgets import QFrame
+
     frame = QFrame(parent)
     frame.setObjectName("Card")
     return frame

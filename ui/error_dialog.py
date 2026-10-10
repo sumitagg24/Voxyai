@@ -48,7 +48,7 @@ class ErrorDialog(QDialog):
 
         summary = QLabel(error.summary)
         summary.setWordWrap(True)
-        summary.setStyleSheet("font-size: 14px;")
+        summary.setObjectName("PageBody")
         root.addWidget(summary)
 
         if error.cause:

@@ -118,7 +118,6 @@ class ShortcutRecorder(QWidget):
         self.field.setToolTip("Click, then press the key combination you want")
         self.field.clicked.connect(self._start_capture)
         self.field.installEventFilter(self)
-        self.field.setStyleSheet("QPushButton#ShortcutField { text-align: left; padding: 8px 12px; }")
         layout.addWidget(self.field)
 
         self.clear_button = QPushButton("Clear")

@@ -144,8 +144,8 @@ class BasePage(QWidget):
         self.orchestrator = orchestrator
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(28, 24, 28, 20)
-        outer.setSpacing(14)
+        outer.setContentsMargins(24, 24, 24, 24)
+        outer.setSpacing(12)
 
         header = QVBoxLayout()
         header.setSpacing(2)
@@ -157,7 +157,7 @@ class BasePage(QWidget):
         outer.addLayout(header)
 
         self.body = QVBoxLayout()
-        self.body.setSpacing(14)
+        self.body.setSpacing(12)
         container = QWidget()
         container.setLayout(self.body)
         outer.addWidget(scrollable(container), 1)
@@ -182,8 +182,8 @@ class HomePage(BasePage):
         # status card
         status_card = card()
         status_layout = QVBoxLayout(status_card)
-        status_layout.setContentsMargins(20, 18, 20, 18)
-        status_layout.setSpacing(10)
+        status_layout.setContentsMargins(16, 16, 16, 16)
+        status_layout.setSpacing(8)
 
         row = QHBoxLayout()
         self.state_label = QLabel("Ready")
@@ -227,8 +227,8 @@ class HomePage(BasePage):
         # stats
         stats_card = card()
         stats_layout = QGridLayout(stats_card)
-        stats_layout.setContentsMargins(20, 16, 20, 16)
-        stats_layout.setHorizontalSpacing(28)
+        stats_layout.setContentsMargins(16, 16, 16, 16)
+        stats_layout.setHorizontalSpacing(24)
         self.stat_values = {}
         for column, (key, label) in enumerate(
             [
@@ -250,11 +250,11 @@ class HomePage(BasePage):
         # readiness
         ready_card = card()
         ready_layout = QVBoxLayout(ready_card)
-        ready_layout.setContentsMargins(20, 16, 20, 16)
+        ready_layout.setContentsMargins(16, 16, 16, 16)
         ready_layout.addLayout(section("Setup", "Everything Voxylis needs to run."))
         self.readiness = QGridLayout()
         self.readiness.setHorizontalSpacing(24)
-        self.readiness.setVerticalSpacing(6)
+        self.readiness.setVerticalSpacing(8)
         ready_layout.addLayout(self.readiness)
         self.body.addWidget(ready_card)
 
@@ -1488,8 +1488,8 @@ class AboutPage(BasePage):
 
         card_widget = card()
         layout = QVBoxLayout(card_widget)
-        layout.setContentsMargins(24, 22, 24, 22)
-        layout.setSpacing(6)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(8)
 
         name = QLabel(f"{version.APP_NAME}")
         name.setObjectName("PageTitle")
@@ -1529,7 +1529,7 @@ class AboutPage(BasePage):
 
         license_card = card()
         license_layout = QVBoxLayout(license_card)
-        license_layout.setContentsMargins(24, 18, 24, 18)
+        license_layout.setContentsMargins(24, 16, 24, 16)
         license_layout.addLayout(section("Licences"))
         license_layout.addWidget(
             hint(

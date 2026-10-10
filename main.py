@@ -520,6 +520,26 @@ class VoxylisApp:
 def main() -> int:
     from PyQt5.QtCore import Qt
 
+    # Hidden dev flag: --design-shots <outdir> renders every UI surface to
+    # PNGs and exits. Must decide before QApplication exists (offscreen hint).
+    shots_dir = None
+    for index, arg in enumerate(sys.argv):
+        if arg == "--design-shots" and index + 1 < len(sys.argv):
+            shots_dir = sys.argv[index + 1]
+            break
+    if shots_dir:
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        if sys.platform == "win32":
+            # Offscreen on Windows uses the font-less basic database; point it
+            # at the system fonts so shots rasterise text. setdefault keeps a
+            # user override (e.g. a vendored font dir) in charge.
+            os.environ.setdefault("QT_QPA_FONTDIR", os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts"))
+        try:
+            return run_design_shots(shots_dir)
+        except Exception as exc:
+            log_error(f"design-shots failed: {exc}", exc_info=True)
+            return 1
+
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     application = QApplication(sys.argv)
@@ -554,6 +574,196 @@ def _activate_existing() -> None:
         if isinstance(widget, MainWindow):
             widget.show_page("home")
             return
+
+
+# ── dev-only design shots (--design-shots) ───────────────────────────────────
+
+
+class _ShotHistory:
+    enabled = True
+    max_entries = 500
+
+    def __len__(self) -> int:
+        return 0
+
+    def db_path(self) -> str:
+        return "(design-shots)"
+
+    def get_all(self, limit=None):
+        return []
+
+    def get_recent(self, n: int = 10):
+        return []
+
+    def count(self) -> int:
+        return 0
+
+
+class _ShotStats:
+    def get_today(self) -> dict:
+        return {"transcriptions": 0, "words": 0, "commands": 0}
+
+    def get_total(self) -> dict:
+        return {"transcriptions": 0, "words": 0}
+
+
+class _ShotRecorder:
+    def list_devices(self) -> list:
+        return [{"index": 0, "name": "Design Shots Microphone"}]
+
+    def is_recording(self) -> bool:
+        return False
+
+
+class _ShotInjector:
+    def diagnostics(self) -> dict:
+        return {"strategies": ["clipboard", "typing"], "last": None}
+
+
+class _ShotHotkeyListener:
+    def describe(self) -> dict:
+        return {"alive": True, "enabled": True, "hotkey": HOTKEY_DEFAULT}
+
+
+class _ShotOrchestrator:
+    """Minimum surface the pages read — nothing records, listens or calls out."""
+
+    def __init__(self) -> None:
+        self.config = {
+            "hotkey": HOTKEY_DEFAULT,
+            "mode_hotkeys": {},
+            "theme": "dark",
+            "language": "auto",
+            "secondary_language": "auto",
+            "enhancement_mode": "formal",
+            "enable_ai_enhancement": False,
+            "history_enabled": True,
+            "history_retention_days": 0,
+            "max_history": 500,
+            "auto_inject": True,
+            "toggle_mode": False,
+            "custom_modes": {},
+            "app_profiles": {},
+            "voice_commands": {},
+            "audio_device": None,
+            "sound_feedback": True,
+            "startup_on_boot": False,
+        }
+        self.history = _ShotHistory()
+        self.stats = _ShotStats()
+        self.recorder = _ShotRecorder()
+        self.injector = _ShotInjector()
+        self.hotkey_listener = _ShotHotkeyListener()
+        self.last_error = None
+
+    def get_config(self, key=None, default=None):
+        if key is None:
+            return dict(self.config)
+        return self.config.get(key, default)
+
+    def update_config(self, key, value=None) -> bool:
+        if value is not None:
+            self.config[key] = value
+        return True
+
+    def get_status(self) -> dict:
+        return {"stage": "idle", "mode": "formal", "language": ""}
+
+    def provider_status(self) -> dict:
+        return {
+            "groq": {"configured": False},
+            "openai": {"configured": False},
+            "openrouter": {"configured": False},
+            "backend": "dpapi",
+            "secure_storage": True,
+            "transcriber_ready": False,
+            "enhancer_ready": False,
+        }
+
+    def toggle_recording(self) -> None:
+        pass
+
+    def stop_recording(self) -> None:
+        pass
+
+    def cancel_recording(self) -> None:
+        pass
+
+
+def run_design_shots(outdir: str) -> int:
+    """Render every desktop surface to PNGs (hidden dev flag ``--design-shots``).
+
+    Never wires the real orchestrator: pages are driven by a stub so no
+    microphone, hotkey hook or provider call is touched. Prints each saved path.
+    """
+    from pathlib import Path
+
+    from PyQt5.QtWidgets import QApplication
+
+    from ui.main_window import MainWindow, PAGES
+    from ui.onboarding_window import OnboardingWindow
+    from ui.overlay import FloatingWidget
+
+    out = Path(outdir)
+    out.mkdir(parents=True, exist_ok=True)
+    saved: list = []
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    app.setStyleSheet(theme.stylesheet("dark"))
+
+    def snap(widget, name: str) -> None:
+        path = out / f"{name}.png"
+        if widget.grab().save(str(path), "PNG"):
+            print(path)
+            saved.append(str(path))
+
+    orchestrator = _ShotOrchestrator()
+
+    window = MainWindow(orchestrator)
+    window.show()
+    app.processEvents()
+    for key, _label, _cls in PAGES:
+        try:
+            window.show_page(key)
+            app.processEvents()
+            snap(window, f"page_{key}")
+        except Exception as exc:
+            print(f"design-shots: skipped page '{key}': {exc}")
+    window.hide()
+
+    try:
+        wizard = OnboardingWindow(orchestrator.get_config(), orchestrator=orchestrator)
+        wizard.show()
+        app.processEvents()
+        snap(wizard, "onboarding")
+        wizard.hide()
+    except Exception as exc:
+        print(f"design-shots: skipped onboarding: {exc}")
+
+    for name, stage in (("overlay_idle", None), ("overlay_recording", "recording")):
+        try:
+            overlay = FloatingWidget(max_recording_seconds=600)
+            if stage == "recording":
+                overlay.set_stage("recording")
+                overlay.set_audio_level(42.0)
+                overlay.set_language("English", "en")
+                overlay.set_mode("formal")
+                # Let the 30 fps tick ease the waveform bars to a live shape
+                # before grabbing, so the shot reads as a real recording.
+                import time as _time
+
+                for _ in range(14):
+                    app.processEvents()
+                    _time.sleep(0.025)
+            overlay.show()
+            app.processEvents()
+            snap(overlay, name)
+            overlay.hide()
+        except Exception as exc:
+            print(f"design-shots: skipped {name}: {exc}")
+
+    print(f"design-shots: {len(saved)} saved to {out}")
+    return 0
 
 
 if __name__ == "__main__":

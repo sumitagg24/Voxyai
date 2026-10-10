@@ -19,6 +19,8 @@ from PyQt5.QtWidgets import (
     QPushButton,
 )
 
+from ui import theme
+
 
 class _DevicePollWorker(QThread):
     approved = pyqtSignal(dict)  # token response containing id_token
@@ -90,25 +92,30 @@ class Auth0LoginDialog(QDialog):
         self.setWindowTitle("Sign in with Auth0")
         self.setModal(True)
         self.resize(380, 300)
+        # Token-built Control Room styling (no magic hex — see docs/DESIGN.md).
+        self.setStyleSheet(theme.stylesheet())
+        p = theme.palette()
 
         root = QVBoxLayout(self)
         root.setSpacing(10)
 
         self.title = QLabel("Sign in to Voxylis")
-        self.title.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.title.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {p['text']};")
         self.title.setAlignment(Qt.AlignCenter)
         root.addWidget(self.title)
 
         self.hint = QLabel("Enter this code in the browser window\n" "that opens (or open the link manually):")
         self.hint.setAlignment(Qt.AlignCenter)
         self.hint.setWordWrap(True)
+        self.hint.setObjectName("Hint")
         root.addWidget(self.hint)
 
         self.code_label = QLabel("…")
         self.code_label.setAlignment(Qt.AlignCenter)
         self.code_label.setStyleSheet(
-            "font-size: 30px; font-weight: bold; letter-spacing: 6px; "
-            "padding: 10px; border: 1px solid #555; border-radius: 6px;"
+            f"font-family: {theme.MONO_FONT}; font-size: 30px; font-weight: bold; "
+            f"letter-spacing: 6px; padding: 10px; border: 1px solid {p['border_strong']}; "
+            f"border-radius: 6px; background: {p['bg_input']}; color: {p['text']};"
         )
         self.code_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         root.addWidget(self.code_label)
@@ -117,7 +124,7 @@ class Auth0LoginDialog(QDialog):
         self.link_label.setAlignment(Qt.AlignCenter)
         self.link_label.setWordWrap(True)
         self.link_label.setOpenExternalLinks(True)
-        self.link_label.setStyleSheet("color: #aaaaff; font-size: 11px;")
+        self.link_label.setStyleSheet(f"color: {p['accent']}; font-size: 11px;")
         root.addWidget(self.link_label)
 
         row = QHBoxLayout()
@@ -134,7 +141,7 @@ class Auth0LoginDialog(QDialog):
         self.status = QLabel("Contacting Auth0…")
         self.status.setAlignment(Qt.AlignCenter)
         self.status.setWordWrap(True)
-        self.status.setStyleSheet("color: #888; font-size: 11px;")
+        self.status.setStyleSheet(f"color: {p['text_muted']}; font-size: 11px;")
         root.addWidget(self.status)
 
         btns = QHBoxLayout()
@@ -189,7 +196,8 @@ class Auth0LoginDialog(QDialog):
             self.verify_uri = data.get("verification_uri_complete") or data.get("verification_uri", "")
             self.code_label.setText(data.get("user_code", "…"))
             if self.verify_uri:
-                self.link_label.setText(f'<a href="{self.verify_uri}" style="color:#aaaaff;">{self.verify_uri}</a>')
+                accent = theme.palette()["accent"]
+                self.link_label.setText(f'<a href="{self.verify_uri}" style="color:{accent};">{self.verify_uri}</a>')
             self.browser_btn.setEnabled(True)
             self.copy_btn.setEnabled(True)
             self.status.setText("Waiting for browser approval…")

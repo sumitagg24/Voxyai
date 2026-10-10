@@ -74,6 +74,21 @@ No other colors. Red never glows/blooms. Green never appears except success/onli
 
 ---
 
+## Desktop ANTI-PATTERNS (P4.2 BUILD — PyQt5 app)
+The desktop reads as the same product as the website. `ui/theme.py` is the single
+source of Control Room tokens for Qt (`stylesheet()`, `palette()`, font stacks).
+
+- ❌ Gradient buttons/backgrounds (flat fills only)
+- ❌ Emoji or stock icons in place of text glyphs (✓ / • / mono labels); no qtawesome
+- ❌ Magic hex colours outside `ui/theme.py` — use `theme.palette()` tokens
+- ❌ `setStyleSheet` outside `ui/theme.py` (token-built f-string helpers in a widget are the only exception)
+- ❌ Off-scale margins/spacing — use the 4 / 8 / 12 / 16 / 24 / 32 scale
+- ❌ Decorative animations (the overlay waveform is a live level readout, not decoration)
+- ❌ Shipping dark without light: both palettes must pass contrast; recording red is ONLY for REC/live/destructive states
+- ❌ One-off window styling that drifts from the app (every window imports `ui.theme`, never invents its own look)
+
+---
+
 ## Implementation Notes
 - **Vendor**: Chart.js → `web/static/vendor/chart.min.js` (only on dashboard). `web/static/vendor/` for all 3rd-party.
 - **Fonts**: `.woff2` in `web/static/fonts/`. Preload + `font-display: swap`.
