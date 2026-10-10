@@ -1,23 +1,25 @@
 """
 Shared design tokens and stylesheet for the Voxylis desktop UI.
+Control Room design system — mirrors web/static/css/base.css.
 
-Every window imports from here instead of embedding its own colours, so the
-app looks like one product and a theme change is a single edit.
+Every window imports from here instead of embedding its own colours,
+so the app looks like one product and a theme change is a single edit.
 """
 
 from __future__ import annotations
 
-# ── palette ──────────────────────────────────────────────────────────────────
+# ── palette (Control Room) ──────────────────────────────────────────────────────
+# Mirrors web/static/css/base.css tokens
 
 DARK = {
-    "bg": "#111114",
-    "bg_elevated": "#18181d",
-    "bg_input": "#1f1f26",
-    "border": "#2c2c35",
+    "bg": "#0e0f12",
+    "bg_elevated": "#16181d",
+    "bg_input": "#1d2027",
+    "border": "#2a2d35",
     "border_strong": "#3a3a46",
-    "text": "#e8e8ee",
-    "text_muted": "#9a9aa8",
-    "text_dim": "#6b6b7a",
+    "text": "#eaeaea",
+    "text_muted": "#8a8d93",
+    "text_dim": "#5b5d6a",
     "accent": "#7c6cf0",
     "accent_hover": "#8d7ff5",
     "accent_soft": "#2a2545",
@@ -25,7 +27,8 @@ DARK = {
     "warning": "#e8b93b",
     "danger": "#e5484d",
     "danger_hover": "#f2555a",
-    "recording": "#ff5c5c",
+    "recording": "#ff5c5c",   # ONLY for REC/live/destructive
+    "focus": "#ff5c5c",
 }
 
 LIGHT = {
@@ -45,6 +48,7 @@ LIGHT = {
     "danger": "#d13b40",
     "danger_hover": "#b92f34",
     "recording": "#e5484d",
+    "focus": "#d13b40",
 }
 
 
@@ -53,24 +57,24 @@ def palette(theme: str = "dark") -> dict:
 
 
 def stylesheet(theme: str = "dark") -> str:
-    """Return the application-wide Qt stylesheet."""
+    """Return the application-wide Qt stylesheet (Control Room)."""
     c = palette(theme)
     return f"""
     QWidget {{
         background: {c['bg']};
         color: {c['text']};
-        font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+        font-family: "Segoe UI Variable", "Segoe UI", "Inter", system-ui, sans-serif;
         font-size: 13px;
     }}
     QMainWindow, QDialog {{ background: {c['bg']}; }}
 
-    QLabel#PageTitle {{ font-size: 22px; font-weight: 700; }}
+    QLabel#PageTitle {{ font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }}
     QLabel#PageSubtitle {{ color: {c['text_muted']}; font-size: 13px; }}
     QLabel#SectionTitle {{ font-size: 14px; font-weight: 600; color: {c['text']}; }}
     QLabel#Hint {{ color: {c['text_muted']}; font-size: 12px; }}
-    QLabel#Mono {{ font-family: "Cascadia Code", "Consolas", monospace; font-size: 12px; color: {c['text_muted']}; }}
+    QLabel#Mono {{ font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace; font-size: 12px; color: {c['text_muted']}; }}
     QLabel#StatValue {{ font-size: 26px; font-weight: 700; }}
-    QLabel#StatLabel {{ color: {c['text_muted']}; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }}
+    QLabel#StatLabel {{ color: {c['text_muted']}; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }}
     QLabel#BadgeOk {{ color: {c['success']}; font-weight: 600; }}
     QLabel#BadgeWarn {{ color: {c['warning']}; font-weight: 600; }}
     QLabel#BadgeBad {{ color: {c['danger']}; font-weight: 600; }}
@@ -83,17 +87,17 @@ def stylesheet(theme: str = "dark") -> str:
         background: transparent; border: none; outline: none; padding: 4px 8px;
     }}
     QListWidget#NavList::item {{
-        padding: 9px 12px; border-radius: 7px; color: {c['text_muted']}; margin: 1px 0;
+        padding: 9px 12px; border-radius: 6px; color: {c['text_muted']}; margin: 1px 0;
     }}
     QListWidget#NavList::item:hover {{ background: {c['bg_input']}; color: {c['text']}; }}
     QListWidget#NavList::item:selected {{ background: {c['accent_soft']}; color: {c['text']}; font-weight: 600; }}
 
     QPushButton {{
         background: {c['bg_input']}; color: {c['text']}; border: 1px solid {c['border_strong']};
-        border-radius: 7px; padding: 8px 16px;
+        border-radius: 6px; padding: 8px 16px; font-weight: 500;
     }}
     QPushButton:hover {{ background: {c['border']}; }}
-    QPushButton:disabled {{ color: {c['text_dim']}; border-color: {c['border']}; }}
+    QPushButton:disabled {{ color: {c['text_dim']}; border-color: {c['border']}; background: {c['bg_input']}; }}
     QPushButton#Primary {{ background: {c['accent']}; border-color: {c['accent']}; color: #ffffff; font-weight: 600; }}
     QPushButton#Primary:hover {{ background: {c['accent_hover']}; }}
     QPushButton#Danger {{ background: transparent; border-color: {c['danger']}; color: {c['danger']}; }}
@@ -105,9 +109,9 @@ def stylesheet(theme: str = "dark") -> str:
 
     QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit {{
         background: {c['bg_input']}; border: 1px solid {c['border_strong']};
-        border-radius: 7px; padding: 7px 10px; selection-background-color: {c['accent']};
+        border-radius: 6px; padding: 7px 10px; selection-background-color: {c['accent']};
     }}
-    QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus {{ border-color: {c['accent']}; }}
+    QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QTextEdit:focus {{ border-color: {c['focus']}; }}
     QComboBox::drop-down {{ border: none; width: 22px; }}
     QComboBox QAbstractItemView {{
         background: {c['bg_elevated']}; border: 1px solid {c['border_strong']};
@@ -122,7 +126,7 @@ def stylesheet(theme: str = "dark") -> str:
     QCheckBox::indicator:checked {{ background: {c['accent']}; border-color: {c['accent']}; }}
 
     #Card {{
-        background: {c['bg_elevated']}; border: 1px solid {c['border']}; border-radius: 12px;
+        background: {c['bg_elevated']}; border: 1px solid {c['border']}; border-radius: 10px;
     }}
     #Banner {{
         border-radius: 10px; padding: 2px;
@@ -169,10 +173,104 @@ def stylesheet(theme: str = "dark") -> str:
         border: 1px solid {c['border_strong']}; padding: 5px;
     }}
     QStatusBar {{ background: {c['bg_elevated']}; border-top: 1px solid {c['border']}; color: {c['text_muted']}; }}
-    """
 
+    /* Lamp motif — REC indicator */
+    QLabel#Lamp {{
+        border-radius: 50%; border: 1px solid transparent;
+        background: {c['border']};
+    }}
+    QLabel#Lamp[live="true"] {{
+        background: {c['recording']};
+        border-color: {c['recording']};
+        /* Qt doesn't support box-shadow on QLabel; use a styled widget instead for glow */
+    }}
+
+    /* Meter / level bar */
+    QWidget#MeterBar {{ background: {c['bg_input']}; border-radius: 4px; }}
+    QWidget#MeterFill {{ background: {c['recording']}; border-radius: 4px; }}
+    """
 
 def stat_card(title: str) -> str:
     """Stylesheet snippet for a small metric card."""
     c = palette()
-    return f"#Card {{ background: {c['bg_elevated']}; border: 1px solid {c['border']};" f" border-radius: 12px; }}"
+    return f"#Card {{ background: {c['bg_elevated']}; border: 1px solid {c['border']}; border-radius: 10px; }}"
+
+
+# ── Component helpers (used by pages.py) ───────────────────────────────────────
+def h1(text: str, parent=None) -> "QLabel":
+    from PyQt5.QtWidgets import QLabel
+    lbl = QLabel(text, parent)
+    lbl.setObjectName("PageTitle")
+    return lbl
+
+def h2(text: str, parent=None) -> "QLabel":
+    from PyQt5.QtWidgets import QLabel
+    lbl = QLabel(text, parent)
+    lbl.setObjectName("SectionTitle")
+    return lbl
+
+def body(text: str, parent=None) -> "QLabel":
+    from PyQt5.QtWidgets import QLabel
+    lbl = QLabel(text, parent)
+    lbl.setWordWrap(True)
+    return lbl
+
+def hint(text: str, parent=None) -> "QLabel":
+    from PyQt5.QtWidgets import QLabel
+    lbl = QLabel(text, parent)
+    lbl.setObjectName("Hint")
+    return lbl
+
+def mono(text: str, parent=None) -> "QLabel":
+    from PyQt5.QtWidgets import QLabel
+    lbl = QLabel(text, parent)
+    lbl.setObjectName("Mono")
+    return lbl
+
+def primary_button(text: str, parent=None) -> "QPushButton":
+    from PyQt5.QtWidgets import QPushButton
+    btn = QPushButton(text, parent)
+    btn.setObjectName("Primary")
+    return btn
+
+def danger_button(text: str, parent=None) -> "QPushButton":
+    from PyQt5.QtWidgets import QPushButton
+    btn = QPushButton(text, parent)
+    btn.setObjectName("Danger")
+    return btn
+
+def record_button(text: str, parent=None) -> "QPushButton":
+    from PyQt5.QtWidgets import QPushButton
+    btn = QPushButton(text, parent)
+    btn.setObjectName("Record")
+    return btn
+
+def link_button(text: str, parent=None) -> "QPushButton":
+    from PyQt5.QtWidgets import QPushButton
+    btn = QPushButton(text, parent)
+    btn.setObjectName("Link")
+    return btn
+
+def field_row(label_text: str, widget, parent=None, hint_text: str = "") -> "QWidget":
+    """Label + widget + optional hint in a vertical layout."""
+    from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+    row = QWidget(parent)
+    layout = QVBoxLayout(row)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(4)
+    lbl = QLabel(label_text)
+    lbl.setStyleSheet(f"font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:{palette()['text_muted']};font-weight:600;")
+    layout.addWidget(lbl)
+    layout.addWidget(widget)
+    if hint_text:
+        h = QLabel(hint_text)
+        h.setObjectName("Hint")
+        layout.addWidget(h)
+    return row
+
+def section_frame(parent=None) -> "QFrame":
+    """A bordered content frame."""
+    from PyQt5.QtWidgets import QFrame
+    frame = QFrame(parent)
+    frame.setObjectName("Card")
+    return frame
