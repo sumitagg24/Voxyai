@@ -38,9 +38,9 @@ class TierManager {
     hasFeature(feature) {
         const features = {
             free: ['transcription', 'enhancement_basic', 'history', 'settings', 'hotkeys'],
-            pro: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'history', 'settings', 'hotkeys'],
-            business: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys'],
-            owner: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'wake_word', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys', 'unlimited']
+            pro: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'history', 'settings', 'hotkeys'],
+            business: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys'],
+            owner: ['transcription', 'enhancement_basic', 'enhancement_all', 'qa', 'advanced_stt', 'api_access', 'team_features', 'custom_integrations', 'history', 'settings', 'hotkeys', 'unlimited']
         };
         return feature in (features[this.tier] || features.free);
     }
@@ -182,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeCharts();
     initializeSettings();
     initializeHotkeys();
-    initializeWakeWord();
     initializeHistory();
 });
 
@@ -367,55 +366,6 @@ function showHotkeyRecorder(index) {
         
         document.getElementById('hotkeyDisplay').textContent = keys.join(' + ');
     });
-}
-
-// ============================================
-// WAKE WORD
-// ============================================
-
-function initializeWakeWord() {
-    const wakeWordInput = document.getElementById('wakeWordInput');
-    const listenBtn = document.querySelector('.wake-word-preview .btn-primary');
-    const statusText = document.getElementById('wakeWordStatus');
-
-    if (wakeWordInput) {
-        const savedWakeWord = localStorage.getItem('voxylis_wakeword') || 'Voxy';
-        wakeWordInput.value = savedWakeWord;
-    }
-
-    if (listenBtn) {
-        listenBtn.addEventListener('click', () => {
-            startWakeWordListening();
-        });
-    }
-
-    // Save wake word button
-    const saveWakeWordBtn = document.querySelector('.wake-word-config .btn-primary');
-    if (saveWakeWordBtn) {
-        saveWakeWordBtn.addEventListener('click', () => {
-            const wakeWord = wakeWordInput.value;
-            localStorage.setItem('voxylis_wakeword', wakeWord);
-            Voxylis.Notification.show(`Wake word set to "${wakeWord}"`, 'success');
-        });
-    }
-}
-
-function startWakeWordListening() {
-    const statusText = document.getElementById('wakeWordStatus');
-    const listenBtn = document.querySelector('.wake-word-preview .btn-primary');
-    
-    statusText.textContent = '🎤 Listening...';
-    listenBtn.disabled = true;
-    
-    // Simulate listening
-    setTimeout(() => {
-        statusText.textContent = '✓ Wake word detected!';
-        listenBtn.disabled = false;
-        
-        setTimeout(() => {
-            statusText.textContent = 'Ready to listen...';
-        }, 2000);
-    }, 3000);
 }
 
 // ============================================

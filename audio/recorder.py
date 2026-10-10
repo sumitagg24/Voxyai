@@ -41,7 +41,7 @@ class AudioRecorder:
         self.on_audio_chunk: Optional[Callable] = None
         # Called from a separate thread when silence auto-stop ends the recording
         self.on_auto_stop: Optional[Callable] = None
-        # Silence auto-stop is opt-in (used by wake-word hands-free mode).
+        # Silence auto-stop is opt-in for hands-free flows.
         # Hotkey recordings never auto-stop so the user stays in control.
         self.auto_stop_on_silence = False
         # Silence threshold in seconds before auto-stop triggers
@@ -197,7 +197,7 @@ class AudioRecorder:
                         and speech_frames >= min_speech_frames
                         and silent_frames > max_silent_frames
                     )
-                    # Nothing spoken shortly after activation (e.g. wake word
+                    # Nothing spoken shortly after activation (e.g. hands-free
                     # triggered but the user stayed quiet) — stop waiting.
                     no_speech_give_up = (
                         self.auto_stop_on_silence and speech_frames < min_speech_frames and elapsed > 5.0
@@ -212,7 +212,7 @@ class AudioRecorder:
 
                     log_debug(f"Chunk {frame_count}: level={level:.1f}% " f"rms={rms:.4f} silent={silent_frames}")
 
-            # Notify listener (e.g. wake-word mode) that recording ended by itself.
+            # Notify listener that recording ended by itself.
             # Run in a fresh thread: the handler calls stop_recording(), which
             # must not join the current recording thread from inside itself.
             if self.auto_stop_on_silence and self.on_auto_stop and self.audio_buffer:

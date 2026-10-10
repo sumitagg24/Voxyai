@@ -302,9 +302,7 @@ Get or update user settings (requires auth).
     "notifications": true,
     "sound": true,
     "autoStart": false,
-    "hotkey": "Win+Shift",
-    "wakeWord": "Voxy",
-    "wakeWordSensitivity": 70
+    "hotkey": "Win+Shift"
   }
 }
 ```

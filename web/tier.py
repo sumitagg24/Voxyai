@@ -39,7 +39,6 @@ TIER_FEATURES = {
         "enhancement_all",  # all 5 modes
         "qa",  # Q&A feature
         "advanced_stt",  # ENDPOINTING, DIARIZATION modes
-        "wake_word",
         "history",
         "settings",
         "hotkeys",
@@ -50,7 +49,6 @@ TIER_FEATURES = {
         "enhancement_all",
         "qa",
         "advanced_stt",
-        "wake_word",
         "api_access",
         "team_features",
         "custom_integrations",
@@ -64,7 +62,6 @@ TIER_FEATURES = {
         "enhancement_all",
         "qa",
         "advanced_stt",
-        "wake_word",
         "api_access",
         "team_features",
         "custom_integrations",

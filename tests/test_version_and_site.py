@@ -295,10 +295,16 @@ def test_pricing_page_is_honest_about_payments():
         assert claim.lower() not in text.lower(), claim
 
 
-def test_wake_word_is_labelled_as_a_browser_preview():
-    text = (STATIC / "dashboard.html").read_text(encoding="utf-8")
-    assert "browser preview" in text
-    assert "not implemented in the Windows build" in text
+def test_wake_word_is_fully_removed():
+    for relative in ("dashboard.html", "js/dashboard.js", "css/dashboard.css"):
+        text = (STATIC / relative).read_text(encoding="utf-8", errors="ignore")
+        assert "wakeword" not in text.lower(), f"wake word remnant in {relative}"
+        assert "voxylis_wakeword" not in text
+    import web.app as web_app
+    import web.tier as tier
+
+    assert "wake_word" not in tier.TIER_FEATURES.get("pro", set())
+    assert "wake_word" not in tier.TIER_FEATURES.get("business", set())
 
 
 def test_account_deletion_and_upgrade_claims_match_the_implementation():

@@ -52,11 +52,6 @@ from utils.helpers import ensure_directories, get_base_dir, load_json, save_json
 from utils import observability
 from utils.logger import log_debug, log_error, log_info, log_warning
 
-try:
-    from core.wake_word import WakeWordDetector
-except ImportError:
-    WakeWordDetector = None
-
 # Language label -> ISO code for translation commands
 _LANG_NAMES = {
     "english": "en",
@@ -117,7 +112,6 @@ class AppOrchestrator:
         self.enhancer: Optional[TextEnhancer] = None
         self.injector = TextInjector()
         self.hotkey_listener: Optional[HotkeyListener] = None
-        self.wake_word_detector = None
         self.api_keys: dict = {}
 
         self.voice_commands = VoiceCommandProcessor(self.config.get("voice_commands", {}))
@@ -156,8 +150,6 @@ class AppOrchestrator:
 
         self._initialize_ai_components()
         self._setup_hotkey_listener()
-        if WakeWordDetector:
-            self._setup_wake_word()
         log_info("AppOrchestrator ready")
 
     # ── config ────────────────────────────────────────────────────────────
@@ -266,21 +258,6 @@ class AppOrchestrator:
         except Exception as exc:
             log_error(f"Hotkey setup error: {exc}")
             self._emit_error(friendly_error("hotkey_listener_failed", detail=str(exc)))
-
-    def _setup_wake_word(self) -> None:
-        """Initialize the optional wake-word detector (no-op if unavailable)."""
-        try:
-            if WakeWordDetector is None:
-                log_info("Wake-word detector unavailable — skipping")
-                return
-            if not self.config.get("wake_word_enabled", False):
-                log_info("Wake-word disabled in config — skipping")
-                return
-            self.wake_word_detector = WakeWordDetector(self.config.get("wake_word", "voxy"))
-            log_info("Wake-word detector ready")
-        except Exception as exc:
-            log_error(f"Wake-word setup error: {exc}")
-            self.wake_word_detector = None
 
     # ── lifecycle ─────────────────────────────────────────────────────────
 

@@ -3,8 +3,6 @@ Voice command processor for Voxylis
 Detects special spoken phrases and executes actions instead of injecting text.
 
 Enhanced Features:
-- Custom wake word activation (default: "Voxy")
-- Removed confusing commands (remove text, next line, next point)
 - Q&A feature for instant answers
 - Mouse click activation on minion widget
 - No sound lag on voice commands

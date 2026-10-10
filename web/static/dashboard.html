@@ -28,7 +28,6 @@
                 <a href="#" class="nav-item" data-section="qa"><span class="icon">🤖</span> Q&amp;A</a>
                 <a href="#" class="nav-item" data-section="settings"><span class="icon">⚙️</span> Settings</a>
                 <a href="#" class="nav-item" data-section="hotkeys"><span class="icon">⌨️</span> Hotkeys</a>
-                <a href="#" class="nav-item" data-section="wakeword"><span class="icon">🗣️</span> Wake Word</a>
                 <a href="#" class="nav-item" data-section="subscription"><span class="icon">💳</span> Plan</a>
                 <a href="docs/installation" class="nav-link"><span class="icon">📖</span> Docs</a>
                 <a href="#" class="nav-link" id="logoutBtn" style="margin-top:auto"><span class="icon">🚪</span> Log out</a>
@@ -173,30 +172,6 @@
                 <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S5 · Hotkeys</div>
                 <h2>Hotkeys</h2>
                 <div class="hotkeys-list" id="hotkeysList"></div>
-            </section>
-
-            <section id="wakeword" class="section">
-                <div class="label" style="font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:16px">VX.0S6 · Wake Word</div>
-                <h2>Wake Word <span style="font-size:.6em;font-weight:600;color:var(--muted)">browser preview</span></h2>
-                <p class="help-text" style="margin-bottom:12px">
-                    This section uses your browser's built-in speech recognition and is a preview only.
-                    It does <b>not</b> start recordings in the desktop app — hands-free wake-word
-                    detection is not implemented in the Windows build yet. The desktop app uses your
-                    global shortcut.
-                </p>
-                <div class="wake-word-config">
-                    <div class="form-group">
-                        <label for="wakeWordInput">Wake word</label>
-                        <input type="text" id="wakeWordInput" value="Voxy" />
-                        <p class="help-text">Saved to your account for future use; testable in this browser tab only.</p>
-                    </div>
-                    <button class="btn btn-primary" type="button">Save wake word</button>
-                </div>
-                <div class="wake-word-preview" style="margin-top: 1rem;">
-                    <h3>Try it</h3>
-                    <p id="wakeWordStatus">Ready to listen…</p>
-                    <button class="btn btn-primary" type="button">Test listening</button>
-                </div>
             </section>
 
             <section id="subscription" class="section">
@@ -801,7 +776,6 @@
             const { settings } = await getJSON("/api/settings");
             if (document.getElementById("themeSelect")) document.getElementById("themeSelect").value = settings.theme;
             if (document.getElementById("languageSelect")) document.getElementById("languageSelect").value = settings.language;
-            if (document.getElementById("wakeWordInput")) document.getElementById("wakeWordInput").value = settings.wakeWord;
             if (document.getElementById("notificationsToggle")) document.getElementById("notificationsToggle").checked = settings.notifications !== false;
             if (document.getElementById("soundToggle")) document.getElementById("soundToggle").checked = settings.sound !== false;
             if (document.getElementById("autoStartToggle")) document.getElementById("autoStartToggle").checked = settings.autoStart === true;
@@ -839,64 +813,6 @@
                 if (window.applyTheme) window.applyTheme(payload.theme);
                 notify.show("Settings saved successfully!", "success");
             } catch (err) { notify.show("Failed to save settings", "error"); }
-        });
-
-        // Wake word: save goes to the real backend (not localStorage-only).
-        const wakeSaveBtn = document.querySelector(".wake-word-config .btn-primary");
-        if (wakeSaveBtn) wakeSaveBtn.addEventListener("click", async (e) => {
-            e.stopImmediatePropagation(); // supersedes the demo binder in dashboard.js
-            const val = (document.getElementById("wakeWordInput").value || "").trim() || "Voxy";
-            try {
-                const res = await voxyFetch("/api/settings", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ wakeWord: val }),
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || data.message || ("HTTP " + res.status));
-                try { localStorage.setItem("voxylis_wakeword", val); } catch (err) {}
-                notify.show(`Wake word set to "${val}"`, "success");
-            } catch (err) { notify.show("Could not save wake word: " + err.message, "error"); }
-        });
-
-        // Wake-word test: real detection via the browser speech engine.
-        const wakeTestBtn = document.querySelector(".wake-word-preview .btn-primary");
-        if (wakeTestBtn) wakeTestBtn.addEventListener("click", async (e) => {
-            e.stopImmediatePropagation(); // replaces the simulated demo
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const statusEl = document.getElementById("wakeWordStatus");
-            const target = ((document.getElementById("wakeWordInput").value || "Voxy").trim() || "Voxy").toLowerCase();
-            if (!SR) { statusEl.textContent = "Wake-word test needs Chrome or Edge."; return; }
-            statusEl.textContent = `Say "${target}"… (10s)`;
-            wakeTestBtn.disabled = true;
-            try {
-                const rec = new SR();
-                rec.continuous = false;
-                rec.interimResults = false;
-                try { rec.lang = document.getElementById("languageSelect").value || "en"; } catch (err) {}
-                let settled = false;
-                const heard = await new Promise((resolve) => {
-                    const to = setTimeout(() => { try { rec.stop(); } catch (err) {} if (!settled) { settled = true; resolve(""); } }, 10000);
-                    rec.onresult = (ev) => {
-                        clearTimeout(to);
-                        if (!settled) { settled = true; resolve(ev.results[0][0].transcript || ""); }
-                    };
-                    rec.onerror = () => { clearTimeout(to); if (!settled) { settled = true; resolve(""); } };
-                    rec.onend = () => { clearTimeout(to); if (!settled) { settled = true; resolve(""); } };
-                    try { rec.start(); } catch (err) { clearTimeout(to); if (!settled) { settled = true; resolve(""); } }
-                });
-                if (heard && heard.toLowerCase().includes(target)) {
-                    statusEl.textContent = `Wake word detected! (heard: "${heard.trim()}")`;
-                    notify.show("Wake word detected!", "success");
-                } else if (heard) {
-                    statusEl.textContent = `Heard "${heard.trim()}" — no wake word. Try again.`;
-                } else {
-                    statusEl.textContent = "Nothing heard — check your mic and try again.";
-                }
-            } finally {
-                wakeTestBtn.disabled = false;
-                setTimeout(() => { statusEl.textContent = "Ready to listen…"; }, 5000);
-            }
         });
 
         // NOTE: TierManager may replace the Q&A form with an upgrade prompt

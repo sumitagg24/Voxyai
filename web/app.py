@@ -2078,22 +2078,21 @@ def get_features():
             "features": [
                 {"id": 1, "name": "Voice-to-Text", "description": "Accurate speech recognition", "icon": "\U0001f3a4"},
                 {"id": 2, "name": "AI Enhancement", "description": "Smart text improvement", "icon": "\u2728"},
-                {"id": 3, "name": "Wake Word", "description": "Custom activation word", "icon": "\U0001f5e3\ufe0f"},
-                {"id": 4, "name": "Q&A Feature", "description": "Instant answers", "icon": "\U0001f916"},
-                {"id": 5, "name": "Custom Hotkeys", "description": "Personalized shortcuts", "icon": "\u2328\ufe0f"},
+                {"id": 3, "name": "Q&A Feature", "description": "Instant answers", "icon": "\U0001f916"},
+                {"id": 4, "name": "Custom Hotkeys", "description": "Personalized shortcuts", "icon": "\u2328\ufe0f"},
                 {
-                    "id": 6,
+                    "id": 5,
                     "name": "Multi-Language",
                     "description": "Recognises the languages your speech provider supports",
                     "icon": "\U0001f30d",
                 },
                 {
-                    "id": 7,
+                    "id": 6,
                     "name": "Local History",
                     "description": "Export and delete your transcripts anytime",
                     "icon": "\U0001f4c4",
                 },
-                {"id": 8, "name": "Privacy First", "description": "Your data, your control", "icon": "\U0001f512"},
+                {"id": 7, "name": "Privacy First", "description": "Your data, your control", "icon": "\U0001f512"},
             ],
         }
     )
@@ -2132,7 +2131,6 @@ def get_pricing():
                         "Languages your speech provider supports",
                         "All five enhancement modes",
                         "Live Q&A feature",
-                        "Custom wake word",
                         "Priority support",
                     ],
                     "cta": "Start Free Trial",
@@ -2195,8 +2193,6 @@ def settings(user_id):
         "sound": True,
         "autoStart": False,
         "hotkey": "Win+Shift",
-        "wakeWord": "Voxy",
-        "wakeWordSensitivity": 70,
     }
     defaults.update(current)
     return jsonify({"status": "success", "settings": defaults})

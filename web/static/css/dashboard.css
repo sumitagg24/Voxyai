@@ -417,7 +417,6 @@ body {
 
 /* Forms, buttons */
 .settings-form,
-.wake-word-config,
 .subscription-info {
   background: var(--bg);
   border: 1px solid var(--panel-border);
@@ -609,16 +608,7 @@ body {
   font-family: var(--mono); 
 }
 
-/* Wake word & plan */
-.wake-word-preview { 
-  margin-top: 16px; 
-}
-.wake-word-preview h3 { 
-  margin: 0 0 8px 0; 
-  font-size: 18px; 
-  font-weight: 600; 
-}
-
+/* Plan */
 .current-plan { 
   margin-bottom: 16px; 
 }
