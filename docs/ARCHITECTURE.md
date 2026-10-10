@@ -140,18 +140,43 @@ redaction happens at construction, not at copy time.
 
 ## 8. Web/backend
 
-`web/app.py` remains the single Flask application and SQLite database (one
-instance deployment; SQLite is sufficient and no Redis or external DB was
-added). The pieces that must not be reimplemented per-endpoint were extracted:
+`web/app.py` is a thin app factory (`create_app()` + global `app = create_app()`
+for backwards compat) with a single SQLite database (one instance deployment;
+SQLite is sufficient and no Redis or external DB was added). All 56 routes live
+in blueprints; behavior (URLs, status codes, JSON shapes, rate limits, caching)
+is unchanged. The pieces that must not be reimplemented per-endpoint were extracted:
 
 ```
 web/
-├── app.py                     app factory state, routes, security headers
+├── app.py                     factory, error handlers, security headers, re-exports
+├── auth_helpers.py            require_auth/require_verified_email/require_admin + session/tier helpers
+├── db.py                      DB_PATH (re-reads VOXYLIS_DB_PATH), _get_db, _init_db
+├── extensions.py              limiter + cache (created without app, init via init_app)
 ├── tier.py                    tier → features/modes/quotas table
 ├── verify_routes.py           route inventory guard used by tests
-└── services/
-    └── subscription_service.py   the ONLY place a tier can change
+├── content/
+│   └── blog_posts.py          BLOG_POSTS seed data + LEGACY_BLOG_SLUGS
+└── routes/
+    ├── pages.py               Blueprint pages: /, /pricing, /blog, /about, /contact,
+    │                          /privacy, /terms, /auth, /download, /dashboard,
+    │                          /favicon.ico, /og-image.png, /docs/<page>, /blog/<slug>
+    ├── auth.py                Blueprint auth: /api/auth/*, /api/admin/users
+    ├── account.py             Blueprint account: /api/me, /api/onboarding, /api/settings,
+    │                          /api/hotkeys, /api/auth/update-profile, /api/account/delete
+    ├── usage.py               Blueprint usage: /api/qa, /api/enhance, /api/transcribe,
+    │                          /api/history*, /api/stats*, /api/subscription*
+    └── content.py             Blueprint content: /api/blog*, /api/pricing, /api/features,
+                               /api/download/*, /api/contact, /api/newsletter,
+                               /api/health, /api/public-config, /version.json, /unsubscribe
 ```
+
+`tests/test_blueprints.py` imports every route module + `auth_helpers` +
+`blog_posts` and asserts all 56 routes plus legacy `web.app` re-exports
+(`app`, `_get_db`, `_create_session`, `_verify_session`, `_extract_session`,
+`_call_llm_for_qa`, `_call_llm_for_enhancement`, `_any_llm_key_configured`,
+`get_user_tier`, `get_user_entitlements`, `http_requests`, …) to prevent
+registration regressions. `DB_PATH` re-reads `VOXYLIS_DB_PATH` on every
+`importlib.reload(web.app)` so `tests/conftest.py:app_client` keeps working.
 
 Tier policy (`web/services/subscription_service.py`):
 
