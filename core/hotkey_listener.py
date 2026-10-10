@@ -70,10 +70,6 @@ RESERVED_COMBOS = {
     "ctrl+alt+del": "opens the security screen",
 }
 
-# Backwards-compatible alias (older code imported UNSAFE_COMBOS).
-UNSAFE_COMBOS = set(RESERVED_COMBOS)
-
-
 class HotkeyValidationError(ValueError):
     """Raised for a shortcut string that cannot be used."""
 
@@ -123,8 +119,6 @@ def parse_hotkey(hotkey: str) -> List[object]:
         else:
             raise HotkeyValidationError(f"'{part}' is not a recognised key")
 
-    if all(isinstance(k, keyboard.Key) and k in set(KEY_MAP.values()) for k in keys) and not keys:
-        raise HotkeyValidationError("Shortcut is empty")
     return keys
 
 
@@ -143,11 +137,6 @@ def is_reserved(hotkey: str) -> Optional[str]:
     if len(parts) == 1 and parts[0] in ("win", "windows", "super", "cmd", "meta"):
         return RESERVED_COMBOS["win"]
     return None
-
-
-def is_safe_combo(hotkey: str) -> bool:
-    """Backwards-compatible helper used by older callers."""
-    return is_reserved(hotkey) is None
 
 
 def validate_hotkey(hotkey: str) -> Tuple[bool, str, Optional[str]]:
@@ -202,7 +191,6 @@ class _SingleHotkey:
         self.toggle_mode = toggle_mode
         self.mode_override = mode_override
         self._target_keys = parse_hotkey(hotkey)
-        self._canonical_targets = {id(k): _canonical(k) for k in self._target_keys}
         self._active = False
         self._toggle_recording = False
 

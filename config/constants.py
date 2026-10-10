@@ -35,16 +35,13 @@ AUDIO_DEVICE = None  # None = default device
 
 # Recording settings
 MAX_RECORDING_DURATION = 600  # 10 minutes in seconds
-MIN_RECORDING_DURATION = 1.0  # 1 second minimum
 
 # API settings
 OPENAI_API_TIMEOUT = 30
-WHISPER_MODEL = "whisper-1"
-GPT_MODEL = "gpt-4-turbo-preview"
 
 # UI settings
 # Default hotkey must be a combo that does not collide with a Windows
-# shortcut (see core/hotkey_listener.UNSAFE_COMBOS).
+# shortcut (see core/hotkey_listener.RESERVED_COMBOS).
 HOTKEY_DEFAULT = "win+shift"
 MODE_HOTKEY_DEFAULTS = {"win+alt": "casual", "win+ctrl": "technical"}
 FLOATING_WIDGET_WIDTH = 260

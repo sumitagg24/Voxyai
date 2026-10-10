@@ -2692,16 +2692,6 @@ def subscription():
     return jsonify({"status": "success", "subscription": summary})
 
 
-def _count_transcriptions(user_id: int) -> int:
-    try:
-        conn = _get_db()
-        row = conn.execute("SELECT COUNT(*) as c FROM transcriptions WHERE user_id = ?", (user_id,)).fetchone()
-        conn.close()
-        return row["c"] if row else 0
-    except Exception:
-        return 0
-
-
 @app.route("/api/subscription/upgrade", methods=["POST"])
 @require_auth
 @limiter.limit("10 per hour", key_func=get_remote_address)

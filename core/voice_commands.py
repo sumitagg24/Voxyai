@@ -30,7 +30,6 @@ BUILTIN_COMMANDS = {
     "paste": "paste",
     "caps lock": "caps_lock",
     "capital lock": "caps_lock",
-    "translate it to": "translate_pending",
 }
 
 
@@ -110,10 +109,6 @@ class VoiceCommandProcessor:
                 # Toggle caps lock
                 kb.press_and_release("caps lock")
                 log_info("Caps lock toggled")
-
-            elif action == "translate_pending":
-                # Translation pending - will be processed on next recording
-                log_info(f"Translation pending: target language = {target_lang}")
 
             elif action == "cancel":
                 log_debug("Cancel command — no action")

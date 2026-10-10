@@ -271,16 +271,9 @@ class TextInjector:
         """Backwards-compatible boolean wrapper around :meth:`inject`."""
         return self.inject(text, restore_clipboard=restore_clipboard).success
 
-    def inject_text_with_delay(self, text: str, delay: float = 0.5, restore_clipboard: bool = True) -> bool:
-        time.sleep(delay)
-        return self.inject_text(text, restore_clipboard=restore_clipboard)
-
     def type_text(self, text: str, speed: float = 0.02) -> bool:
         ok, _ = self._attempt_keyboard_typing(text, speed=speed)
         return ok
-
-    def inject_with_fallback(self, text: str) -> bool:
-        return self.inject(text).success
 
     def diagnostics(self) -> dict:
         return {

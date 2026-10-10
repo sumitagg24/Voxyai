@@ -205,7 +205,7 @@ class Transcriber:
                 text, detected = self._transcribe_auto(tmp_path)
                 self._last_detected_lang = detected
                 if detected == "hi" and text:
-                    hinglish = self._try_hinglish(tmp_path, text)
+                    hinglish = self._try_hinglish(tmp_path)
                     if hinglish:
                         text = hinglish
 
@@ -314,7 +314,7 @@ class Transcriber:
             text = self._do_transcribe(wav_path, None)
             return text, None
 
-    def _try_hinglish(self, wav_path: str, hindi_text: str) -> Optional[str]:
+    def _try_hinglish(self, wav_path: str) -> Optional[str]:
         """
         Hindi audio may actually be Hinglish (Hindi spoken with English
         words). Re-transcribe once as English; keep it when the detector
@@ -333,11 +333,6 @@ class Transcriber:
         except Exception as e:
             log_debug(f"Hinglish detection failed: {e}")
         return None
-
-    def _detect_language(self, wav_path: str) -> Optional[str]:
-        """Detect language only (kept for API compatibility / diagnostics)."""
-        _, detected = self._transcribe_auto(wav_path)
-        return detected
 
     # ── transcription ─────────────────────────────────────────────────────
 
