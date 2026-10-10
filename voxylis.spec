@@ -68,7 +68,6 @@ hiddenimports = [
     "core.per_app_profiles",
     "core.startup_manager",
     "core.command_processor",
-    "core.user_manager",
     "core.updater",
     "audio.recorder",
     "audio.audio_utils",

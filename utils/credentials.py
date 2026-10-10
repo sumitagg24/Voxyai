@@ -44,7 +44,6 @@ SECRET_CONFIG_KEYS = (
     "groq_api_key",
     "openai_api_key",
     "openrouter_api_key",
-    "model_api_key",
     "anthropic_api_key",
     "web_token",
     "session_id",
@@ -415,10 +414,10 @@ def migrate_config_secrets(config: dict, store: Optional[CredentialStore] = None
     # Non-secret metadata so the UI can show "configured" without the secret.
     providers = cleaned.setdefault("providers", {})
     if isinstance(providers, dict):
-        for key in ("groq_api_key", "openai_api_key", "openrouter_api_key", "model_api_key"):
+        for key in ("groq_api_key", "openai_api_key", "openrouter_api_key"):
             if store.has(key):
                 providers[key.replace("_api_key", "")] = {"configured": True}
-        for key in ("groq", "openai", "openrouter", "model"):
+        for key in ("groq", "openai", "openrouter"):
             providers.setdefault(key, {"configured": store.has(f"{key}_api_key")})
 
     if migrated:

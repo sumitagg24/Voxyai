@@ -1272,24 +1272,14 @@ class AccountPage(BasePage):
             return
         data = dialog.result_data
         try:
-            from core.user_manager import user_manager
+            from utils import credentials
 
-            user_manager.save_auth0_login(
-                data["email"],
-                data.get("name", ""),
-                data["session_id"],
-                data.get("tier", "free"),
-                data.get("role", "user"),
-            )
+            # Backend owns accounts; desktop keeps only the session id in the vault.
+            credentials.credential_store.set("auth0_session", data["session_id"])
+            credentials.credential_store.set("session_id", data["session_id"])
         except Exception as exc:
             QMessageBox.warning(self, "Could not save session", str(exc))
             return
-        try:
-            from utils import credentials
-
-            credentials.credential_store.set("session_id", data["session_id"])
-        except Exception:
-            pass
         self.orchestrator.update_config("session_id", data["session_id"])
         self.orchestrator.update_config("user_email", data["email"])
         self.orchestrator.update_config("tier", data.get("tier", "free"))
@@ -1302,20 +1292,17 @@ class AccountPage(BasePage):
             try:
                 from utils import credentials
 
-                session_id = credentials.credential_store.get("session_id") or ""
+                session_id = credentials.credential_store.get("auth0_session") or credentials.credential_store.get(
+                    "session_id"
+                ) or ""
             except Exception:
                 session_id = ""
-        try:
-            from core.user_manager import user_manager
-
-            user_manager.logout(session_id)
-        except Exception:
-            pass
         for key in ("user_email", "tier", "user_role", "session_id"):
             self.orchestrator.update_config(key, "")
         try:
             from utils import credentials
 
+            credentials.credential_store.delete("auth0_session")
             credentials.credential_store.set("session_id", None)
         except Exception:
             pass

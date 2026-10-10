@@ -239,12 +239,34 @@ def legacy_roots() -> list:
 _MIGRATION_LOG: list = []
 
 
+def _shred_file(path: Path) -> bool:
+    """Best-effort secure delete: overwrite then unlink. Returns True if gone."""
+    try:
+        if not path.is_file():
+            return True
+        try:
+            size = path.stat().st_size
+            # Overwrite with zeros (single pass; best effort on modern SSDs).
+            with open(path, "r+b") as handle:
+                handle.write(b"\x00" * min(size, 1_048_576))
+                handle.flush()
+        except OSError:
+            pass
+        path.unlink(missing_ok=True)
+        return not path.exists()
+    except OSError:
+        return False
+
+
 def migrate_legacy_data(force: bool = False) -> list:
     """Copy legacy install-directory data into the user-data root.
 
-    Non-destructive: files are copied, never moved or deleted, and an existing
-    file at the destination always wins.  Returns a list of
-    ``(source, destination)`` pairs that were copied.
+    Non-destructive, except for the legacy plaintext credential files
+    (users.json / sessions.json), which are shredded after import: the
+    server owns accounts and unsalted SHA-256 + plaintext sessions must
+    not linger on disk.
+
+    Returns a list of ``(source, destination)`` pairs that were copied.
     """
     copied = []
     plan = [
@@ -269,6 +291,16 @@ def migrate_legacy_data(force: bool = False) -> list:
                 copied.append((str(source), str(destination)))
             except OSError:
                 continue
+
+    # Shred legacy plaintext credential stores after import. The server owns
+    # accounts; unsalted SHA-256 users.json and plaintext sessions.json must
+    # not remain on disk even as "legacy" copies.
+    for legacy_root in legacy_roots():
+        for name in ("users.json", "sessions.json"):
+            _shred_file(legacy_root / "config" / name)
+    # Also shred any copies that landed in the user-data config dir.
+    for name in ("users.json", "sessions.json", "users.legacy.json", "sessions.legacy.json"):
+        _shred_file(config_dir() / name)
 
     _MIGRATION_LOG.extend(copied)
     return copied
