@@ -21,9 +21,6 @@ hiddenimports = [
     # Audio
     "sounddevice",
     "numpy",
-    "scipy",
-    "scipy.io",
-    "scipy.signal",
     # Speech APIs
     "groq",
     "openai",

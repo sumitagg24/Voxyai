@@ -9,6 +9,7 @@ PyQt5>=5.15.9
 # Global Hotkey Listening
 pynput>=1.7.6
 keyboard>=0.13.5
+pywin32>=223; sys_platform == "win32"
 
 # Speech-to-Text APIs
 groq>=0.4.2
@@ -16,8 +17,8 @@ openai>=1.3.9
 
 # Audio Processing
 numpy>=1.24.3
-scipy>=1.11.4
 sounddevice>=0.5.0
+psutil>=5.9.0
 
 # System Integration
 pyperclip>=1.8.2
