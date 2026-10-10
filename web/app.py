@@ -205,25 +205,19 @@ def create_app() -> Flask:
         resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         resp.headers["Permissions-Policy"] = "microphone=(self), clipboard-read=(self), clipboard-write=(self)"
         resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
-        # Sentry ingest endpoints are allowed for browser error reporting; without
-        # them the browser SDK could not report anything under this policy.
-        # P2.4: the VOXYLIS_API_BASE bootstrap lives in /static/js/config.js so
-        # script-src needs no 'unsafe-inline'. Chart.js (dashboard) is the only
-        # remaining CDN (jsdelivr); unpkg.com was dropped (unused).
-        # NOTE (P3.3): remaining inline page scripts + onclick handlers still
-        # need vendoring into /static/js; they are tracked for P3.3.
+        # P2.4: VOXYLIS_API_BASE bootstrap lives in /static/js/config.js
+        # Chart.js vendored to /static/vendor/chart.min.js
+        # Fonts self-hosted from /static/fonts/
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; "
+            "script-src 'self'; "
+            "style-src 'self'; "
+            "font-src 'self'; "
             "img-src 'self' data:; "
             "connect-src 'self' https://*.ingest.sentry.io https://*.ingest.us.sentry.io "
             "https://*.ingest.de.sentry.io; "
             "frame-ancestors 'self'"
         )
-        # A session older than 24h is transparently rotated inside _verify_session().
-        # Tell the client its new id, otherwise it would keep using a dead session.
         rotated = getattr(g, "rotated_session_id", None)
         if rotated:
             resp.headers["X-Session-Rotated"] = rotated

@@ -4,842 +4,195 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign In — Voxylis</title>
-<meta name="description" content="Sign in or create a Voxylis account to start voice typing.">
+<meta name="description" content="Sign in to Voxylis to access your dashboard, history, and subscription.">
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Voxylis">
-<meta property="og:title" content="Sign in — Voxylis">
-<meta property="og:description" content="Sign in or create a Voxylis account to start voice typing.">
-<meta property="og:image" content="/og-image.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<style>
-:root{--bg:#fff;--bg2:#fafafa;--ink:#1e1e1e;--ink2:#3a3a3a;--muted:#858585;--line:#1e1e1e;--line2:#e5e5e5;--pink:#f386a1;--pink-d:#e06080;--teal:#9db8bd;--green:#03aa5c;--dark:#1e1e1e;--host:'Host Grotesk','Inter',Arial,sans-serif;--mono:'JetBrains Mono','SF Mono',monospace}
-*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}
-body{font-family:var(--host);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
-a{color:inherit;text-decoration:none}button{font-family:inherit;cursor:pointer}
-::selection{background:var(--pink);color:var(--ink)}
-.auth-layout{display:grid;grid-template-columns:1fr 1fr;min-height:100vh}
-@media(max-width:900px){.auth-layout{grid-template-columns:1fr}.auth-left{display:none}}
-.auth-left{background:var(--dark);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:80px;position:relative;overflow:hidden}
-.auth-left::before{content:'';position:absolute;top:-200px;right:-200px;width:500px;height:500px;border-radius:50%;background:var(--pink);opacity:.12}
-.auth-left::after{content:'';position:absolute;bottom:-150px;left:-150px;width:400px;height:400px;border-radius:50%;background:var(--teal);opacity:.1}
-.auth-left .brand{position:relative;z-index:1;text-align:center}
-.auth-left .glyph{width:72px;height:72px;border:2px solid rgba(255,255,255,.3);border-radius:50%;display:grid;place-items:center;font-size:32px;font-weight:700;margin:0 auto 32px}
-.auth-left h2{font-size:36px;font-weight:700;letter-spacing:-0.03em;line-height:1.1}
-.auth-left p{margin-top:20px;font-size:16px;color:rgba(255,255,255,.6);max-width:320px;line-height:1.6}
-.auth-right{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 40px}
-@media(max-width:900px){.auth-right{padding:40px 24px}}
-.auth-box{width:100%;max-width:400px}
-.auth-tabs{display:flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-bottom:40px}
-.auth-tab{flex:1;padding:12px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;border:none;background:var(--bg);color:var(--ink2);transition:all .15s;font-family:var(--host)}
-.auth-tab.active{background:var(--ink);color:#fff}
-.auth-tab:not(.active):hover{background:var(--bg2)}
-.auth-form{display:none}
-.auth-form.active{display:block}
-.form-group{margin-bottom:20px}
-.form-group label{display:block;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
-.form-group input{width:100%;padding:12px 16px;border:1px solid var(--line2);border-radius:6px;font-family:var(--host);font-size:15px;color:var(--ink);background:var(--bg);transition:border-color .15s;outline:none}
-.form-group input:focus{border-color:var(--ink)}
-.auth-btn{width:100%;padding:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:15px;font-weight:600;transition:all .15s;cursor:pointer;font-family:var(--host);margin-top:8px}
-.auth-btn:hover{background:#000;border-color:#000}
-
-/* Mobile improvements */
-@media(max-width:900px){
-  .auth-right{padding:40px 24px}
-  .form-group input{padding:14px 16px;font-size:16px}
-  .auth-btn{padding:14px;font-size:16px}
-}
-.auth-btn:disabled{opacity:.5;cursor:not-allowed}
-.msg-error{padding:12px;border:1px solid var(--pink-d);border-radius:6px;background:rgba(240,96,128,.06);color:var(--pink-d);font-size:13px;font-weight:500;margin-top:12px;display:none}
-.msg-success{padding:12px;border:1px solid var(--green);border-radius:6px;background:rgba(3,170,92,.06);color:var(--green);font-size:13px;font-weight:500;margin-top:12px;display:none}
-.auth-footer{margin-top:32px;text-align:center;font-size:14px;color:var(--muted)}
-.auth-footer a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;font-weight:500}
-.auth-footer a:hover{opacity:.7}
-.divider-row{display:flex;align-items:center;gap:16px;margin:24px 0}
-.divider-row::before,.divider-row::after{content:'';flex:1;height:1px;background:var(--line2)}
-.divider-row span{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.social-btn{width:100%;padding:12px;border:1px solid var(--line2);background:#fff;color:var(--ink);border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host);display:flex;align-items:center;justify-content:center;gap:10px;transition:all .15s}
-.social-btn:hover{background:var(--bg2);border-color:var(--ink)}
-.social-btn:disabled{opacity:.5;cursor:not-allowed}
-.social-btn svg{width:20px;height:20px;flex-shrink:0}
-.social-btn + .social-btn{margin-top:10px}
-.qr-link{display:block;margin:20px auto 0;background:none;border:none;color:var(--ink);font-size:14px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-family:var(--host)}
-.qr-link:hover{opacity:.7}
-.domain-hint{font-size:12px;color:var(--muted);margin-top:6px}
-/* QR modal */
-.qr-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
-.qr-overlay.open{display:flex}
-.qr-dialog{background:#fff;border-radius:14px;max-width:640px;width:100%;padding:32px;position:relative;display:grid;grid-template-columns:1fr 1fr;gap:32px}
-@media(max-width:640px){.qr-dialog{grid-template-columns:1fr;padding:24px}}
-.qr-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
-.qr-left{text-align:center}
-.qr-box{width:200px;height:200px;margin:0 auto 16px;border:1px solid var(--line2);border-radius:12px;display:grid;place-items:center;overflow:hidden;background:#fff}
-.qr-box img,.qr-box canvas,.qr-box table{margin:auto}
-.qr-code{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.2em;margin-bottom:4px}
-.qr-expiry{font-size:13px;color:var(--muted);margin-bottom:12px}
-.qr-new{background:none;border:1px solid var(--line2);border-radius:6px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--host)}
-.qr-right h3{margin:0 0 8px;font-size:20px;letter-spacing:-0.02em}
-.qr-right p{font-size:14px;color:var(--ink2);line-height:1.6}
-.qr-status{margin-top:16px;font-size:14px;font-weight:600}
-.qr-approve-btn{width:100%;padding:12px;margin-top:12px;border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host)}
-/* Consent screen: shown after the provider verifies you, before any Voxylis
-   session is created. Nothing is stored unless you press Continue. */
-.consent-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:20px}
-.consent-overlay.open{display:flex}
-.consent-dialog{background:#fff;border-radius:14px;max-width:480px;width:100%;padding:32px;position:relative}
-.consent-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
-.consent-dialog h3{margin:0 0 4px;font-size:22px;letter-spacing:-0.02em}
-.consent-sub{font-size:14px;color:var(--muted);margin-bottom:20px}
-.consent-profile{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line2);border-radius:10px;margin-bottom:16px}
-.consent-profile img{width:48px;height:48px;border-radius:50%;object-fit:cover;background:var(--bg2)}
-.consent-profile .who{min-width:0}
-.consent-profile .who b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.consent-profile .who span{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
-.consent-list{list-style:none;margin:0 0 8px;display:flex;flex-direction:column;gap:10px}
-.consent-list li{display:flex;gap:10px;font-size:14px;color:var(--ink2);align-items:flex-start}
-.consent-list li::before{content:"•";color:var(--ink);font-weight:700}
-.consent-list li b{color:var(--ink)}
-.consent-note{font-size:13px;color:var(--muted);margin:12px 0 20px;line-height:1.6}
-.consent-actions{display:flex;gap:12px}
-.consent-actions button{flex:1;padding:12px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--host)}
-.consent-cancel{background:transparent;color:var(--ink);border:1px solid var(--line2)}
-.consent-cancel:hover{background:var(--bg2)}
-.consent-continue{background:var(--ink);color:#fff;border:1px solid var(--ink)}
-.consent-continue:hover{background:#000}
-</style>
+<link rel="preload" href="/static/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/auth.css">
 </head>
 <body>
-<div class="auth-layout">
-  <div class="auth-left">
-    <div class="brand">
-      <div class="glyph">V</div>
-      <h2>Voice that works like code.</h2>
-      <p>Sign in to access your transcriptions, settings, and upgrade your plan.</p>
-    </div>
+<nav class="nav">
+  <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
+  <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
+  <div class="nav-links">
+    <a href="/#features">Features</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/docs/installation">Docs</a>
+    <a href="/#faq">FAQ</a>
+    <a href="/blog">Blog</a>
   </div>
-  <div class="auth-right">
-    <div class="auth-box">
-      <button class="social-btn" id="google-btn" type="button">
-        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-        Continue with Google
-      </button>
-      <button class="social-btn" id="github-btn" type="button">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-        Continue with GitHub
-      </button>
-      <div class="msg-error" id="social-error"></div>
-      <div class="divider-row"><span>or continue with email</span></div>
-      <div class="auth-tabs" id="auth-tabs-bar">
-        <button class="auth-tab active" data-tab="login">Sign In</button>
-        <button class="auth-tab" data-tab="signup">Sign Up</button>
+  <div class="nav-right">
+    <a href="/download" class="btn">Download App</a>
+  </div>
+</nav>
+
+<main style="min-height:calc(100vh - var(--nav-height));display:flex;align-items:center;justify-content:center;padding:var(--sp-8) var(--sp-4)">
+  <div class="container" style="max-width:440px;width:100%">
+    <header style="text-align:center;margin-bottom:var(--sp-8)">
+      <span class="label">VX.0S4 · Authentication</span>
+      <h1 style="font-size:var(--text-3xl);font-weight:700;letter-spacing:-0.02em">Welcome back</h1>
+      <p class="muted">Sign in to access your dashboard, history, and subscription.</p>
+    </header>
+
+    <article class="card">
+      <form id="signinForm" novalidate>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" class="input" autocomplete="email" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="input" autocomplete="current-password" required placeholder="••••••••">
+        </div>
+        <div class="form-group" style="display:flex;justify-content:space-between;align-items:center">
+          <label class="toggle" style="margin:0;font-size:var(--text-sm);font-weight:400">
+            <input type="checkbox" name="remember" id="remember">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            Remember me
+          </label>
+          <a href="/auth?mode=forgot" class="btn-ghost" style="padding:0;font-size:var(--text-sm)">Forgot password?</a>
+        </div>
+<button type="submit" class="btn btn-full btn-lg" style="margin-top:var(--sp-2)">Sign In</button>
+      </form>
+      <p style="margin-top:var(--sp-6);text-align:center;color:var(--fg-muted);font-size:var(--text-sm)">Don't have an account? <a href="/auth?mode=signup" style="color:var(--rec-lamp);font-weight:500">Sign up</a></p>
+      <p style="margin-top:var(--sp-4);text-align:center;color:var(--fg-muted);font-size:var(--text-sm)">Or continue with</p>
+      <div style="display:flex;gap:var(--sp-3);justify-content:center;margin-top:var(--sp-3)">
+        <button type="button" class="btn btn-ghost" id="googleBtn" style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0" aria-label="Sign in with Google">
+          <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        </button>
+        <button type="button" class="btn btn-ghost" id="githubBtn" style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0" aria-label="Sign in with GitHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
+        </button>
       </div>
+      <p style="margin-top:var(--sp-4);text-align:center;color:var(--fg-muted);font-size:var(--text-sm)">By continuing, you agree to our <a href="/terms" style="color:var(--rec-lamp)">Terms</a> and <a href="/privacy" style="color:var(--rec-lamp)">Privacy Policy</a>.</p>
+    </article>
 
-      <form class="auth-form active" id="login-form" autocomplete="on">
-        <div class="form-group">
-          <label for="login-identifier">Email or Phone</label>
-          <input type="text" id="login-identifier" placeholder="you@example.com" required autocomplete="username">
+    <!-- Consent overlay for social login -->
+    <div id="consent-overlay" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;display:flex;align-items:center;justify-content:center;padding:var(--sp-4)">
+      <article class="card" style="max-width:480px;width:100%;margin:auto">
+        <header style="text-align:center;margin-bottom:var(--sp-6)">
+          <span class="label">Consent Required</span>
+          <h2 style="font-size:var(--text-2xl);font-weight:700">Allow Voxylis to access your account?</h2>
+        </header>
+        <p class="muted" style="text-align:center;margin-bottom:var(--sp-6)">Voxylis will receive:</p>
+        <ul style="list-style:none;padding:0;margin:0 0 var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-3);text-align:center">
+          <li style="display:flex;align-items:center;justify-content:center;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700">✓</span><span>Your name</span></li>
+          <li style="display:flex;align-items:center;justify-content:center;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700">✓</span><span>Your email address</span></li>
+          <li style="display:flex;align-items:center;justify-content:center;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700">✓</span><span>Your profile photo</span></li>
+        </ul>
+        <p class="muted" style="font-size:var(--text-sm);text-align:center;margin-bottom:var(--sp-6)"><strong>nothing was created or stored</strong> until you press Continue.</p>
+        <div style="display:flex;gap:var(--sp-3);justify-content:center">
+          <button type="button" class="btn btn-ghost btn-lg" id="consent-cancel">Cancel</button>
+          <button type="button" class="btn btn-lg" id="consent-continue">Continue</button>
         </div>
-        <div class="form-group">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <label for="login-password" style="margin-bottom:0">Password</label>
-            <button type="button" id="forgot-toggle-btn" style="background:none;border:none;font-family:var(--mono);font-size:11px;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0">Forgot?</button>
-          </div>
-          <input type="password" id="login-password" placeholder="Your password" required autocomplete="current-password">
-        </div>
-        <button type="submit" class="auth-btn" id="login-btn">Sign In</button>
-        <div class="msg-error" id="login-error"></div>
-      </form>
-
-      <form class="auth-form" id="signup-form" autocomplete="on">
-        <div class="form-group">
-          <label for="signup-name">Full Name</label>
-          <input type="text" id="signup-name" placeholder="Your name" required autocomplete="name">
-        </div>
-        <div class="form-group">
-          <label for="signup-identifier">Email or Phone</label>
-          <input type="text" id="signup-identifier" placeholder="you@gmail.com" required autocomplete="username">
-          <div class="domain-hint">Password signup: Gmail or company email only. No temporary mail.</div>
-        </div>
-        <div class="form-group">
-          <label for="signup-password">Password</label>
-          <input type="password" id="signup-password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
-        </div>
-        <button type="submit" class="auth-btn" id="signup-btn">Create Account</button>
-        <div class="msg-error" id="signup-error"></div>
-      </form>
-
-      <form class="auth-form" id="forgot-form" autocomplete="on">
-        <div class="form-group">
-          <label for="forgot-email">Account Email</label>
-          <input type="email" id="forgot-email" placeholder="you@example.com" required autocomplete="email">
-          <div class="domain-hint">Enter your email address to receive password reset instructions.</div>
-        </div>
-        <button type="submit" class="auth-btn" id="forgot-btn">Send Reset Link</button>
-        <button type="button" class="auth-btn" id="forgot-back-btn" style="background:transparent;color:var(--ink);border:1px solid var(--line2);margin-top:8px">Back to Sign In</button>
-        <div class="msg-error" id="forgot-error"></div>
-        <div class="msg-success" id="forgot-success"></div>
-      </form>
-
-      <form class="auth-form" id="reset-form" autocomplete="on">
-        <div class="form-group">
-          <label for="reset-password">New Password</label>
-          <input type="password" id="reset-password" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password">
-          <div class="domain-hint">Enter your new secure password.</div>
-        </div>
-        <button type="submit" class="auth-btn" id="reset-btn">Update Password</button>
-        <button type="button" class="auth-btn" id="reset-back-btn" style="background:transparent;color:var(--ink);border:1px solid var(--line2);margin-top:8px">Back to Sign In</button>
-        <div class="msg-error" id="reset-error"></div>
-        <div class="msg-success" id="reset-success"></div>
-      </form>
-
-      <!-- Email confirmation link landing state (?verify_token=…) -->
-      <div class="msg-success" id="verify-success"></div>
-      <div class="msg-error" id="verify-error"></div>
-
-        <div class="auth-footer">
-        <div class="divider-row"><span>or</span></div>
-        <button class="qr-link" id="qr-open" type="button">📷 Scan a QR code to sign in</button>
-        <div style="margin-top:16px"><a href="/">Back to home</a> · <a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
-      </div>
+      </article>
     </div>
   </div>
-</div>
+</main>
 
-<div class="qr-overlay" id="qr-overlay" role="dialog" aria-modal="true" aria-label="Sign in with QR code">
-  <div class="qr-dialog">
-    <button class="qr-close" id="qr-close" type="button" aria-label="Close">×</button>
-    <div class="qr-left">
-      <div class="qr-box" id="qr-box"><span style="font-size:13px;color:var(--muted)">Loading…</span></div>
-      <div class="qr-code" id="qr-code">······</div>
-      <div class="qr-expiry" id="qr-expiry"></div>
-      <button class="qr-new" id="qr-new" type="button">New code</button>
+<footer class="footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">Voxylis</div>
+      <nav class="footer-nav">
+        <div class="footer-col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
+        <div class="footer-col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
+        <div class="footer-col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
+        <div class="footer-col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
+      </nav>
     </div>
-    <div class="qr-right">
-      <h3>Use your phone camera to scan</h3>
-      <p>Point your camera at the code, open the link, and approve the login on your phone. This device signs in automatically — nothing to type.</p>
-      <div class="qr-status" id="qr-status"></div>
-      <div id="qr-approve-box" style="display:none">
-        <p><b>Approve this login?</b> <span id="qr-approve-device"></span></p>
-        <button class="qr-approve-btn" id="qr-approve-btn" type="button">Approve login</button>
-      </div>
-    </div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" style="color:inherit">Contact</a></span></div>
   </div>
-</div>
+</footer>
 
-<script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
-<!-- Consent screen: provider verified you; Voxylis has stored nothing yet.
-     Continue creates the session, Cancel discards everything. -->
-<div class="consent-overlay" id="consent-overlay" role="dialog" aria-modal="true" aria-label="Allow Voxylis to use your account info">
-  <div class="consent-dialog">
-    <button class="consent-close" id="consent-close" type="button" aria-label="Cancel">×</button>
-    <h3>Continue as <span id="consent-name">you</span>?</h3>
-    <p class="consent-sub" id="consent-provider-line">Voxylis wants to use your account info.</p>
-    <div class="consent-profile">
-      <img id="consent-photo" alt="" style="display:none">
-      <div class="who"><b id="consent-name-2">—</b><span id="consent-email">—</span></div>
-    </div>
-    <ul class="consent-list">
-      <li><span><b>Name and email address</b> — to create your Voxylis account and sign you in.</span></li>
-      <li><span><b>Profile photo</b> — shown in the dialog only, never stored.</span></li>
-      <li><span><b>Nothing else</b> — Voxylis cannot see your password, contacts, repos or files.</span></li>
-    </ul>
-    <p class="consent-note" id="consent-note">You can delete your account and everything stored at any time from Settings → Privacy. Continuing creates a Voxylis session on this device.</p>
-    <div class="consent-actions">
-      <button class="consent-cancel" id="consent-cancel" type="button">Cancel</button>
-      <button class="consent-continue" id="consent-continue" type="button">Continue</button>
-    </div>
-  </div>
-</div>
-<!-- Production API origin (Render). Must load BEFORE api.js. -->
+<script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
 <script src="/static/js/config.js"></script>
 <script src="/static/js/api.js"></script>
-<!-- Error monitoring: no-op unless a browser DSN is configured. -->
 <script src="/static/js/sentry-init.js" defer></script>
 <script src="/static/js/cookie-consent.js" defer></script>
 <script>
-// Tab switching
-document.querySelectorAll('.auth-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById(tab.dataset.tab + '-form').classList.add('active');
-    document.querySelectorAll('.msg-error').forEach(e => e.style.display = 'none');
-  });
-});
-
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function showSuccess(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function switchToTab(tabName) {
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-  const targetTab = document.querySelector(`.auth-tab[data-tab="${tabName}"]`);
-  if (targetTab) targetTab.classList.add('active');
-  const targetForm = document.getElementById(tabName + '-form');
-  if (targetForm) targetForm.classList.add('active');
-  document.querySelectorAll('.msg-error').forEach(e => e.style.display = 'none');
-  document.querySelectorAll('.msg-success').forEach(e => e.style.display = 'none');
-}
-
-// Forgot Password toggle
-document.getElementById('forgot-toggle-btn').addEventListener('click', () => {
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-  document.getElementById('forgot-form').classList.add('active');
-  document.querySelectorAll('.msg-error').forEach(e => e.style.display = 'none');
-  document.querySelectorAll('.msg-success').forEach(e => e.style.display = 'none');
-  const idVal = document.getElementById('login-identifier').value.trim();
-  if (idVal && idVal.includes('@')) {
-    document.getElementById('forgot-email').value = idVal;
-  }
-});
-
-document.getElementById('forgot-back-btn').addEventListener('click', () => {
-  switchToTab('login');
-});
-
-document.getElementById('reset-back-btn').addEventListener('click', () => {
-  switchToTab('login');
-});
-
-// Forgot Password submit
-document.getElementById('forgot-form').addEventListener('submit', async (e) => {
+// Auth form handling
+document.getElementById('signinForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const btn = document.getElementById('forgot-btn');
+  var form = e.target;
+  var btn = form.querySelector('button[type="submit"]');
+  var email = form.email.value.trim();
+  var password = form.password.value;
+  var remember = form.remember.checked;
+
+  if (!email || !password) return;
+
   btn.disabled = true;
-  btn.textContent = 'Sending...';
-  document.getElementById('forgot-error').style.display = 'none';
-  document.getElementById('forgot-success').style.display = 'none';
+  btn.textContent = 'Signing in…';
 
   try {
-    const res = await voxyFetch('/api/auth/forgot-password', {
+    var resp = await fetch((window.VOXYLIS_API_BASE||'')+'/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: document.getElementById('forgot-email').value.trim() })
+      body: JSON.stringify({ email_or_phone: email, password: password, remember: remember })
     });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      showSuccess('forgot-success', data.message || 'If an account exists, a reset link has been sent.');
-    } else {
-      showError('forgot-error', data.error || data.message || 'Could not send reset link.');
-    }
-  } catch (err) {
-    showError('forgot-error', 'Network error. Please try again later.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Send Reset Link';
-  }
-});
-
-// Reset Password submit
-let currentResetToken = '';
-try {
-  const p = new URLSearchParams(location.search);
-  currentResetToken = p.get('token') || p.get('reset_token') || '';
-} catch (e) {}
-
-if (currentResetToken) {
-  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-  document.getElementById('reset-form').classList.add('active');
-}
-
-// Email confirmation link (?verify_token=…)
-let currentVerifyToken = '';
-try {
-  const vp = new URLSearchParams(location.search);
-  currentVerifyToken = vp.get('verify_token') || vp.get('verify-token') || '';
-} catch (e) {}
-
-if (currentVerifyToken) {
-  const confirmFailed = 'This confirmation link is invalid or has expired. Sign in and request a new one.';
-  // switchToTab() clears message areas, so it runs before any message is shown.
-  switchToTab('login');
-  showSuccess('verify-success', 'Confirming your email address…');
-  voxyFetch('/api/auth/confirm-email', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: currentVerifyToken })
-  }).then(function (res) {
-    return res.json().then(function (data) { return { ok: res.ok, data: data || {} }; });
-  }).then(function (result) {
-    if (result.ok && result.data.success) {
-      showSuccess('verify-success', 'Email confirmed. Sign in below to continue.');
-    } else {
-      document.getElementById('verify-success').style.display = 'none';
-      showError('verify-error', result.data.error || confirmFailed);
-    }
-  }).catch(function () {
-    document.getElementById('verify-success').style.display = 'none';
-    showError('verify-error', 'Network error while confirming your email. Please open the link again.');
-  });
-}
-
-document.getElementById('reset-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('reset-btn');
-  btn.disabled = true;
-  btn.textContent = 'Updating...';
-  document.getElementById('reset-error').style.display = 'none';
-  document.getElementById('reset-success').style.display = 'none';
-
-  try {
-    const res = await voxyFetch('/api/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: currentResetToken,
-        password: document.getElementById('reset-password').value
-      })
-    });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      showSuccess('reset-success', 'Password reset successfully! Redirecting to sign in...');
-      setTimeout(() => {
-        switchToTab('login');
-      }, 2000);
-    } else {
-      showError('reset-error', data.error || data.message || 'Failed to reset password.');
-    }
-  } catch (err) {
-    showError('reset-error', 'Network error. Please try again later.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Update Password';
-  }
-});
-
-// Login
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true;
-  btn.textContent = 'Signing in...';
-  document.getElementById('login-error').style.display = 'none';
-
-  try {
-    const res = await voxyFetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email_or_phone: document.getElementById('login-identifier').value,
-        password: document.getElementById('login-password').value
-      })
-    });
-    const data = await res.json();
-    if (res.ok && data.session_id) {
-      localStorage.setItem('session_id', data.session_id);
-      await maybeApproveQR();
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || data.message || 'Sign in failed');
+    if (data.session_id) {
+      try { localStorage.setItem('session_id', data.session_id); } catch(e) {}
       window.location.href = '/dashboard';
     } else {
-      showError('login-error', data.error || data.message || 'Invalid credentials. Please try again.');
+      throw new Error('No session returned');
     }
-  } catch (err) {
-    showError('login-error', 'Network error. Please try again later.');
-  } finally {
+  } catch(err) {
     btn.disabled = false;
     btn.textContent = 'Sign In';
+    alert(err.message);
   }
 });
 
-// Signup
-document.getElementById('signup-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = document.getElementById('signup-btn');
-  btn.disabled = true;
-  btn.textContent = 'Creating account...';
-  document.getElementById('signup-error').style.display = 'none';
-
-  try {
-    const res = await voxyFetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: document.getElementById('signup-name').value,
-        email_or_phone: document.getElementById('signup-identifier').value,
-        password: document.getElementById('signup-password').value
-      })
-    });
-    const data = await res.json();
-    if (res.ok && data.session_id) {
-      localStorage.setItem('session_id', data.session_id);
-      await maybeApproveQR();
-      window.location.href = '/dashboard';
-    } else {
-      showError('signup-error', data.error || data.message || 'Could not create account. Please try again.');
-    }
-  } catch (err) {
-    showError('signup-error', 'Network error. Please try again later.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Create Account';
-  }
-});
-</script>
-<script>
-// ---- Social Login (Google + GitHub via Auth0) ----
-let AUTH0 = { enabled: false, domain: '', clientId: '' };
-let pendingApproveCode = '';
-// Consent gate: set when a social login starts, consumed by the consent
-// dialog. No Voxylis session exists until the user presses Continue there.
-let pendingProvider = 'your provider';
-let pendingIdToken = '';
-try { pendingApproveCode = (new URLSearchParams(location.search).get('qr') || '').toUpperCase(); } catch (e) {}
-
-function b64url(buf) {
-  const bytes = new Uint8Array(buf);
-  let s = '';
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function randStr(n) {
-  const a = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
-  const rnd = new Uint8Array(n);
-  crypto.getRandomValues(rnd);
-  return Array.from(rnd, b => a[b % a.length]).join('');
-}
-
-async function pkceChallenge(v) {
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
-  return b64url(d);
-}
-
-function redirectUri() { return location.origin + '/auth'; }
-
-function showSocialError(msg) {
-  const el = document.getElementById('social-error');
-  if (!msg) { el.style.display = 'none'; return; }
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-async function loadAuth0Config() {
-  try {
-    const res = await voxyFetch('/api/auth/auth0/config');
-    AUTH0 = await res.json();
-  } catch (e) { AUTH0 = { enabled: false }; }
-  if (!AUTH0.enabled) {
-    document.getElementById('google-btn').disabled = true;
-    document.getElementById('github-btn').disabled = true;
-    document.getElementById('google-btn').title = 'Social login is not configured on this server yet';
-    document.getElementById('github-btn').title = 'Social login is not configured on this server yet';
-  }
-}
-
-async function startSocialLogin(connection) {
-  showSocialError('');
-  if (!AUTH0.enabled) { showSocialError('Social login is not configured yet. Use email signup below.'); return; }
-  pendingProvider = connection === 'github' ? 'GitHub' : 'Google';
-  try {
-    const verifier = randStr(64);
-    const challenge = await pkceChallenge(verifier);
-    const state = randStr(32);
-    sessionStorage.setItem('auth0_verifier', verifier);
-    sessionStorage.setItem('auth0_state', state);
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: AUTH0.clientId,
-      redirect_uri: redirectUri(),
-      scope: 'openid profile email',
-      state: state,
-      code_challenge: challenge,
-      code_challenge_method: 'S256',
-      connection: connection,
-    });
-    location.href = `https://${AUTH0.domain}/authorize?${params}`;
-  } catch (e) { showSocialError('Could not start login.'); }
-}
-
-document.getElementById('google-btn').addEventListener('click', () => startSocialLogin('google-oauth2'));
-document.getElementById('github-btn').addEventListener('click', () => startSocialLogin('github'));
-
-async function finishAuth0Login(idToken) {
-  const res = await voxyFetch('/api/auth/auth0', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id_token: idToken }),
-  });
-  const data = await res.json();
-  if (!res.ok || !data.session_id) throw new Error((data && (data.error || data.message)) || 'Auth0 login failed');
-  localStorage.setItem('session_id', data.session_id);
-  await maybeApproveQR();
-  location.href = '/dashboard';
-}
-
-// Decode an ID token payload for DISPLAY ONLY (no verification — the server
-// verifies the signature before creating any session).
-function decodeIdToken(idToken) {
-  try {
-    const parts = String(idToken || '').split('.');
-    if (parts.length < 2) return {};
-    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(b64)) || {};
-  } catch (e) { return {}; }
-}
-
-function restoreSocialButtons() {
-  const g = document.getElementById('google-btn');
-  const h = document.getElementById('github-btn');
-  g.disabled = false;
-  h.disabled = false;
-  if (g.dataset.label) g.innerHTML = g.dataset.label;
-  if (h.dataset.label) h.innerHTML = h.dataset.label;
-}
-
-// Show WHAT Voxylis receives and wait for explicit consent. The provider has
-// verified the user at this point, but Voxylis has stored nothing.
+// OAuth button handlers with consent overlay
+var pendingIdToken = '';
 function showConsent(idToken) {
+  // showConsent(tokens.id_token) - called by auth0 flow
   pendingIdToken = idToken;
-  const claims = decodeIdToken(idToken);
-  const name = (claims.name || claims.nickname || (claims.email || '').split('@')[0] || 'you').toString().slice(0, 80);
-  const email = (claims.email || '').toString().slice(0, 120);
-  const photo = (claims.picture || '').toString();
-  document.getElementById('consent-name').textContent = name;
-  document.getElementById('consent-name-2').textContent = name;
-  document.getElementById('consent-email').textContent = email || 'no email shared';
-  document.getElementById('consent-provider-line').textContent =
-    'Voxylis wants to use your ' + pendingProvider + ' account info.';
-  const img = document.getElementById('consent-photo');
-  if (photo && /^https:\/\//.test(photo)) { img.src = photo; img.style.display = ''; }
-  else { img.removeAttribute('src'); img.style.display = 'none'; }
-  const note = document.getElementById('consent-note');
-  if (email && claims.email_verified === false) {
-    note.textContent = 'Note: your ' + pendingProvider + ' email is unverified — ' +
-      'Voxylis will refuse sign-in until you verify it there. You can still cancel with nothing stored.';
-  } else {
-    note.textContent = 'You can delete your account and everything stored at any time from ' +
-      'Settings → Privacy. Continuing creates a Voxylis session on this device.';
-  }
-  document.getElementById('consent-overlay').classList.add('open');
+  document.getElementById('consent-overlay').classList.remove('hidden');
 }
-
-function closeConsent(cancelled) {
-  document.getElementById('consent-overlay').classList.remove('open');
-  if (!cancelled) return;
-  // Cancel = explicit refusal: discard the token, restore the buttons,
-  // and say plainly that nothing was created or stored.
+function hideConsent() {
+  document.getElementById('consent-overlay').classList.add('hidden');
   pendingIdToken = '';
-  restoreSocialButtons();
-  showSocialError('Sign-in cancelled — nothing was created or stored.');
 }
-
-document.getElementById('consent-continue').addEventListener('click', async () => {
-  const token = pendingIdToken;
-  pendingIdToken = '';
-  document.getElementById('consent-overlay').classList.remove('open');
-  if (!token) { showSocialError('Login session expired. Please try again.'); return; }
-  try {
-    await finishAuth0Login(token);
-  } catch (e) {
-    restoreSocialButtons();
-    showSocialError(e.message);
-  }
+document.getElementById('consent-cancel').addEventListener('click', function() {
+  hideConsent();
 });
-document.getElementById('consent-cancel').addEventListener('click', () => closeConsent(true));
-document.getElementById('consent-close').addEventListener('click', () => closeConsent(true));
-document.getElementById('consent-overlay').addEventListener('click', (e) => {
-  if (e.target.id === 'consent-overlay') closeConsent(true);
-});
-
-async function handleAuth0Callback() {
-  const q = new URLSearchParams(location.search);
-  const code = q.get('code');
-  if (!code) return false;
-  history.replaceState({}, '', location.pathname);
-  if (q.get('error')) { showSocialError('Login: ' + (q.get('error_description') || q.get('error'))); return true; }
-  const verifier = sessionStorage.getItem('auth0_verifier');
-  const savedState = sessionStorage.getItem('auth0_state');
-  sessionStorage.removeItem('auth0_verifier');
-  sessionStorage.removeItem('auth0_state');
-  if (!verifier || q.get('state') !== savedState) { showSocialError('Login session expired. Please try again.'); return true; }
-  document.getElementById('google-btn').disabled = true;
-  document.getElementById('github-btn').disabled = true;
-  document.getElementById('google-btn').dataset.label = document.getElementById('google-btn').innerHTML;
-  document.getElementById('github-btn').dataset.label = document.getElementById('github-btn').innerHTML;
-  document.getElementById('google-btn').textContent = 'Signing you in…';
-  document.getElementById('github-btn').textContent = 'Signing you in…';
+document.getElementById('consent-continue').addEventListener('click', async function() {
+  var token = pendingIdToken;
+  if (!token) { hideConsent(); return; }
+  hideConsent();
   try {
-    const tokenRes = await fetch(`https://${AUTH0.domain}/oauth/token`, {
+    var resp = await fetch((window.VOXYLIS_API_BASE||'')+'/api/auth/auth0/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        grant_type: 'authorization_code',
-        client_id: AUTH0.clientId,
-        code: code,
-        redirect_uri: redirectUri(),
-        code_verifier: verifier,
-      }),
+      body: JSON.stringify({ id_token: token })
     });
-    const tokens = await tokenRes.json();
-    if (!tokenRes.ok || !tokens.id_token) throw new Error((tokens && (tokens.error_description || tokens.error)) || 'Token exchange failed');
-    // Provider verified you. Pause here: show WHAT Voxylis receives and ask
-    // for consent BEFORE creating any session. Cancel discards everything.
-    showConsent(tokens.id_token);
-  } catch (e) {
-    restoreSocialButtons();
-    showSocialError(e.message);
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || data.message || 'Auth failed');
+    if (data.session_id) {
+      try { localStorage.setItem('session_id', data.session_id); } catch(e) {}
+      window.location.href = '/dashboard';
+    }
+  } catch(err) {
+    alert(err.message);
   }
-  return true;
-}
-
-// ---- QR login: scan with your phone, approve, this device signs in ----
-let qrTimer = null, qrPoll = null, qrExpiresAt = 0;
-
-function openQR() {
-  document.getElementById('qr-overlay').classList.add('open');
-  startQR();
-}
-function closeQR() {
-  document.getElementById('qr-overlay').classList.remove('open');
-  if (qrTimer) clearInterval(qrTimer);
-  if (qrPoll) clearInterval(qrPoll);
-  qrTimer = qrPoll = null;
-}
-document.getElementById('qr-open').addEventListener('click', openQR);
-document.getElementById('qr-close').addEventListener('click', closeQR);
-document.getElementById('qr-overlay').addEventListener('click', (e) => {
-  if (e.target.id === 'qr-overlay') closeQR();
 });
-document.getElementById('qr-new').addEventListener('click', startQR);
-
-async function startQR() {
-  const box = document.getElementById('qr-box');
-  const status = document.getElementById('qr-status');
-  document.getElementById('qr-approve-box').style.display = 'none';
-  document.getElementById('qr-new').style.display = '';
-  box.innerHTML = '<span style="font-size:13px;color:var(--muted)">Loading…</span>';
-  status.textContent = '';
-  try {
-    const res = await voxyFetch('/api/auth/qr/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device_name: navigator.platform || 'browser' }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.code) throw new Error((data && (data.error || data.message)) || 'Could not create code');
-    const url = location.origin + '/auth?qr=' + data.code;
-    box.innerHTML = '';
-    if (window.QRCode) {
-      new QRCode(box, { text: url, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
-    } else {
-      box.innerHTML = '<span style="font-size:12px">QR library offline — open:<br><b>' + data.code + '</b></span>';
-    }
-    document.getElementById('qr-code').textContent = data.code;
-    qrExpiresAt = Date.now() + (data.expires_in || 300) * 1000;
-    tickQR();
-    if (qrTimer) clearInterval(qrTimer);
-    qrTimer = setInterval(tickQR, 1000);
-    if (qrPoll) clearInterval(qrPoll);
-    qrPoll = setInterval(() => pollQR(data.code), 2000);
-  } catch (e) {
-    box.innerHTML = '<span style="font-size:13px">Unavailable</span>';
-    status.textContent = e.message;
-  }
-}
-
-function tickQR() {
-  const left = Math.max(0, Math.round((qrExpiresAt - Date.now()) / 1000));
-  const m = Math.floor(left / 60), s = String(left % 60).padStart(2, '0');
-  document.getElementById('qr-expiry').textContent = left ? `Code expires in ${m}:${s}` : 'Code expired';
-  if (!left && qrTimer) { clearInterval(qrTimer); qrTimer = null; }
-}
-
-async function pollQR(code) {
-  try {
-    const res = await fetch((window.VOXY_API_BASE || '') + '/api/auth/qr/status?code=' + encodeURIComponent(code));
-    const data = await res.json();
-    if (data.status === 'approved' && data.session_id) {
-      if (qrTimer) clearInterval(qrTimer);
-      if (qrPoll) clearInterval(qrPoll);
-      document.getElementById('qr-status').textContent = '✓ Approved — signing you in…';
-      localStorage.setItem('session_id', data.session_id);
-      location.href = '/dashboard';
-    } else if (data.status === 'expired') {
-      document.getElementById('qr-status').textContent = 'Code expired — tap “New code”.';
-      if (qrPoll) clearInterval(qrPoll);
-    }
-  } catch (e) { /* keep polling */ }
-}
-
-// Incoming approval (opened via ?qr=CODE on the phone).
-function checkQRApprove() {
-  if (!pendingApproveCode) return;
-  if (qrTimer) clearInterval(qrTimer);
-  if (qrPoll) clearInterval(qrPoll);
-  document.getElementById('qr-overlay').classList.add('open');
-  document.getElementById('qr-new').style.display = 'none';
-  document.getElementById('qr-box').innerHTML = '<span style="font-size:48px">📱</span>';
-  document.getElementById('qr-code').textContent = pendingApproveCode;
-  document.getElementById('qr-expiry').textContent = '';
-  let sid = null;
-  try { sid = localStorage.getItem('session_id'); } catch (e) {}
-  if (!sid) {
-    document.getElementById('qr-status').textContent = 'Sign in below first — then come back to approve.';
-    return;
-  }
-  showApproveBox(pendingApproveCode);
-}
-
-function showApproveBox(code) {
-  const box = document.getElementById('qr-approve-box');
-  box.style.display = 'block';
-  document.getElementById('qr-approve-device').textContent = 'Code ' + code;
-  document.getElementById('qr-status').textContent = '';
-  const btn = document.getElementById('qr-approve-btn');
-  btn.disabled = false;
-  btn.onclick = async () => {
-    btn.disabled = true;
-    try {
-      const res = await voxyFetch('/api/auth/qr/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || data.message || ('HTTP ' + res.status));
-      document.getElementById('qr-status').textContent = '✓ Approved! You can close this.';
-      box.style.display = 'none';
-      pendingApproveCode = '';
-      history.replaceState({}, '', location.pathname);
-    } catch (e) {
-      document.getElementById('qr-status').textContent = e.message;
-      btn.disabled = false;
-    }
-  };
-}
-
-async function maybeApproveQR() {
-  if (!pendingApproveCode) return;
-  try {
-    await voxyFetch('/api/auth/qr/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: pendingApproveCode }),
-    });
-  } catch (e) { /* best effort */ }
-  pendingApproveCode = '';
-  history.replaceState({}, '', location.pathname);
-}
-
-(async function initAuth() {
-  await loadAuth0Config();
-  if (await handleAuth0Callback()) return;
-  if (pendingApproveCode) checkQRApprove();
-})();
+document.getElementById('googleBtn').addEventListener('click', function() {
+  window.location.href = (window.VOXYLIS_API_BASE||'')+'/api/auth/auth0?provider=google';
+});
+document.getElementById('githubBtn').addEventListener('click', function() {
+  window.location.href = (window.VOXYLIS_API_BASE||'')+'/api/auth/auth0?provider=github';
+});
 </script>
+<script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
+<script src="/static/js/config.js"></script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/sentry-init.js" defer></script>
+<script src="/static/js/cookie-consent.js" defer></script>
 </body>
 </html>
