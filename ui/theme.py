@@ -19,8 +19,9 @@ DARK = {
     "border_strong": "#3a3a46",
     "text": "#eaeaea",
     "text_muted": "#8a8d93",
-    "text_dim": "#5b5d6a",
-    "accent": "#7c6cf0",
+    "text_dim": "#7d818c",
+    "accent": "#8474f2",
+    "accent_fill": "#6f5ded",  # fill behind white text (Primary button/icon)
     "accent_hover": "#8d7ff5",
     "accent_soft": "#2a2545",
     "success": "#3ecf8e",
@@ -29,6 +30,7 @@ DARK = {
     "danger_hover": "#f2555a",
     "recording": "#ff5c5c",  # ONLY for REC/live/destructive
     "focus": "#ff5c5c",
+    "icon_on_accent": "#ffffff",  # glyph drawn on top of the accent surface
 }
 
 LIGHT = {
@@ -39,16 +41,18 @@ LIGHT = {
     "border_strong": "#cfcfd8",
     "text": "#1a1a20",
     "text_muted": "#5c5c6b",
-    "text_dim": "#8a8a99",
+    "text_dim": "#70707e",
     "accent": "#5a4bd1",
+    "accent_fill": "#5a4bd1",
     "accent_hover": "#4a3dc0",
     "accent_soft": "#ece9fb",
-    "success": "#1f9d63",
-    "warning": "#a97c10",
+    "success": "#157a4b",
+    "warning": "#946c0a",
     "danger": "#d13b40",
     "danger_hover": "#b92f34",
-    "recording": "#e5484d",
+    "recording": "#d63b40",
     "focus": "#d13b40",
+    "icon_on_accent": "#ffffff",  # glyph drawn on top of the accent surface
 }
 
 # Single source for font stacks so dialogs building token f-strings match.
@@ -109,7 +113,7 @@ def stylesheet(theme: str = "dark") -> str:
     }}
     QPushButton:hover {{ background: {c['border']}; }}
     QPushButton:disabled {{ color: {c['text_dim']}; border-color: {c['border']}; background: {c['bg_input']}; }}
-    QPushButton#Primary {{ background: {c['accent']}; border-color: {c['accent']}; color: #ffffff; font-weight: 600; }}
+    QPushButton#Primary {{ background: {c['accent_fill']}; border-color: {c['accent_fill']}; color: #ffffff; font-weight: 600; }}
     QPushButton#Primary:hover {{ background: {c['accent_hover']}; }}
     QPushButton#Danger {{ background: transparent; border-color: {c['danger']}; color: {c['danger']}; }}
     QPushButton#Danger:hover {{ background: {c['danger']}; color: #ffffff; }}

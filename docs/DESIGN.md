@@ -87,6 +87,25 @@ source of Control Room tokens for Qt (`stylesheet()`, `palette()`, font stacks).
 - ❌ Shipping dark without light: both palettes must pass contrast; recording red is ONLY for REC/live/destructive states
 - ❌ One-off window styling that drifts from the app (every window imports `ui.theme`, never invents its own look)
 
+## Desktop REDUCTION + AI-TELLS audit (P4.4)
+Audit performed against the `--design-shots` renders (Home, History, Microphone,
+AI Providers, Shortcuts, Privacy, Account, Diagnostics, About, onboarding, overlay
+idle/recording). Outcomes:
+
+- **Label surfaces**: labels/checkboxes are transparent so cards read as one
+  surface, not a patchwork of label boxes (`ui/theme.py`).
+- **Magic hex**: eliminated outside `ui/theme.py`; the app-icon glyph now draws
+  with `icon_on_accent` on an `accent_fill` square.
+- **Link colour**: the About project link uses `accent`, not browser-default blue.
+- **Contrast**: both DARK and LIGHT palettes pass WCAG ≥4.5:1 for text, muted,
+  dim, success, warning, danger, recording, accent-as-text, and white-on-button.
+  DARK `text_dim`/`accent` and LIGHT `success`/`warning`/`recording`/`text_dim`
+  were darkened/lightened to reach the threshold; `accent_fill` was split from
+  `accent` so the white Primary-button label passes.
+- **Controls**: every button/combo/checkbox is wired (audited; the language
+  combos connect via `currentIndexChanged → _save`). No orphan settings.
+- **No gradient/emoji-icon/one-off-window tells remain.**
+
 ---
 
 ## Implementation Notes

@@ -76,12 +76,12 @@ def app_icon(size: int = 64) -> QIcon:
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
-    painter.setBrush(QBrush(QColor(theme.palette()["accent"])))
+    painter.setBrush(QBrush(QColor(theme.palette()["accent_fill"])))
     painter.setPen(Qt.NoPen)
     radius = size * 0.28
     painter.drawRoundedRect(0, 0, size, size, radius, radius)
 
-    painter.setBrush(QBrush(QColor("#ffffff")))
+    painter.setBrush(QBrush(QColor(theme.palette()["icon_on_accent"])))
     bar_width = max(2, int(size * 0.09))
     gap = max(2, int(size * 0.06))
     heights = [0.34, 0.62, 0.86, 0.5, 0.28]
