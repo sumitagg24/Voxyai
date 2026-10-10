@@ -3,7 +3,61 @@
 All notable changes to Voxylis. The canonical version lives in
 `config/version.py`; see `docs/RELEASE.md` for the release procedure.
 
-## Unreleased — email, monitoring and repository hygiene
+## Unreleased — Master Prompt Pack v2 (foundation, backend, redesign, desktop)
+
+### Foundation & Cleanup (P0)
+
+* **Dependencies fixed**: `pywin32` (Windows), `psutil`, `groq`, `openai`, `PyJWT`, `cryptography` added; `scipy` removed; CI audits both `requirements.txt` and `requirements-server.txt`.
+* **Fabricated "Muse" provider removed**: non-existent `api.meta.ai` endpoints deleted; LLM chain centralized in `web/services/llm_service.py` with explicit timeouts (server: connect 5s/read 30s; desktop: `OPENAI_API_TIMEOUT`); fallback order OpenRouter → Groq → OpenAI.
+* **Wake word deleted everywhere**: no module existed but was advertised in features, tiers, dashboard, settings, docs — all removed.
+* **Legacy desktop user manager deleted**: unsalted SHA-256 + plaintext JSON sessions removed; desktop now stores only Auth0 session id in OS credential vault.
+* **Deployment consolidated to local-first + optional Render**: removed `Procfile`, `docker-compose.yml`, `vercel.json`, PythonAnywhere template, Vercel CI jobs; email `from_address` requires `EMAIL_FROM` (no `voxylis.com` default); download URLs resolved via GitHub API (cached 1h) with `DOWNLOAD_URL_*` overrides.
+* **Dead code swept**: unused `UNSAFE_COMBOS`, `is_safe_combo`, `_canonical_targets`, `_detect_language`, `_count_transcriptions`, `catalog()`, `inject_with_fallback`, `inject_text_with_delay`, `MIN_RECORDING_DURATION`, `WHISPER_MODEL`, `GPT_MODEL`, `translate_pending` voice command removed.
+* **Single tier policy**: `web/tier.py` is now the sole source of truth; desktop reads entitlements from `/api/me`; `/api/pricing` generated from tier data; wake word removed from all tiers; Q&A labelled Pro+.
+* **web/app.py split into blueprints**: pages, auth, account, usage, content routes + `auth_helpers`, `extensions`, `db`, `llm_service`; zero behavior change.
+
+### Backend Correctness (P1)
+
+* **Session rotation fixed**: `attach_monitoring_context` read-only; rotation once/request with `X-Session-Rotated` header + JSON body; CORS exposes header; client `voxyFetch` persists new id; race-safe conditional UPDATE.
+* **Email normalization**: lowercase at every boundary (signup, login, forgot-password, Auth0, QR, admin, newsletter); one-time migration dedupes case-variant duplicates; unique index on `LOWER(email_or_phone)`.
+* **Microphone selection works**: `audio_device` config applied to `AudioRecorder`; validated via `sounddevice.query_devices()`; invalid indices rejected with warning.
+* **Upload cap + JSON errors**: `MAX_CONTENT_LENGTH=32MB`; explicit 32MB check; JSON handlers for 413/429/400.
+* **History/quota hole closed**: `/api/history` validates mode/language; STT quota enforced via `usage_records` (feature="transcription"), not `transcriptions` table; free-tier history rate capped.
+* **Auth0 lifecycle**: `delete_account` allows auth0 users with typed DELETE + fresh session; `update_profile` allows auth0 users to set initial password.
+* **Backup prune tie-break**: numeric suffix parsed (None=0) so same-second backups sort correctly.
+* **Dodo Payments integration**: `DODO_WEBHOOK_SECRET` + `DODO_CHECKOUT_URL_PRO/BUSINESS`; Standard-Webhooks HMAC-SHA256 verification; idempotent via `processed_events`; 503 when unconfigured; honest UI when disabled.
+* **Proxy-aware limiting**: `ProxyFix(x_for=1)` behind `TRUST_PROXY`; `RATELIMIT_STORAGE_URI`/`CACHE_TYPE` from `REDIS_URL`; `/version.json`, `/api/health`, `/static` exempt.
+* **Monitoring hook cheap**: skips static/health/version; caches tier on `flask.g`.
+
+### Behavior & Hardening (P2)
+
+* **Enhancement failures surface**: `TextEnhancer.enhance()` raises on provider exhaustion; orchestrator emits `ENHANCEMENT_FAILED` + classified error; raw transcript injected as fallback.
+* **Rich commands anchored**: triggers now `re.match` at start (`search for`, `google search for`, `draft email to`, `create github issue`, `send slack message`); opt-in via `rich_commands_enabled` (default true); `GITHUB_REPO` required; empty extraction returns False.
+* **Injection/ANC/sound**: clipboard restore delay 60ms→150ms; `verified=False` for paste; ANC calibrates on quietest frames only, skips frame-0 speech, soft expander replaces gate; sound volume threaded (`0.02 + 0.13 * volume`).
+* **Crypto & session hygiene**: `hmac.compare_digest` for legacy SHA-256; login transparently rehashes to PBKDF2; sessions stored hashed (sha256 server-side); `X-XSS-Protection` removed; CSP tightened (no `unsafe-inline`, CDN allowlist narrowed, fonts/Chart.js self-hosted).
+* **Input validation**: settings/hotkeys allowlists with per-type checks; raw strings stored, escaped at render; language validated against ISO codes; `download_track` platform capped; `/api/stats` uses single `GROUP BY` query.
+* **Desktop fixes**: Qt enum DPI attributes; `import sys` not `os.sys.path`; `unsubscribe` doesn't swallow `ValueError`; hotkey KeyCode matched by normalized char/vk; stats prune >90d; custom templates use `.replace("{text}", ...)` only; `_api_base()` empty sentinel disables cloud sign-in with clear copy.
+
+### Website Redesign (P3)
+
+* **Control Room design system** (`docs/DESIGN.md`): dark charcoal surfaces (`#0e0f12`/`#16181d`/`#1d2027`), off-white text, hairline `#2a2d35`, red `#ff5c5c` ONLY for REC/live/destructive, green `#3ecf8e` ONLY success/online; one grotesk + one mono (self-hosted woff2); 4–6px radii, 1px hairlines, no shadows; record lamp motif (solid dot + ring); motion 150–250ms state changes only; no literal hardware, no gradients, no glassmorphism, no badge clutter.
+* **Vendored assets**: Space Grotesk + JetBrains Mono (woff2) in `web/static/fonts/`; Chart.js in `web/static/vendor/`; no CDN at runtime.
+* **Consolidated CSS**: `base.css` + per-page files; one grid, one button, one card, one input; inline styles removed.
+* **Honest copy**: features/pricing from `web/tier.py`; download from `/api/download/urls`; pricing CTAs respect `checkout_available`; Q&A shows real 403 upgrade.
+* **Session**: `voxyFetch` handles `X-Session-Rotated`; no localStorage session id elsewhere.
+* **A11y**: landmarks, focus-visible, 4.5:1 contrast, `prefers-reduced-motion`, keyboard-reachable, alt text.
+* **Responsive**: 1440/768/390; mobile nav no library.
+* **Perf**: `font-display: swap`, preload woff2, lazy images, JS <60KB (excl Chart.js).
+* **CSP**: `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.ingest.sentry.io...` — no CDN.
+
+### Desktop Frontend (P4)
+
+* **Control Room theme applied**: `ui/theme.py` mirrors web tokens; helper factories (`h1`, `body`, `primary_button`, `field_row`, `section_frame`, `lamp`, `meter`); same object names so `pages.py` works unchanged.
+* **Desktop degrades gracefully offline**: reads entitlements from `/api/me`; local mode with clear copy when server unreachable.
+
+---
+
+## 3.0.0 — production release (hardening)
 
 ### Email (new)
 
