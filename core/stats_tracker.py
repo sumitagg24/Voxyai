@@ -32,10 +32,37 @@ class StatsTracker:
                 if isinstance(data, dict):
                     data.setdefault("daily", {})
                     data.setdefault("total", dict(_EMPTY["total"]))
+                    self._prune_old_daily(data)
                     return data
         except (OSError, json.JSONDecodeError) as exc:
             log_error(f"Stats load error: {exc}")
         return {"daily": {}, "total": dict(_EMPTY["total"])}
+
+    @staticmethod
+    def _prune_old_daily(data: dict, keep_days: int = 90) -> int:
+        """Drop daily entries older than ``keep_days`` (bounded growth)."""
+        from datetime import datetime
+
+        daily = data.get("daily")
+        if not isinstance(daily, dict) or not daily:
+            return 0
+        cutoff = date.today().toordinal() - keep_days
+        stale = []
+        for key in list(daily.keys()):
+            try:
+                day_ord = date.fromisoformat(key).toordinal()
+            except ValueError:
+                try:
+                    day_ord = datetime.strptime(key, "%Y-%m-%d").date().toordinal()
+                except (ValueError, TypeError):
+                    continue
+            if day_ord < cutoff:
+                stale.append(key)
+        for key in stale:
+            daily.pop(key, None)
+        if stale:
+            log_debug(f"Stats: pruned {len(stale)} daily entries older than {keep_days}d")
+        return len(stale)
 
     def _save(self) -> None:
         try:

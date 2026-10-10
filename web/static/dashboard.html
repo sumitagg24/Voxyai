@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/css/dashboard.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <!-- Production API origin (Render). Must load BEFORE api.js. -->
-    <script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
+    <script src="/static/js/config.js"></script>
     <script src="/static/js/api.js"></script>
     <!-- Error monitoring: no-op unless a browser DSN is configured. -->
     <script src="/static/js/sentry-init.js" defer></script>
@@ -668,14 +668,37 @@
             try {
                 const { history } = await getJSON("/api/history");
                 const list = document.getElementById("historyList");
-                list.innerHTML = history.map((h) => `
-                    <div class="history-item" data-id="${h.id}">
-                        <div><p class="history-text"></p>
-                        <p class="history-meta">${h.language || ''} · ${h.mode || ''} · ${h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}${h.enhanced ? ' · ✨' : ''}</p></div>
-                        <div><button class="btn btn-icon" data-copy>⧉</button><button class="btn btn-icon" data-del>🗑</button></div>
-                    </div>`).join("");
-                list.querySelectorAll(".history-item").forEach((item, i) => {
-                    item.querySelector(".history-text").textContent = history[i].text;
+                // Render with textContent only (no innerHTML with user data):
+                // stored strings are raw, escaped at render time.
+                list.textContent = "";
+                history.forEach((h) => {
+                    const item = document.createElement("div");
+                    item.className = "history-item";
+                    item.dataset.id = String(h.id);
+                    const left = document.createElement("div");
+                    const text = document.createElement("p");
+                    text.className = "history-text";
+                    text.textContent = h.text || "";
+                    const meta = document.createElement("p");
+                    meta.className = "history-meta";
+                    const when = h.timestamp ? new Date(h.timestamp).toLocaleString() : "";
+                    meta.textContent = `${h.language || ""} · ${h.mode || ""} · ${when}${h.enhanced ? " · ✨" : ""}`;
+                    left.appendChild(text);
+                    left.appendChild(meta);
+                    const actions = document.createElement("div");
+                    const copyBtn = document.createElement("button");
+                    copyBtn.className = "btn btn-icon";
+                    copyBtn.textContent = "⧉";
+                    copyBtn.setAttribute("data-copy", "");
+                    const delBtn = document.createElement("button");
+                    delBtn.className = "btn btn-icon";
+                    delBtn.textContent = "🗑";
+                    delBtn.setAttribute("data-del", "");
+                    actions.appendChild(copyBtn);
+                    actions.appendChild(delBtn);
+                    item.appendChild(left);
+                    item.appendChild(actions);
+                    list.appendChild(item);
                 });
                 list.querySelectorAll("[data-copy]").forEach((btn) => btn.addEventListener("click", () => {
                     navigator.clipboard.writeText(btn.closest(".history-item").querySelector(".history-text").textContent);
@@ -703,14 +726,27 @@
                 const { hotkeys } = await getJSON("/api/hotkeys");
                 const box = document.getElementById("hotkeysList");
                 const entries = Object.entries(hotkeys);
-                box.innerHTML = entries.map(([name]) => `
-                    <div class="hotkey-item">
-                        <div class="hotkey-info"><h3></h3><p></p></div>
-                        <button class="btn btn-secondary" type="button" data-hotkey-name="${name}">Change</button>
-                    </div>`).join("");
-                box.querySelectorAll('.hotkey-item').forEach((item, i) => {
-                    item.querySelector('h3').textContent = entries[i][0];
-                    item.querySelector('p').textContent = entries[i][1];
+                // textContent only: hotkey names/values are user-controlled.
+                box.textContent = "";
+                entries.forEach(([name, value]) => {
+                    const item = document.createElement("div");
+                    item.className = "hotkey-item";
+                    const info = document.createElement("div");
+                    info.className = "hotkey-info";
+                    const title = document.createElement("h3");
+                    title.textContent = name;
+                    const combo = document.createElement("p");
+                    combo.textContent = value;
+                    info.appendChild(title);
+                    info.appendChild(combo);
+                    const btn = document.createElement("button");
+                    btn.className = "btn btn-secondary";
+                    btn.type = "button";
+                    btn.textContent = "Change";
+                    btn.dataset.hotkeyName = name;
+                    item.appendChild(info);
+                    item.appendChild(btn);
+                    box.appendChild(item);
                 });
             } catch (e) { console.warn("hotkeys failed:", e); }
         }

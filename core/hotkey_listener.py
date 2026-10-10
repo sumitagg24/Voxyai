@@ -70,11 +70,14 @@ RESERVED_COMBOS = {
     "ctrl+alt+del": "opens the security screen",
 }
 
+
 class HotkeyValidationError(ValueError):
     """Raised for a shortcut string that cannot be used."""
 
 
 def _canonical(key) -> object:
+    if keyboard is None:
+        return key
     mapping = {
         keyboard.Key.ctrl_l: keyboard.Key.ctrl,
         keyboard.Key.ctrl_r: keyboard.Key.ctrl,
@@ -87,6 +90,49 @@ def _canonical(key) -> object:
         keyboard.Key.cmd_r: keyboard.Key.cmd,
     }
     return mapping.get(key, key)
+
+
+def _key_code_matches(target, candidate) -> bool:
+    """True when two pynput keys are the same physical key.
+
+    Letter hotkeys must survive Shift/CapsLock: ``KeyCode('r')`` and
+    ``KeyCode('R')`` share the same virtual-key code and differ only by case,
+    so they compare by lowercased char (and vk when available). Other keys
+    require exact equality.
+    """
+    if target == candidate:
+        return True
+    try:
+        t_char = getattr(target, "char", None)
+        c_char = getattr(candidate, "char", None)
+        if isinstance(t_char, str) and isinstance(c_char, str) and len(t_char) == 1 and len(c_char) == 1:
+            if t_char.lower() == c_char.lower():
+                return True
+            # Same physical key (same vk) with different shifted symbols
+            # (e.g. '1' vs '!') is NOT the same hotkey for letters-only rule;
+            # fall through to vk check below for non-letters? No: keep strict
+            # so Shift+1 does not masquerade as "1".
+        t_vk = getattr(target, "vk", None)
+        c_vk = getattr(candidate, "vk", None)
+        if t_vk is not None and c_vk is not None and t_vk == c_vk:
+            # vk alone is ambiguous across layouts; require char agreement
+            # (case-insensitive) when both sides carry a char.
+            if t_char is None or c_char is None:
+                return True
+            if isinstance(t_char, str) and isinstance(c_char, str) and t_char.lower() == c_char.lower():
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _held_contains(held: Set, target) -> bool:
+    """True when ``held`` contains a key matching ``target`` (Shift-safe)."""
+    canon_target = _canonical(target)
+    for held_key in held:
+        if _key_code_matches(canon_target, held_key) or _key_code_matches(canon_target, _canonical(held_key)):
+            return True
+    return False
 
 
 def parse_hotkey(hotkey: str) -> List[object]:
@@ -196,7 +242,7 @@ class _SingleHotkey:
 
     def _matches(self, held: Set) -> bool:
         for key in self._target_keys:
-            if key not in held and _canonical(key) not in held:
+            if not _held_contains(held, key):
                 return False
         return True
 
@@ -219,7 +265,7 @@ class _SingleHotkey:
     def handle_release(self, canon_key) -> None:
         if not self._active:
             return
-        if any(_canonical(k) == canon_key for k in self._target_keys):
+        if any(_key_code_matches(_canonical(k), canon_key) for k in self._target_keys):
             self._active = False
             if not self.toggle_mode:
                 threading.Thread(target=self.on_release, daemon=True).start()

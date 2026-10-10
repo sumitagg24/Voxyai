@@ -26,9 +26,12 @@ def _make_auth0_user(web_app, email: str = "social@gmail.com") -> int:
 
 
 def _backdate_session(web_app, session_id: str, minutes: int) -> None:
+    import hashlib
+
     stale = (utcnow() - timedelta(minutes=minutes)).strftime("%Y-%m-%d %H:%M:%S")
+    session_hash = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
     conn = web_app._get_db()
-    conn.execute("UPDATE sessions SET created_at = ? WHERE id = ?", (stale, session_id))
+    conn.execute("UPDATE sessions SET created_at = ? WHERE id = ?", (stale, session_hash))
     conn.commit()
     conn.close()
 

@@ -268,6 +268,17 @@ def transcribe_endpoint(user_id):
     if len(audio_bytes) > 32 * 1024 * 1024:
         return jsonify({"error": "Audio file exceeds 32 MB limit"}), 413
 
+    transcribe_language = str(request.form.get("language", "en") or "en").strip().lower()
+    if transcribe_language not in _HISTORY_LANGUAGES:
+        return (
+            jsonify(
+                {
+                    "error": f"Invalid language. Choose an ISO code such as: {', '.join(sorted(_HISTORY_LANGUAGES))}",
+                }
+            ),
+            400,
+        )
+
     if not llm_service.is_transcribe_configured():
         return jsonify({"error": "Transcription unavailable. Configure GROQ_API_KEY or OPENAI_API_KEY."}), 503
 
@@ -281,7 +292,7 @@ def transcribe_endpoint(user_id):
                 conn = _get_db()
                 conn.execute(
                     "INSERT INTO transcriptions (user_id, text, enhanced, mode, language) VALUES (?, ?, ?, ?, ?)",
-                    (user_id, transcript.strip(), 0, mode, request.form.get("language", "en")),
+                    (user_id, transcript.strip(), 0, mode, transcribe_language),
                 )
                 conn.commit()
                 conn.close()
@@ -482,15 +493,19 @@ def stats():
 
         weekly_counts = []
         weekly_labels = []
+        # One GROUP BY query for the 7-day series (was 7 per-day queries).
+        week_filter = "date(created_at) >= date('now', '-6 days')"
+        weekly_rows = conn.execute(
+            f"SELECT date(created_at) AS d, COUNT(*) AS n FROM transcriptions {scope}"
+            f"{' AND' if scope else 'WHERE'} {week_filter} GROUP BY d",
+            params,
+        ).fetchall()
+        by_day = {r["d"]: r["n"] for r in weekly_rows}
         for i in range(6, -1, -1):
-            day = (datetime.now() - timedelta(days=i)).date().isoformat()
-            c = conn.execute(
-                f"SELECT COUNT(*) as n FROM transcriptions {scope}"
-                f"{' AND' if scope else 'WHERE'} date(created_at) = ?",
-                (*params, day),
-            ).fetchone()["n"]
-            weekly_counts.append(c)
-            weekly_labels.append((datetime.now() - timedelta(days=i)).strftime("%a"))
+            day_date = (datetime.now() - timedelta(days=i)).date()
+            day = day_date.isoformat()
+            weekly_counts.append(int(by_day.get(day, 0)))
+            weekly_labels.append(day_date.strftime("%a"))
     finally:
         conn.close()
 

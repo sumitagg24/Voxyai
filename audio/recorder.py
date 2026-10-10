@@ -49,6 +49,17 @@ class AudioRecorder:
         # Serialises stop_recording so auto-stop and hotkey release can't race
         self._stop_lock = threading.Lock()
         self._noise_canceller = NoiseCanceller()
+        # P2.3: ANC is configurable (default on). The orchestrator mirrors the
+        # ``noise_cancellation`` setting here via ``set_noise_cancellation``.
+        self.noise_cancellation_enabled = True
+
+    def set_noise_cancellation(self, enabled: bool) -> None:
+        """Enable or disable Active Noise Cancellation for future recordings."""
+        self.noise_cancellation_enabled = bool(enabled)
+        try:
+            self._noise_canceller.enabled = bool(enabled)
+        except Exception:
+            pass
 
     def list_devices(self) -> list:
         """List available audio devices"""
@@ -123,9 +134,16 @@ class AudioRecorder:
             audio_data = np.concatenate(self.audio_buffer)
             self.audio_buffer = []
 
-            # ── Active Noise Cancellation ─────────────────────────────────
-            audio_data = self._noise_canceller.process(audio_data)
-            log_info("ANC applied")
+            # ── Active Noise Cancellation (configurable, default on) ──────────
+            if self.noise_cancellation_enabled:
+                try:
+                    self._noise_canceller.enabled = True
+                except Exception:
+                    pass
+                audio_data = self._noise_canceller.process(audio_data)
+                log_info("ANC applied")
+            else:
+                log_info("ANC skipped (disabled in settings)")
 
             # Apply processing
             audio_data = apply_noise_gate(audio_data)

@@ -47,9 +47,10 @@ class SoundFeedback:
                 return  # Swallow duplicate
             self._last_event_time = now
 
+        effective = 0.02 + 0.13 * max(0.0, min(1.0, self.volume))
         threading.Thread(
             target=_play_soft_tone,
-            args=(freq, duration_ms, 0.04),  # Very soft
+            args=(freq, duration_ms, effective),
             daemon=True,
         ).start()
 

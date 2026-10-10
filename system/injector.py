@@ -13,6 +13,12 @@ of which must be able to state whether it actually delivered the text::
 
 Every attempt is bounded by a timeout, verifies what it can, and restores the
 clipboard only when the clipboard still holds our text.
+
+Note on verification: clipboard paste (clipboard + Ctrl+V) cannot be truly
+verified — dispatching Ctrl+V only proves the keystroke was sent, not that the
+target window received the text. Clipboard-paste successes are therefore
+reported with ``verified=False``. Other strategies report ``verified=True``
+when dispatch succeeds.
 """
 
 from __future__ import annotations
@@ -170,6 +176,10 @@ def available_strategies() -> List[InjectionStrategy]:
 class TextInjector:
     """Inserts text at the current caret position using the best strategy."""
 
+    #: Delay after Ctrl+V before the clipboard is restored. The target needs
+    #: time to consume the paste; ~150ms is the minimum that is reliable.
+    POST_PASTE_RESTORE_DELAY = 0.15
+
     def __init__(
         self,
         timeout: float = 5.0,
@@ -213,9 +223,9 @@ class TextInjector:
 
         now = time.time()
         if text == self._last_text and now - self._last_time < self._cooldown:
-            log_debug("Duplicate injection suppressed")
+            log_info("Duplicate injection suppressed")
             strategy = self.last_result.strategy if self.last_result else InjectionStrategy.CLIPBOARD_PASTE
-            result = InjectionResult(True, strategy, detail="duplicate-suppressed", verified=True)
+            result = InjectionResult(True, strategy, detail="duplicate-suppressed", verified=False)
             self.last_result = result
             return result
 
@@ -242,8 +252,11 @@ class TextInjector:
                             log_warning("Foreground window changed during injection")
                     self._last_text = text
                     self._last_time = time.time()
+                    # Clipboard paste cannot be truly verified: Ctrl+V dispatch
+                    # does not confirm the target received the text.
+                    verified = strategy is not InjectionStrategy.CLIPBOARD_PASTE
                     result = InjectionResult(
-                        True, strategy, InjectionError.NONE, detail=detail, verified=True, attempts=attempts
+                        True, strategy, InjectionError.NONE, detail=detail, verified=verified, attempts=attempts
                     )
                     self.last_result = result
                     log_info(
@@ -276,6 +289,7 @@ class TextInjector:
         return ok
 
     def diagnostics(self) -> dict:
+        last_detail = self.last_result.detail if self.last_result else None
         return {
             "strategies": [s.value for s in self.strategy_order],
             "timeout_s": self.timeout,
@@ -285,6 +299,8 @@ class TextInjector:
             "last_strategy": self.last_result.strategy.value if self.last_result else None,
             "last_success": self.last_result.success if self.last_result else None,
             "last_error": (self.last_result.error.value if self.last_result else None),
+            "last_detail": last_detail,
+            "duplicate": last_detail == "duplicate-suppressed",
         }
 
     # -- strategies --------------------------------------------------------
@@ -298,6 +314,12 @@ class TextInjector:
         return False, "unsupported strategy"
 
     def _attempt_clipboard_paste(self, text: str, restore_clipboard: bool) -> tuple:
+        """Paste via clipboard + Ctrl+V.
+
+        The clipboard write is verified, but the paste itself cannot be: a
+        successful Ctrl+V dispatch does not prove the target window received
+        the text. Callers must treat ``verified`` as False for this strategy.
+        """
         previous = self.clipboard_manager.get_clipboard_content()
         if not self.clipboard_manager.copy_to_clipboard(text):
             return False, "clipboard write failed"
@@ -313,9 +335,11 @@ class TextInjector:
         except Exception as exc:
             self._safe_restore(previous, text, restore_clipboard)
             return False, f"paste dispatch failed: {exc}"
-        time.sleep(self.injection_delay)
+        # Give the target time to consume the paste before restoring the
+        # previous clipboard content (~150ms minimum for reliability).
+        time.sleep(max(self.injection_delay, self.POST_PASTE_RESTORE_DELAY))
         self._safe_restore(previous, text, restore_clipboard)
-        return True, "clipboard paste dispatched"
+        return True, "clipboard paste dispatched (unverified)"
 
     def _attempt_keyboard_typing(self, text: str, speed: float = 0.02) -> tuple:
         if keyboard is None:

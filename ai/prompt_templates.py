@@ -95,9 +95,11 @@ def get_enhancement_prompt(mode: str, text: str, custom_modes: dict = None) -> s
     """
     if custom_modes and mode in custom_modes:
         template = custom_modes[mode]
-        # Support both {text} placeholder and bare prompts
+        # User templates are untrusted: never .format() them (a stray
+        # "{...}" would KeyError, and format fields can reach attributes).
+        # Only the {text} token is substituted.
         if "{text}" in template:
-            return template.format(text=text)
+            return template.replace("{text}", text)
         return f"{template}\n\n{text}"
 
     template = ENHANCEMENT_PROMPTS.get(mode, ENHANCEMENT_PROMPTS["formal"])

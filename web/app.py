@@ -204,13 +204,17 @@ def create_app() -> Flask:
         resp.headers["X-Frame-Options"] = "SAMEORIGIN"
         resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         resp.headers["Permissions-Policy"] = "microphone=(self), clipboard-read=(self), clipboard-write=(self)"
-        resp.headers["X-XSS-Protection"] = "1; mode=block"
         resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         # Sentry ingest endpoints are allowed for browser error reporting; without
         # them the browser SDK could not report anything under this policy.
+        # P2.4: the VOXYLIS_API_BASE bootstrap lives in /static/js/config.js so
+        # script-src needs no 'unsafe-inline'. Chart.js (dashboard) is the only
+        # remaining CDN (jsdelivr); unpkg.com was dropped (unused).
+        # NOTE (P3.3): remaining inline page scripts + onclick handlers still
+        # need vendoring into /static/js; they are tracked for P3.3.
         resp.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data:; "
@@ -361,11 +365,14 @@ from config.version import __version__ as APP_VERSION  # noqa: F401,E402
 from web.auth_helpers import (  # noqa: F401,E402
     _check_password,
     _create_session,
+    _delete_session_ids,
     _ensure_admin,
     _ensure_owner,
     _extract_session,
     _hash_password,
+    _hash_session_id,
     _is_hex,
+    _is_legacy_sha256,
     _issue_email_token,
     _notify_usage_threshold,
     _sanitize,

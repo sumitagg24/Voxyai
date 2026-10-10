@@ -13,9 +13,12 @@ from flask_limiter.util import get_remote_address
 from web.auth_helpers import (
     _check_password,
     _create_session,
+    _delete_session_ids,
     _ensure_admin,
     _hash_password,
+    _hash_session_id,
     _is_disposable_email,
+    _is_legacy_sha256,
     _issue_email_token,
     _load_onboarding,
     _onboarding_steps,
@@ -461,6 +464,18 @@ def auth_login():
 
     if user is None or not _check_password(user["password_hash"], password):
         return jsonify({"success": False, "error": "Invalid credentials"}), 401
+    # Transparently upgrade legacy unsalted SHA-256 hashes to PBKDF2 on login.
+    if _is_legacy_sha256(user["password_hash"]):
+        try:
+            upgrade_conn = _get_db()
+            upgrade_conn.execute(
+                "UPDATE users SET password_hash = ? WHERE id = ?",
+                (_hash_password(password), user["id"]),
+            )
+            upgrade_conn.commit()
+            upgrade_conn.close()
+        except Exception:
+            pass
     if _is_disposable_email(email_or_phone):
         return (
             jsonify(
@@ -542,7 +557,7 @@ def auth_logout():
         return jsonify({"success": False, "error": "Missing session_id"}), 400
 
     conn = _get_db()
-    conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+    _delete_session_ids(conn, session_id)
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": "Logged out"}), 200

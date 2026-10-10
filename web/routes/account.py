@@ -12,6 +12,7 @@ from web.auth_helpers import (
     _check_password,
     _extract_session,
     _hash_password,
+    _hash_session_id,
     _load_onboarding,
     _session_created_at,
     _text,
@@ -137,7 +138,8 @@ def settings(user_id):
         if not isinstance(data, dict):
             conn.close()
             return jsonify({"status": "error", "message": "Invalid JSON body"}), 400
-        current.update(data)
+        filtered = _filter_settings_payload(data)
+        current.update(filtered)
         conn.execute("UPDATE users SET settings = ? WHERE id = ?", (json.dumps(current), user_id))
         conn.commit()
         conn.close()
@@ -154,6 +156,95 @@ def settings(user_id):
     }
     defaults.update(current)
     return jsonify({"status": "success", "settings": defaults})
+
+
+#: Allowlisted settings keys with per-type validation. Unknown keys are ignored.
+_SETTINGS_VALIDATORS = {
+    "theme": lambda v: v if v in ("light", "dark") else None,
+    "language": lambda v: v if isinstance(v, str) and v.lower() in _SETTINGS_LANGUAGES else None,
+    "notifications": lambda v: v if isinstance(v, bool) else None,
+    "sound": lambda v: v if isinstance(v, bool) else None,
+    "autoStart": lambda v: v if isinstance(v, bool) else None,
+    "hotkey": lambda v: v.strip()[:64] if isinstance(v, str) and 1 <= len(v.strip()) <= 64 else None,
+    "enhancement_mode": lambda v: v.lower() if isinstance(v, str) and v.lower() in _SETTINGS_MODES else None,
+}
+
+_SETTINGS_LANGUAGES = frozenset(
+    {
+        "en",
+        "auto",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "ru",
+        "ar",
+        "ur",
+        "bn",
+        "pa",
+        "gu",
+        "ta",
+        "te",
+        "ml",
+        "mr",
+        "hi",
+        "hi-en",
+        "ja",
+        "zh",
+        "ko",
+        "tr",
+        "nl",
+        "pl",
+        "vi",
+        "th",
+        "id",
+        "ms",
+        "sv",
+        "no",
+        "da",
+        "fi",
+        "cs",
+        "hu",
+        "ro",
+        "uk",
+        "el",
+        "he",
+    }
+)
+
+_SETTINGS_MODES = frozenset({"formal", "casual", "technical", "concise", "creative"})
+
+
+def _filter_settings_payload(data: dict) -> dict:
+    """Keep only allowlisted settings keys that pass per-type checks."""
+    out: dict = {}
+    for key, validator in _SETTINGS_VALIDATORS.items():
+        if key not in data:
+            continue
+        try:
+            clean = validator(data[key])
+        except Exception:
+            clean = None
+        if clean is not None:
+            out[key] = clean
+    return out
+
+
+#: Allowlisted hotkey slots. Values are free-form shortcut strings (1-64 chars).
+_HOTKEY_SLOTS = frozenset({"record", "casual", "technical", "settings"})
+
+
+def _filter_hotkeys_payload(data: dict) -> dict:
+    """Keep only known hotkey slots with sane string values."""
+    out: dict = {}
+    for key in _HOTKEY_SLOTS:
+        if key not in data:
+            continue
+        value = data[key]
+        if isinstance(value, str) and 1 <= len(value.strip()) <= 64:
+            out[key] = value.strip()[:64]
+    return out
 
 
 @account_bp.route("/api/hotkeys", methods=["GET", "POST"])
@@ -176,7 +267,7 @@ def hotkeys(user_id):
         if not isinstance(data, dict):
             conn.close()
             return jsonify({"status": "error", "message": "Invalid JSON body"}), 400
-        current.update(data)
+        current.update(_filter_hotkeys_payload(data))
         conn.execute("UPDATE users SET hotkeys = ? WHERE id = ?", (json.dumps(current), user_id))
         conn.commit()
         conn.close()
@@ -233,7 +324,12 @@ def update_profile(user_id):
         pw_hash = _hash_password(new_password)
         conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user_id))
         # A password change signs out every *other* device and keeps this one.
-        conn.execute("DELETE FROM sessions WHERE user_id = ? AND id != ?", (user_id, _extract_session()))
+        # Sessions are stored hashed: keep the row matching either form.
+        _current_raw = _extract_session()
+        conn.execute(
+            "DELETE FROM sessions WHERE user_id = ? AND id NOT IN (?, ?)",
+            (user_id, _hash_session_id(_current_raw), _current_raw),
+        )
         password_changed = True
     else:
         password_changed = False

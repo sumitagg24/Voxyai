@@ -7,7 +7,16 @@ import numpy as np
 
 def apply_noise_gate(audio_data: np.ndarray, threshold: float = 0.02) -> np.ndarray:
     """
-    Apply noise gate to reduce background noise
+    Apply a soft downward expander to reduce background noise.
+
+    The previous binary gate (``|x| > threshold ? 1 : 0``) chopped quiet
+    samples to zero, which produced audible clicks at every threshold
+    crossing. This version uses a soft knee with smoothed gain:
+
+    * above ``threshold``: unity gain (untouched);
+    * below ``threshold``: quadratic fade ``(|x|/threshold)^2``;
+    * the gain curve is smoothed with a short moving average so fast
+      crossings cannot click.
 
     Args:
         audio_data: Audio samples as numpy array
@@ -30,8 +39,21 @@ def apply_noise_gate(audio_data: np.ndarray, threshold: float = 0.02) -> np.ndar
         return audio_float
 
     normalized = audio_float / max_val
-    gate = np.abs(normalized) > threshold
-    return (normalized * gate * max_val).astype(np.float32)
+    magnitude = np.abs(normalized)
+
+    # Soft knee: quadratic fade below the threshold, unity above.
+    gain = np.ones_like(magnitude)
+    quiet = magnitude < threshold
+    with np.errstate(divide="ignore", invalid="ignore"):
+        gain[quiet] = (magnitude[quiet] / threshold) ** 2
+
+    # Smooth the gain to avoid clicks (short ~4ms moving average at 16kHz).
+    smooth_len = 64
+    if len(gain) > smooth_len:
+        kernel = np.ones(smooth_len, dtype=np.float32) / smooth_len
+        gain = np.convolve(gain, kernel, mode="same").astype(np.float32)
+
+    return (normalized * gain * max_val).astype(np.float32)
 
 
 def normalize_audio(audio_data: np.ndarray) -> np.ndarray:

@@ -39,7 +39,7 @@ except ImportError:
 class CommandProcessor:
     """Process and execute voice commands"""
 
-    def __init__(self):
+    def __init__(self, config: Optional[Dict] = None):
         try:
             from utils.helpers import get_base_dir
 
@@ -50,6 +50,19 @@ class CommandProcessor:
         self.snippets = self._load_snippets()
         self.command_history = []
         self.max_history = 100
+        self.config = dict(config) if isinstance(config, dict) else {}
+
+    @property
+    def enabled(self) -> bool:
+        """Rich commands are opt-in via config (default True)."""
+        if not isinstance(self.config, dict):
+            return True
+        return bool(self.config.get("rich_commands_enabled", True))
+
+    def update_config(self, config: Dict) -> None:
+        """Refresh the backing config dict (called by the orchestrator)."""
+        if isinstance(config, dict):
+            self.config = dict(config)
 
     def _load_snippets(self) -> Dict[str, str]:
         """Load saved snippets from file"""
@@ -81,7 +94,11 @@ class CommandProcessor:
         if len(self.command_history) > self.max_history:
             self.command_history = self.command_history[-self.max_history :]
 
-        # Route to appropriate handler
+        if not self.enabled:
+            return (False, "Rich commands are disabled. Enable them in Settings to use voice actions.")
+
+        # Route to appropriate handler (all triggers are anchored at the START
+        # via re.match so "I searched for it yesterday" never fires).
         if self._is_web_search(text):
             return self._handle_web_search(text)
         elif self._is_github_command(text):
@@ -103,15 +120,8 @@ class CommandProcessor:
     # ── Web Search ──────────────────────────────────────────────────────────
 
     def _is_web_search(self, text: str) -> bool:
-        """Check if command is a web search"""
-        patterns = [
-            r"search.*for",
-            r"look.*up",
-            r"find.*about",
-            r"google",
-            r"search the web",
-        ]
-        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+        """Check if command is a web search (anchored at the start)."""
+        return bool(re.match(r"(?:google search for|search the web for|search for)\b", text, re.IGNORECASE))
 
     def _handle_web_search(self, text: str) -> Tuple[bool, str]:
         """Handle web search command"""
@@ -130,31 +140,24 @@ class CommandProcessor:
             return False, f"Search failed: {str(e)}"
 
     def _extract_search_query(self, text: str) -> Optional[str]:
-        """Extract search query from command"""
-        # Remove common prefixes
+        """Extract search query from an anchored command."""
         query = re.sub(
-            r"^(search|look|find|google|search the web)\s+(for|about|up)?\s*",
+            r"^(?:google search for|search the web for|search for)\b\s*",
             "",
             text,
             flags=re.IGNORECASE,
         )
-        query = query.strip()
+        query = query.strip().rstrip(".")
         return query if query else None
 
     # ── GitHub ──────────────────────────────────────────────────────────────
 
     def _is_github_command(self, text: str) -> bool:
-        """Check if command is GitHub-related"""
-        patterns = [
-            r"create.*issue",
-            r"github",
-            r"create.*bug",
-            r"report.*issue",
-        ]
-        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+        """Check if command is GitHub-related (anchored at the start)."""
+        return bool(re.match(r"create github issue\b", text, re.IGNORECASE))
 
     def _handle_github(self, text: str) -> Tuple[bool, str]:
-        """Handle GitHub commands"""
+        """Handle GitHub commands (requires GITHUB_REPO owner/name)."""
         if not GITHUB_AVAILABLE:
             return (
                 False,
@@ -172,9 +175,26 @@ class CommandProcessor:
             if not token:
                 return False, "GITHUB_TOKEN environment variable not set"
 
-            # Create issue
+            repo_slug = ""
+            if isinstance(self.config, dict):
+                repo_slug = str(self.config.get("github_repo") or "").strip()
+            if not repo_slug:
+                repo_slug = (os.getenv("GITHUB_REPO") or "").strip()
+            if not repo_slug:
+                return (
+                    False,
+                    "GITHUB_REPO is not configured. Set GITHUB_REPO to 'owner/repo' "
+                    "in your environment or settings to file GitHub issues.",
+                )
+            if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", repo_slug):
+                return (
+                    False,
+                    "GITHUB_REPO must be 'owner/repo' (for example 'octo-org/octo-repo').",
+                )
+
+            # Create issue in the explicitly configured repo (never first-repo).
             g = Github(token)
-            repo = g.get_user().get_repos()[0]  # Use first repo
+            repo = g.get_repo(repo_slug)
 
             issue = repo.create_issue(
                 title=title,
@@ -186,28 +206,22 @@ class CommandProcessor:
             return False, f"GitHub error: {str(e)}"
 
     def _extract_github_title(self, text: str) -> Optional[str]:
-        """Extract GitHub issue title"""
-        # Remove common prefixes
+        """Extract GitHub issue title from an anchored command."""
         title = re.sub(
-            r"^(create|report)\s+(a\s+)?(github\s+)?(issue|bug)\s+(titled|called)?\s*",
+            r"^create github issue\s*",
             "",
             text,
             flags=re.IGNORECASE,
         )
-        title = title.strip()
+        title = re.sub(r"^(titled|called)\s+", "", title, flags=re.IGNORECASE)
+        title = title.strip().rstrip(".")
         return title if title else None
 
     # ── Email ───────────────────────────────────────────────────────────────
 
     def _is_email_command(self, text: str) -> bool:
-        """Check if command is email-related"""
-        patterns = [
-            r"draft.*email",
-            r"write.*email",
-            r"email.*to",
-            r"compose.*email",
-        ]
-        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+        """Check if command is email-related (anchored at the start)."""
+        return bool(re.match(r"draft email to\b", text, re.IGNORECASE))
 
     def _handle_email(self, text: str) -> Tuple[bool, str]:
         """Handle email drafting"""
@@ -239,17 +253,18 @@ class CommandProcessor:
             return False, f"Email error: {str(e)}"
 
     def _extract_email_info(self, text: str) -> Tuple[Optional[str], Optional[str]]:
-        """Extract recipient and subject from email command"""
+        """Extract recipient and subject from an anchored email command."""
         # Pattern: "draft email to [recipient] about [subject]"
-        match = re.search(
-            r"to\s+(\w+)\s+(?:about|regarding|with subject)\s+(.+?)(?:\.|$)",
+        match = re.match(
+            r"draft email to\s+(\w+)\s+(?:about|regarding|with subject)\s+(.+?)\s*\.?\s*$",
             text,
             re.IGNORECASE,
         )
         if match:
-            recipient = match.group(1)
-            subject = match.group(2).strip()
-            return recipient, subject
+            recipient = match.group(1).strip()
+            subject = match.group(2).strip().rstrip(".")
+            if recipient and subject:
+                return recipient, subject
         return None, None
 
     def _create_email_draft(self, recipient: str, subject: str) -> str:
@@ -268,15 +283,15 @@ Best regards,
     # ── Text Processing ─────────────────────────────────────────────────────
 
     def _is_text_processing(self, text: str) -> bool:
-        """Check if command is text processing"""
+        """Check if command is text processing (anchored at the start)."""
         patterns = [
-            r"clean.*sentence",
-            r"make.*professional",
-            r"polish.*text",
-            r"improve.*writing",
-            r"fix.*grammar",
+            r"clean\b",
+            r"make\b.*\bprofessional\b",
+            r"polish\b",
+            r"improve\b.*\bwriting\b",
+            r"fix\b.*\bgrammar\b",
         ]
-        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+        return any(re.match(p, text, re.IGNORECASE) for p in patterns)
 
     def _handle_text_processing(self, text: str) -> Tuple[bool, str]:
         """Handle text processing/cleaning"""
@@ -327,14 +342,15 @@ Best regards,
     # ── Snippets ────────────────────────────────────────────────────────────
 
     def _is_snippet_command(self, text: str) -> bool:
-        """Check if command is snippet-related"""
+        """Check if command is snippet-related (anchored at the start)."""
         patterns = [
-            r"save.*snippet",
-            r"save.*as",
-            r"store.*email",
-            r"remember.*email",
+            r"save\b.*\bsnippet\b",
+            r"save\b.*\bas\b",
+            r"store\b",
+            r"remember\b",
+            r"(?:get|retrieve|use)\b",
         ]
-        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+        return any(re.match(p, text, re.IGNORECASE) for p in patterns)
 
     def _handle_snippet(self, text: str) -> Tuple[bool, str]:
         """Handle snippet saving/retrieval"""
@@ -379,13 +395,8 @@ Best regards,
     # ── Slack ───────────────────────────────────────────────────────────────
 
     def _is_slack_command(self, text: str) -> bool:
-        """Check if command is Slack-related"""
-        patterns = [
-            r"send.*slack",
-            r"slack.*message",
-            r"message.*slack",
-        ]
-        return any(re.search(p, text, re.IGNORECASE) for p in patterns)
+        """Check if command is Slack-related (anchored at the start)."""
+        return bool(re.match(r"send slack message\b", text, re.IGNORECASE))
 
     def _handle_slack(self, text: str) -> Tuple[bool, str]:
         """Handle Slack message sending"""
@@ -420,16 +431,11 @@ Best regards,
             return False, f"Slack error: {str(e)}"
 
     def _extract_slack_message(self, text: str) -> Optional[str]:
-        """Extract Slack message"""
-        # Pattern: "send slack message [message]" or "slack [message]"
-        match = re.search(
-            r"(?:send\s+)?slack\s+(?:message)?\s*[:\"]?\s*(.+?)(?:\.|$)",
-            text,
-            re.IGNORECASE,
-        )
-        if match:
-            return match.group(1).strip()
-        return None
+        """Extract Slack message from an anchored command."""
+        message = re.sub(r"^send slack message\b\s*", "", text, flags=re.IGNORECASE)
+        message = re.sub(r"^saying\s+", "", message, flags=re.IGNORECASE)
+        message = message.strip().strip(':"').strip().rstrip(".")
+        return message if message else None
 
     # ── Utility Methods ─────────────────────────────────────────────────────
 

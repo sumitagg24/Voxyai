@@ -442,3 +442,18 @@ def test_audio_device_selection_is_validated_and_persisted(tmp_path, monkeypatch
     assert app.update_config("audio_device", "not-a-device") is False
     assert app.config["audio_device"] == 0
     assert app.recorder.device_id == 0
+
+
+def test_custom_prompt_template_replaces_only_text_token():
+    """P2.6: user templates are never .format()ed — only {text} is replaced."""
+    from ai.prompt_templates import get_enhancement_prompt
+
+    template = "Rewrite this: {text} (keep {verbatim} braces and {0} indices)"
+    out = get_enhancement_prompt("custom", "hello world", {"custom": template})
+    assert "hello world" in out
+    # Other brace groups survive untouched instead of raising KeyError.
+    assert "{verbatim}" in out
+    assert "{0}" in out
+
+    bare = get_enhancement_prompt("custom", "hello world", {"custom": "Make it formal"})
+    assert "hello world" in bare and "Make it formal" in bare

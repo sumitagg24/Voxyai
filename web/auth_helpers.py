@@ -1,6 +1,7 @@
 """Shared auth decorators and account helpers (moved from web/app.py)."""
 
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -99,12 +100,28 @@ def _hash_password(password: str) -> str:
 def _check_password(password_hash: str, password: str) -> bool:
     """Verify a password against a stored hash (supports legacy SHA-256)."""
     if password_hash and len(password_hash) == 64 and _is_hex(password_hash):
-        # Legacy plain SHA-256 (pre-v2.2). Compare in constant-time style.
-        return hashlib.sha256(password.encode("utf-8")).hexdigest() == password_hash
+        # Legacy plain SHA-256 (pre-v2.2). Constant-time compare to avoid
+        # leaking prefix matches through timing.
+        candidate = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return hmac.compare_digest(candidate, password_hash.lower())
     try:
         return check_password_hash(password_hash, password)
     except (ValueError, TypeError):
         return False
+
+
+def _is_legacy_sha256(password_hash: str) -> bool:
+    """True when the stored hash is an unsalted legacy SHA-256 hex digest."""
+    return bool(password_hash) and len(password_hash) == 64 and _is_hex(password_hash)
+
+
+def _hash_session_id(session_id: str) -> str:
+    """SHA-256 hash of a session id for server-side storage.
+
+    The raw id lives only client-side (and in transit); the database holds
+    only the hash so a database read never yields a usable session.
+    """
+    return hashlib.sha256((session_id or "").encode("utf-8")).hexdigest()
 
 
 def _is_hex(value: str) -> bool:
@@ -126,13 +143,19 @@ def _session_created_at(session_id: str):
 
     Read-only: unlike :func:`_verify_session` this never rotates or deletes
     anything, so it is safe to call from guards that only need the age.
+    Sessions are stored hashed; the lookup tries the hash first, then the
+    raw id for pre-migration rows (without migrating, to stay read-only).
     """
     if not session_id:
         return None
     try:
         conn = _get_db()
         try:
-            row = conn.execute("SELECT created_at FROM sessions WHERE id = ?", (session_id,)).fetchone()
+            row = conn.execute(
+                "SELECT created_at FROM sessions WHERE id = ?", (_hash_session_id(session_id),)
+            ).fetchone()
+            if row is None:
+                row = conn.execute("SELECT created_at FROM sessions WHERE id = ?", (session_id,)).fetchone()
         finally:
             conn.close()
     except Exception:
@@ -160,17 +183,34 @@ def normalize_email(value) -> str:
 
 
 def _create_session(user_id: int) -> str:
-    """Create a 30-day session and return its ID."""
+    """Create a 30-day session and return its raw ID.
+
+    Only the SHA-256 hash is stored server-side; the raw id is returned to
+    the client (and never written to logs). Lookup hashes the presented id.
+    """
     session_id = uuid.uuid4().hex
+    session_hash = _hash_session_id(session_id)
     expires = (utcnow() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     conn = _get_db()
     conn.execute(
         "INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)",
-        (session_id, user_id, expires),
+        (session_hash, user_id, expires),
     )
     conn.commit()
     conn.close()
     return session_id
+
+
+def _delete_session_ids(conn, *raw_ids: str) -> None:
+    """Delete session rows matching any of the raw ids (hash + raw fallback)."""
+    targets: set = set()
+    for raw in raw_ids:
+        if not raw:
+            continue
+        targets.add(_hash_session_id(raw))
+        targets.add(raw)
+    for target in targets:
+        conn.execute("DELETE FROM sessions WHERE id = ?", (target,))
 
 
 def _verify_session(session_id: str, rotate: bool = True):
@@ -181,6 +221,10 @@ def _verify_session(session_id: str, rotate: bool = True):
     no rotation): otherwise the ``before_request`` verification would rotate
     first and the endpoint's own verification of the SAME id would 401.
     Rotation happens at most once per request, guarded by ``g``.
+
+    Sessions are stored as SHA-256 hashes. The lookup hashes the presented
+    id first; a one-time fallback matches a pre-migration raw id and re-stores
+    it hashed so the raw value never persists.
     """
     if not session_id:
         return None
@@ -194,15 +238,28 @@ def _verify_session(session_id: str, rotate: bool = True):
             return _verified_uid
     except RuntimeError:
         pass
+    session_hash = _hash_session_id(session_id)
     conn = _get_db()
-    row = conn.execute("SELECT user_id, expires_at, created_at FROM sessions WHERE id = ?", (session_id,)).fetchone()
+    row = conn.execute("SELECT user_id, expires_at, created_at FROM sessions WHERE id = ?", (session_hash,)).fetchone()
+    # One-time fallback for pre-migration raw rows: re-store hashed.
+    if row is None:
+        raw_row = conn.execute(
+            "SELECT user_id, expires_at, created_at FROM sessions WHERE id = ?", (session_id,)
+        ).fetchone()
+        if raw_row is not None:
+            try:
+                conn.execute("UPDATE sessions SET id = ? WHERE id = ?", (session_hash, session_id))
+                conn.commit()
+            except Exception:
+                pass
+            row = raw_row
     if row is None:
         conn.close()
         return None
     expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S")
     if utcnow() > expires:
         if rotate:
-            conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+            _delete_session_ids(conn, session_id)
             conn.commit()
         conn.close()
         return None
@@ -231,18 +288,21 @@ def _verify_session(session_id: str, rotate: bool = True):
     # rotator wins (rowcount 1) and the loser re-resolves instead of 401ing.
     user_id = row["user_id"]
     new_id = uuid.uuid4().hex
+    new_hash = _hash_session_id(new_id)
     now_str = utcnow().strftime("%Y-%m-%d %H:%M:%S")
     new_expires = (utcnow() + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     threshold = (utcnow() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
     cur = conn.execute(
         "UPDATE sessions SET id = ?, created_at = ?, expires_at = ? WHERE id = ? AND created_at <= ?",
-        (new_id, now_str, new_expires, session_id, threshold),
+        (new_hash, now_str, new_expires, session_hash, threshold),
     )
     if cur.rowcount == 0:
         # Lost the race (row already rotated away) or clock skew: re-fetch
         # instead of failing closed. The old id is gone, but we already know
         # the user; confirm the account still holds a live session.
-        still = conn.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        still = conn.execute("SELECT user_id FROM sessions WHERE id = ?", (session_hash,)).fetchone()
+        if still is None:
+            still = conn.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
         if still is not None:
             conn.close()
             return still["user_id"]

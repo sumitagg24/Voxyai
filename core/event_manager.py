@@ -35,8 +35,17 @@ class EventManager:
         """
         with self._lock:
             if event_name in self.listeners:
-                self.listeners[event_name].remove(callback)
-                log_debug(f"Unsubscribed from event: {event_name}")
+                # Identity-based removal: a missing callback is a no-op, and a
+                # custom __eq__ that raises ValueError can never be mistaken
+                # for "not present" (list.remove would swallow it).
+                listeners = self.listeners[event_name]
+                for index, existing in enumerate(listeners):
+                    if existing is callback:
+                        del listeners[index]
+                        log_debug(f"Unsubscribed from event: {event_name}")
+                        break
+                else:
+                    log_debug(f"Unsubscribe missed (not subscribed): {event_name}")
 
     def emit(self, event_name: str, *args, **kwargs) -> None:
         """

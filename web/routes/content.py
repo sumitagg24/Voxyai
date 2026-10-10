@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request
 from flask_limiter.util import get_remote_address
 
 from web import observability
-from web.auth_helpers import _sanitize, _text, normalize_email
+from web.auth_helpers import _text, normalize_email
 from web.content.blog_posts import LEGACY_BLOG_SLUGS
 from web.db import _get_db
 from web.extensions import cache, limiter
@@ -183,7 +183,12 @@ def blog_post(slug):
 def download_track():
     """Track download clicks (lightweight counter)."""
     data = request.get_json(silent=True) or {}
-    platform = data.get("platform", request.args.get("platform", "unknown"))
+    raw_platform = str(data.get("platform", request.args.get("platform", "unknown")) or "unknown")
+    platform = raw_platform.strip().lower()[:32]
+    if not re.fullmatch(r"[a-z0-9_-]{0,32}", platform):
+        platform = "unknown"
+    if not platform:
+        platform = "unknown"
     conn = _get_db()
     try:
         conn.execute(
@@ -273,23 +278,27 @@ def contact_submit():
         return jsonify({"success": False, "error": "Invalid email address"}), 400
 
     conn = _get_db()
+    # Store raw strings (no HTML-escaping at rest): contact_notification email
+    # templates escape at render time via html.escape, so persisting escaped
+    # entities would double-escape and corrupt the stored message.
     conn.execute(
         "INSERT INTO contact_messages (name, email, subject, message) VALUES (?, ?, ?, ?)",
-        (_sanitize(name), email, _sanitize(subject), _sanitize(message)),
+        (name, email, subject, message),
     )
     conn.commit()
     conn.close()
 
     # The database is the source of truth; the email is a convenience copy so a
     # message is not missed when nobody opens the admin console.
+    # Templates escape at render time, so pass raw values here.
     email_service.send_transactional(
         "contact_notification",
         email_service.support_address(),
         {
-            "name": _sanitize(name),
+            "name": name,
             "from_email": email,
-            "subject": _sanitize(subject),
-            "message": _sanitize(message),
+            "subject": subject,
+            "message": message,
         },
     )
 

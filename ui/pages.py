@@ -643,7 +643,29 @@ class VoicePage(BasePage):
 
         self.toggle_mode = QCheckBox("Toggle mode (press once to start, press again to stop)")
         voice_layout.addWidget(self.toggle_mode)
+
+        self.noise_cancellation = QCheckBox("Reduce background noise (recommended)")
+        voice_layout.addWidget(self.noise_cancellation)
         self.body.addWidget(voice_box)
+
+        commands_box = QGroupBox("Rich voice commands")
+        commands_layout = QVBoxLayout(commands_box)
+        self.rich_commands = QCheckBox("Enable rich voice commands (search, email, GitHub, Slack)")
+        commands_layout.addWidget(self.rich_commands)
+        commands_layout.addWidget(
+            hint(
+                "Commands only trigger at the start of an utterance: "
+                "'search for ...', 'google search for ...', 'draft email to ...', "
+                "'create github issue ...', 'send slack message ...'."
+            )
+        )
+        repo_row = QHBoxLayout()
+        repo_row.addWidget(QLabel("GitHub repo"))
+        self.github_repo = QLineEdit()
+        self.github_repo.setPlaceholderText("owner/repo (required for GitHub issues)")
+        repo_row.addWidget(self.github_repo, 1)
+        commands_layout.addLayout(repo_row)
+        self.body.addWidget(commands_box)
 
         sound_box = QGroupBox("Sound feedback")
         sound_layout = QVBoxLayout(sound_box)
@@ -666,6 +688,9 @@ class VoicePage(BasePage):
         self.device_combo.currentIndexChanged.connect(self._save)
         self.auto_inject.stateChanged.connect(self._save)
         self.toggle_mode.stateChanged.connect(self._save)
+        self.noise_cancellation.stateChanged.connect(self._save)
+        self.rich_commands.stateChanged.connect(self._save)
+        self.github_repo.editingFinished.connect(self._save)
         self.sound_enabled.stateChanged.connect(self._save)
         self.volume.sliderReleased.connect(self._save)
 
@@ -684,6 +709,9 @@ class VoicePage(BasePage):
             combo.setCurrentIndex(index if index >= 0 else 0)
         self.auto_inject.setChecked(bool(config.get("auto_inject", True)))
         self.toggle_mode.setChecked(bool(config.get("toggle_mode", False)))
+        self.noise_cancellation.setChecked(bool(config.get("noise_cancellation", True)))
+        self.rich_commands.setChecked(bool(config.get("rich_commands_enabled", True)))
+        self.github_repo.setText(str(config.get("github_repo") or ""))
         self.sound_enabled.setChecked(bool(config.get("sound_feedback", True)))
         self.volume.setValue(int(float(config.get("sound_volume", 0.7)) * 100))
         self.volume_label.setText(f"{self.volume.value()}%")
@@ -728,6 +756,9 @@ class VoicePage(BasePage):
         self.orchestrator.update_config("audio_device", self.device_combo.currentData())
         self.orchestrator.update_config("auto_inject", self.auto_inject.isChecked())
         self.orchestrator.update_config("toggle_mode", self.toggle_mode.isChecked())
+        self.orchestrator.update_config("noise_cancellation", self.noise_cancellation.isChecked())
+        self.orchestrator.update_config("rich_commands_enabled", self.rich_commands.isChecked())
+        self.orchestrator.update_config("github_repo", self.github_repo.text().strip())
         self.orchestrator.update_config("sound_feedback", self.sound_enabled.isChecked())
         self.orchestrator.update_config("sound_volume", self.volume.value() / 100.0)
 
@@ -1256,12 +1287,21 @@ class AccountPage(BasePage):
             return
         config = self.orchestrator.get_config()
         email = (config.get("user_email") or "").strip()
+        api_base = self._api_base()
         if email:
             self.state_label.setText(f"Signed in as <b>{email}</b>")
             tier = config.get("tier", "free")
             self.plan_label.setText(f"Plan: {tier} (reported by the server)")
             self.signin_button.setText("Switch account")
             self.signout_button.setEnabled(True)
+        elif not api_base:
+            self.state_label.setText("Not signed in — you are using Voxylis locally.")
+            self.plan_label.setText(
+                "Cloud sign-in not configured in this build — local mode with your own provider key. "
+                "Set 'api_base' in settings to enable cloud sign-in."
+            )
+            self.signin_button.setText("Sign in")
+            self.signout_button.setEnabled(False)
         else:
             self.state_label.setText("Not signed in — you are using Voxylis locally.")
             self.plan_label.setText("No plan required for local dictation with your own API key.")
@@ -1269,19 +1309,35 @@ class AccountPage(BasePage):
             self.signout_button.setEnabled(False)
 
     def _api_base(self) -> str:
+        """Effective cloud API base, or "" when cloud is not configured.
+
+        An empty sentinel DISABLES cloud sign-in: callers must refuse with the
+        "Cloud sign-in not configured in this build" copy. Override via the
+        ``api_base`` setting.
+        """
         config = self.orchestrator.get_config()
         base = (config.get("api_base") or "").strip()
         if base:
             return base.rstrip("/")
-        return f"http://{config.get('web_ui_host', '127.0.0.1')}:{config.get('web_ui_port', 5000)}"
+        return ""
 
     def _sign_in(self) -> None:
+        api_base = self._api_base()
+        if not api_base:
+            QMessageBox.information(
+                self,
+                "Cloud sign-in unavailable",
+                "Cloud sign-in not configured in this build. "
+                "Set 'api_base' in settings to enable cloud sign-in, "
+                "or continue locally with your own provider key.",
+            )
+            return
         try:
             from ui.auth0_dialog import Auth0LoginDialog
         except Exception as exc:
             QMessageBox.warning(self, "Sign-in unavailable", f"The sign-in dialog could not load: {exc}")
             return
-        dialog = Auth0LoginDialog(self, api_base=self._api_base())
+        dialog = Auth0LoginDialog(self, api_base=api_base)
         if not dialog.exec_() or not dialog.result_data:
             return
         data = dialog.result_data
@@ -1327,6 +1383,14 @@ class AccountPage(BasePage):
     def _refresh_plan(self) -> None:
         import requests
 
+        api_base = self._api_base()
+        if not api_base:
+            QMessageBox.information(
+                self,
+                "Cloud sign-in unavailable",
+                "Cloud sign-in not configured in this build. " "Set 'api_base' in settings to enable cloud sign-in.",
+            )
+            return
         session_id = None
         try:
             from utils import credentials
@@ -1343,7 +1407,7 @@ class AccountPage(BasePage):
             return
         try:
             response = requests.get(
-                f"{self._api_base()}/api/subscription",
+                f"{api_base}/api/subscription",
                 headers={"X-Session-Id": session_id},
                 timeout=10,
             )

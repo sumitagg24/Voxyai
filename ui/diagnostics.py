@@ -54,6 +54,7 @@ def collect(orchestrator=None, extra: Optional[dict] = None) -> dict:
         data["injection"] = _safe(orchestrator.injector.diagnostics)
         data["shortcuts"] = _safe(orchestrator.hotkey_listener.describe)
         data["status"] = _safe(orchestrator.get_status)
+        data["cloud"] = _safe(lambda: _cloud_status(orchestrator))
         history = getattr(orchestrator, "history", None)
         if history is not None:
             data["history"] = _safe(
@@ -79,6 +80,25 @@ def collect(orchestrator=None, extra: Optional[dict] = None) -> dict:
     if extra:
         data.update(extra)
     return data
+
+
+def _cloud_status(orchestrator) -> dict:
+    """Effective cloud API base (redacted-safe: a URL, never a secret)."""
+    try:
+        config = orchestrator.get_config() if hasattr(orchestrator, "get_config") else {}
+    except Exception:
+        config = {}
+    raw = ""
+    try:
+        raw = str((config or {}).get("api_base") or "").strip()
+    except Exception:
+        raw = ""
+    base = raw.rstrip("/") if raw else ""
+    return {
+        "api_base": base or "(not configured)",
+        "configured": bool(base),
+        "note": "Cloud sign-in not configured in this build" if not base else "Cloud sign-in enabled",
+    }
 
 
 def _audio_devices() -> dict:

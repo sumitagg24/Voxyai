@@ -16,6 +16,7 @@ Hardening added here:
 """
 
 import os
+import sys
 import threading
 import time
 from pathlib import Path
@@ -23,8 +24,8 @@ from typing import Callable, Optional
 
 # Add project root to path if not already there (for standalone web server)
 project_root = Path(__file__).parent.parent
-if str(project_root) not in os.sys.path:
-    os.sys.path.insert(0, str(project_root))
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from ai.enhancer import TextEnhancer
 from ai.language_detector import language_detector
@@ -114,6 +115,10 @@ class AppOrchestrator:
             self.recorder.device_id = None if _saved_device in (None, "") else _saved_device
         except Exception:
             pass
+        try:
+            self.recorder.set_noise_cancellation(bool(self.config.get("noise_cancellation", True)))
+        except Exception:
+            pass
         self.transcriber: Optional[Transcriber] = None
         self.enhancer: Optional[TextEnhancer] = None
         self.injector = TextInjector()
@@ -121,7 +126,7 @@ class AppOrchestrator:
         self.api_keys: dict = {}
 
         self.voice_commands = VoiceCommandProcessor(self.config.get("voice_commands", {}))
-        self.command_processor = CommandProcessor()
+        self.command_processor = CommandProcessor(self.config)
         self.history = HistoryManager(
             max_entries=int(self.config.get("max_history", 500)),
             enabled=bool(self.config.get("history_enabled", True)),
@@ -195,6 +200,10 @@ class AppOrchestrator:
             "voice_commands": {},
             "custom_modes": {},
             "app_profiles": {},
+            "rich_commands_enabled": True,
+            "github_repo": "",
+            "noise_cancellation": True,
+            "api_base": "",
             # Off unless the user turns it on in Settings → Privacy. No install
             # ping, no analytics: a failure report is the only thing we ever send.
             "share_crash_reports": False,
@@ -562,11 +571,16 @@ class AppOrchestrator:
                 result, enh_error = self._retry(_enhance, attempts=2)
                 if enh_error is not None:
                     log_warning(f"Enhancement failed, using raw transcript: {enh_error.code}")
-                    event_manager.emit(Events.ENHANCEMENT_FAILED)
+                    event_manager.emit(Events.ENHANCEMENT_FAILED, enh_error)
                     event_manager.emit(Events.ERROR_OCCURRED, enh_error)
                 elif result:
                     enhanced = result
                     event_manager.emit(Events.ENHANCEMENT_COMPLETED, enhanced)
+                else:
+                    empty_error = friendly_error("enhancement_failed", provider=provider)
+                    log_warning("Enhancement returned empty text, using raw transcript")
+                    event_manager.emit(Events.ENHANCEMENT_FAILED, empty_error)
+                    event_manager.emit(Events.ERROR_OCCURRED, empty_error)
             self._mode_override = None
 
             # ── Stats + history ───────────────────────────────────────────
@@ -762,6 +776,16 @@ class AppOrchestrator:
             if key in ("sound_feedback", "sound_volume"):
                 self.sound.enabled = self.config.get("sound_feedback", True)
                 self.sound.volume = self.config.get("sound_volume", 0.7)
+            if key in ("rich_commands_enabled", "github_repo"):
+                try:
+                    self.command_processor.update_config(self.config)
+                except Exception:
+                    pass
+            if key == "noise_cancellation" and hasattr(self, "recorder") and self.recorder is not None:
+                try:
+                    self.recorder.set_noise_cancellation(bool(value))
+                except Exception:
+                    pass
             if key in ("history_enabled", "history_retention_days", "max_history"):
                 self.history.configure(
                     max_entries=int(self.config.get("max_history", 500)),

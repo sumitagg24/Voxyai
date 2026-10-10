@@ -368,14 +368,23 @@ function initializeHotkeys() {
 function showHotkeyRecorder(index) {
     const modal = document.createElement('div');
     modal.className = 'modal';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h3>Press your new hotkey combination</h3>
-            <p id="hotkeyDisplay">Waiting for input...</p>
-            <button class="btn btn-secondary" onclick="this.parentElement.parentElement.remove()">Cancel</button>
-        </div>
-    `;
-    
+    // Built with textContent/DOM (no inline onclick) so CSP needs no 'unsafe-inline'.
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Press your new hotkey combination';
+    const display = document.createElement('p');
+    display.id = 'hotkeyDisplay';
+    display.textContent = 'Waiting for input...';
+    const cancel = document.createElement('button');
+    cancel.className = 'btn btn-secondary';
+    cancel.textContent = 'Cancel';
+    cancel.addEventListener('click', () => modal.remove());
+    content.appendChild(heading);
+    content.appendChild(display);
+    content.appendChild(cancel);
+    modal.appendChild(content);
+
     document.body.appendChild(modal);
     
     let keys = [];

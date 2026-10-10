@@ -80,28 +80,34 @@ def test_login_with_wrong_password_fails(app_client):
 
 
 def test_expired_session_is_rejected_and_removed(app_client):
+    import hashlib
+
     client, web_app = app_client
     user = ApiUser(client, "expiry@gmail.com")
+    session_hash = hashlib.sha256(user.session_id.encode("utf-8")).hexdigest()
     conn = web_app._get_db()
     conn.execute(
         "UPDATE sessions SET expires_at = '2000-01-01 00:00:00' WHERE id = ?",
-        (user.session_id,),
+        (session_hash,),
     )
     conn.commit()
     conn.close()
 
     assert client.post("/api/auth/verify", json={"session_id": user.session_id}).get_json()["valid"] is False
     conn = web_app._get_db()
-    remaining = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (user.session_id,)).fetchone()["c"]
+    remaining = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (session_hash,)).fetchone()["c"]
     conn.close()
     assert remaining == 0
 
 
 def test_session_rotates_after_a_day(app_client):
+    import hashlib
+
     client, web_app = app_client
     user = ApiUser(client, "rotate@gmail.com")
+    session_hash = hashlib.sha256(user.session_id.encode("utf-8")).hexdigest()
     conn = web_app._get_db()
-    conn.execute("UPDATE sessions SET created_at = '2020-01-01 00:00:00' WHERE id = ?", (user.session_id,))
+    conn.execute("UPDATE sessions SET created_at = '2020-01-01 00:00:00' WHERE id = ?", (session_hash,))
     conn.commit()
     conn.close()
 
@@ -109,7 +115,7 @@ def test_session_rotates_after_a_day(app_client):
     response = client.post("/api/auth/verify", json={"session_id": user.session_id})
     assert response.get_json()["valid"] is True
     conn = web_app._get_db()
-    old = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (user.session_id,)).fetchone()["c"]
+    old = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE id = ?", (session_hash,)).fetchone()["c"]
     conn.close()
     assert old == 0, "rotated session should no longer exist under the old id"
 
@@ -123,10 +129,13 @@ def test_session_rotation_with_observability_enabled_is_not_double_rotated(app_c
     """
     client, web_app = app_client
     user = ApiUser(client, "rotate-obs@gmail.com")
+    import hashlib
+
+    old_hash = hashlib.sha256(user.session_id.encode("utf-8")).hexdigest()
     conn = web_app._get_db()
     conn.execute(
         "UPDATE sessions SET created_at = datetime('now', '-48 hours') WHERE id = ?",
-        (user.session_id,),
+        (old_hash,),
     )
     conn.commit()
     conn.close()
@@ -142,11 +151,12 @@ def test_session_rotation_with_observability_enabled_is_not_double_rotated(app_c
     assert payload["session_id"] == rotated_header
     assert rotated_header != old_id
 
-    # Exactly one live session for the user, under the new id.
+    # Exactly one live session for the user, under the hash of the new id.
     conn = web_app._get_db()
     rows = conn.execute("SELECT id FROM sessions WHERE user_id = ?", (user.user_id,)).fetchall()
     conn.close()
-    assert [r["id"] for r in rows] == [rotated_header]
+    expected_hash = hashlib.sha256(rotated_header.encode("utf-8")).hexdigest()
+    assert [r["id"] for r in rows] == [expected_hash]
 
     # Follow-up with the NEW id succeeds without further rotation.
     second = client.post("/api/auth/verify", json={"session_id": rotated_header})

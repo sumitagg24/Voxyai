@@ -518,8 +518,10 @@ class VoxylisApp:
 
 
 def main() -> int:
-    QApplication.setAttribute(0x00000004)  # Qt.AA_EnableHighDpiScaling
-    QApplication.setAttribute(0x00000001)  # Qt.AA_UseHighDpiPixmaps
+    from PyQt5.QtCore import Qt
+
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     application = QApplication(sys.argv)
 
     instance = SingleInstance()

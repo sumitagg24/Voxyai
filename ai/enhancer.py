@@ -87,38 +87,43 @@ class TextEnhancer:
         self.custom_modes = custom_modes
 
     def enhance(self, text: str, mode: str = "formal", settings: dict = None) -> Optional[str]:
+        """Enhance text via the configured provider.
+
+        Returns the original text ONLY when no client is configured (the
+        orchestrator gates on this), for empty input, or for languages we do
+        not enhance. Provider failures after :meth:`_chat` exhausts candidates
+        RAISE so the orchestrator can classify them, emit
+        ``ENHANCEMENT_FAILED``, and fall back to the raw transcript.
+        """
         if not self.client:
             log_warning("No enhancement client — returning original text")
             return text
 
-        try:
-            if not text or not text.strip():
-                return text
+        if not text or not text.strip():
+            return text
 
-            # No local tier enforcement: the server and the user's own
-            # provider key are the real boundaries. The desktop reads
-            # entitlements from GET /api/me and degrades offline to local mode.
+        # No local tier enforcement: the server and the user's own
+        # provider key are the real boundaries. The desktop reads
+        # entitlements from GET /api/me and degrades offline to local mode.
 
-            # Detect language from text
-            lang_code, script, confidence = language_detector.detect_from_text(text)
-            lang_name = language_detector.get_language_name(lang_code)
+        # Detect language from text
+        lang_code, script, confidence = language_detector.detect_from_text(text)
+        lang_name = language_detector.get_language_name(lang_code)
 
-            log_debug(
-                f"Language detected: {lang_name} ({lang_code}), " f"script: {script}, confidence: {confidence:.2f}"
-            )
+        log_debug(f"Language detected: {lang_name} ({lang_code}), " f"script: {script}, confidence: {confidence:.2f}")
 
-            # Check if enhancement is appropriate for this language
-            if not language_detector.should_enhance(lang_code):
-                log_info(f"Language {lang_name} not well supported for enhancement, " "returning original text")
-                return text
+        # Check if enhancement is appropriate for this language
+        if not language_detector.should_enhance(lang_code):
+            log_info(f"Language {lang_name} not well supported for enhancement, " "returning original text")
+            return text
 
-            # Get base prompt
-            base_prompt = get_enhancement_prompt(mode, text, self.custom_modes)
+        # Get base prompt
+        base_prompt = get_enhancement_prompt(mode, text, self.custom_modes)
 
-            # If not English, add language preservation instructions
-            if lang_code != "en":
-                # Create language-specific prompt
-                enhanced_prompt = f"""{base_prompt}
+        # If not English, add language preservation instructions
+        if lang_code != "en":
+            # Create language-specific prompt
+            enhanced_prompt = f"""{base_prompt}
 
 IMPORTANT: The text is in {lang_name}. DO NOT translate it to English.
 - Keep the text in {lang_name}
@@ -129,19 +134,18 @@ IMPORTANT: The text is in {lang_name}. DO NOT translate it to English.
 
 Original text in {lang_name}: {text}"""
 
-                prompt = enhanced_prompt
-            else:
-                prompt = base_prompt
+            prompt = enhanced_prompt
+        else:
+            prompt = base_prompt
 
-            log_debug(f"Enhancing {lang_name} text with mode '{mode}' via {self.backend}")
+        log_debug(f"Enhancing {lang_name} text with mode '{mode}' via {self.backend}")
 
-            result = self._chat(prompt, max_tokens=1000)
-            log_info(f"Enhancement OK ({self.backend}): {len(result)} chars in {lang_name}")
-            return result
-
-        except Exception as e:
-            log_error(f"Enhancement error: {e}", exc_info=True)
-            return text
+        # Provider failures propagate: _chat raises RuntimeError after all
+        # model candidates fail. The orchestrator classifies the error and
+        # injects the raw transcript instead.
+        result = self._chat(prompt, max_tokens=1000)
+        log_info(f"Enhancement OK ({self.backend}): {len(result)} chars in {lang_name}")
+        return result
 
     def process_command(self, text: str, command: str) -> Optional[str]:
         if not self.client:

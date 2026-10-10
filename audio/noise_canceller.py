@@ -33,14 +33,20 @@ class NoiseCanceller:
     Stateful noise canceller.  One instance per recording session.
 
     Usage:
-        nc = NoiseCanceller()
+        nc = NoiseCanceller(enabled=True)
         clean = nc.process(raw_audio_int16_or_float32)
     """
 
-    def __init__(self):
+    #: RMS above which the first frame is treated as speech-from-frame-0
+    #: (calibration would learn speech as noise). ANC is skipped instead.
+    #: Quiet constant hum (typical RMS < 0.05) still calibrates and is reduced.
+    SPEECH_AT_START_RMS = 0.08
+
+    def __init__(self, enabled: bool = True):
         self._noise_psd = None  # estimated noise power spectrum (np.ndarray or None)
         self._calibrated = False
         self._frame_count = 0
+        self.enabled = bool(enabled)
 
     # ── public ────────────────────────────────────────────────────────────
 
@@ -56,7 +62,17 @@ class NoiseCanceller:
         """
         float_audio = self._to_float(audio)
 
-        # Step 1 — calibrate noise floor from the first N_CALIB_FRAMES
+        if not self.enabled:
+            return self._to_int16(float_audio)
+
+        if len(float_audio) >= FRAME_SIZE and self._rms(float_audio[:FRAME_SIZE]) > self.SPEECH_AT_START_RMS:
+            # Speech starts at frame 0: the calibration window holds speech,
+            # not noise. Learning it as "noise" would eat the utterance, so
+            # skip ANC and return the original.
+            log_debug("ANC skipped: speech detected at frame 0")
+            return self._to_int16(float_audio)
+
+        # Step 1 — calibrate noise floor from the quietest of the first N frames
         self._calibrate(float_audio)
 
         if self._noise_psd is None:
@@ -78,21 +94,40 @@ class NoiseCanceller:
     # ── calibration ───────────────────────────────────────────────────────
 
     def _calibrate(self, audio: np.ndarray):
-        """Estimate noise PSD from the first N_CALIB_FRAMES frames."""
-        psds = []
+        """Estimate noise PSD from the quietest of the first N_CALIB_FRAMES.
+
+        Only frames at or below the running median RMS are used: a loud
+        utterance at the start must not become the "noise floor". When every
+        frame is loud (speech from frame 0) the caller skips ANC entirely.
+        """
+        framed: list = []
+        rms_list: list = []
         for i in range(N_CALIB_FRAMES):
             start = i * HOP_SIZE
             end = start + FRAME_SIZE
             if end > len(audio):
                 break
-            frame = audio[start:end] * np.hanning(FRAME_SIZE)
-            spectrum = np.fft.rfft(frame)
-            psds.append(np.abs(spectrum) ** 2)
+            windowed = audio[start:end] * np.hanning(FRAME_SIZE)
+            spectrum = np.fft.rfft(windowed)
+            psd = np.abs(spectrum) ** 2
+            rms = float(np.sqrt(np.mean(audio[start:end].astype(np.float32) ** 2)))
+            framed.append(psd)
+            rms_list.append(rms)
 
-        if psds:
-            self._noise_psd = np.mean(psds, axis=0)
-            self._calibrated = True
-            log_debug(f"ANC calibrated from {len(psds)} frames, " f"noise_rms≈{np.sqrt(np.mean(self._noise_psd)):.5f}")
+        if not framed:
+            return
+
+        median_rms = float(np.median(np.asarray(rms_list, dtype=np.float64)))
+        quiet_psds = [psd for psd, rms in zip(framed, rms_list) if rms <= median_rms]
+        if not quiet_psds:
+            quiet_psds = framed
+
+        self._noise_psd = np.mean(quiet_psds, axis=0)
+        self._calibrated = True
+        log_debug(
+            f"ANC calibrated from {len(quiet_psds)}/{len(framed)} quiet frames, "
+            f"noise_rms≈{np.sqrt(np.mean(self._noise_psd)):.5f}"
+        )
 
     # ── frame processing ──────────────────────────────────────────────────
 
