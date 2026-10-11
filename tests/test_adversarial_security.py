@@ -14,7 +14,6 @@ import uuid
 
 from tests.conftest import ApiUser, signup
 
-
 # ── JSON type confusion: no endpoint may 500 on a non-object body ─────────────
 
 _BODIES = [
