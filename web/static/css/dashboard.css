@@ -1,38 +1,33 @@
 /* ============================================
-   VOXYLIS — Voice Agent Dashboard (TypeSafe.ai Editorial Light Theme)
-   Clean, bold, editorial-first with pink (#f386a1) and teal (#9db8bd) accents.
+   VOXYLIS — Voice Agent Dashboard (light editorial — synced with the
+   landing page's design system in base.css, which this page also loads:
+   paper #fafafa, white panels, ink #1e1e1e, hairline #e5e5e5, muted
+   #5f636e; red stays reserved for REC/live/destructive only).
    Contract with dashboard.js — do NOT rename classes.
    ============================================ */
 
 :root {
-  /* Base palette */
-  --bg: #fff;
-  --bg-soft: #fafafa;
+  /* Base palette — same values as base.css */
+  --bg: #fafafa;
+  --bg-soft: #f1f1ef;
   --panel: #fff;
   --panel-border: #e5e5e5;
   --ink: #1e1e1e;
   --ink2: #3a3a3a;
   --muted: #5f636e;
-  --pink: #f386a1;
-  --pink-d: #e06080;
-  --teal: #9db8bd;
-  --teal-d: #7d9aa0;
+  /* Accent tokens kept for variable-name compatibility: primary accent is
+     the landing page's ink (hover black), secondary the muted grey. */
+  --pink: #1e1e1e;
+  --pink-d: #000000;
+  --teal: #5f636e;
+  --teal-d: #3a3a3a;
   --radius: 8px;
 
-  /* Fonts — use Host Grotesk for display, JetBrains Mono/Space Mono for labels/code */
-  --host: 'Host Grotesk','Host Grotesk Placeholder','Inter','Helvetica Neue',Arial,sans-serif;
-  --mono: 'JetBrains Mono','JetBrains Mono Placeholder','SF Mono',ui-monospace,Menlo,Consolas,monospace;
-  --space: 'Space Mono','Space Mono Placeholder',ui-monospace,Menlo,Consolas,monospace;
-}
-
-html[data-theme="light"] {
-  --bg: #fff;
-  --bg-soft: #fafafa;
-  --panel: #fff;
-  --panel-border: #e5e5e5;
-  --ink: #1e1e1e;
-  --ink2: #3a3a3a;
-  --muted: #5f636e;
+  /* Fonts — the same vendored families the marketing pages use
+     (@font-face comes from base.css, loaded before this file). */
+  --host: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --space: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
