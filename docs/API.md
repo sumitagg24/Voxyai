@@ -1,6 +1,8 @@
 # Voxylis API Documentation
 
-Base URL: `http://localhost:5000` (local) or `https://<your-name>.onrender.com` (optional Render free tier)
+Base URL: `http://localhost:5000` (local) or `https://voxylis-api.onrender.com`
+(the Render free-tier deployment; substitute your own service name if you
+deploy your own instance)
 
 All responses are JSON. Authentication uses `X-Session-Id` header or `session_id` in request body.
 
@@ -150,6 +152,11 @@ Reset password using a token.
 }
 ```
 
+**Response (400)** `Invalid or expired token` — the same body and message for
+unknown, expired and already-used tokens, so responses reveal nothing about
+which reset tokens ever existed. A success also retires every other
+outstanding link for the account and signs out all of its sessions.
+
 **Rate Limit:** 10 per hour
 
 ---
@@ -205,6 +212,37 @@ becomes verified: there is no request body or field a client can set to do it.
 ```
 
 **Response (400)** for an unknown, expired or already-used token.
+
+---
+
+### QR companion-device sign-in
+
+Three endpoints implement a sign-in flow where an already-authenticated
+browser (the "phone") approves a login for a second device (the "desktop")
+that is not signed in. **No shipped client currently uses this flow** — the
+desktop app and the website sign in with a password or Auth0 — so treat it as
+an API capability, not an advertised feature.
+
+1. **POST /api/auth/qr/start** — the second device starts a 5-minute ticket
+   and receives both a 6-character `code` (rendered as a QR) and a
+   `device_token`:
+
+   ```json
+   {"success": true, "code": "AB2CD4", "device_token": "…", "expires_in": 300}
+   ```
+
+2. **POST /api/auth/qr/approve** — the signed-in browser approves the code.
+   Idempotent: approving an already-approved ticket is a no-op, and an
+   expired ticket returns 410.
+
+3. **GET /api/auth/qr/status?code=…&device_token=…** — the second device
+   polls. The `device_token` issued by `start` is **required** (query
+   parameter or `X-QR-Device-Token` header): seeing the QR code alone must
+   not be enough to receive the session, because the code is visible to
+   anyone who can see the screen. Responses: `pending`, `approved` (with
+   `session_id`, minted exactly once per ticket), or `expired`.
+
+**Rate limits:** start 20/hour, status 60/hour, approve 30/hour.
 
 ---
 
@@ -336,15 +374,12 @@ Get or update user hotkeys (requires auth).
 ### GET/POST /api/history
 Get or add transcription history (requires auth for POST).
 
-**POST Request:**
-```json
-{
-  "text": "Hello world",
-  "enhanced": true,
-  "mode": "formal",
-  "language": "en"
-}
-```
+**GET** takes optional pagination parameters:
+
+| Parameter | Default | Behavior |
+|---|---|---|
+| `page` | 1 | 1-based page number; non-numeric or < 1 falls back to 1 |
+| `page_size` | 100 | Clamped to 1..100 — a larger request never returns more than 100 rows |
 
 **GET Response:**
 ```json
@@ -359,7 +394,27 @@ Get or add transcription history (requires auth for POST).
       "language": "en",
       "timestamp": "2026-01-01 12:00:00"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 100,
+    "total": 137,
+    "total_pages": 2,
+    "has_more": true
+  }
+}
+```
+
+Rows are ordered newest-first (`created_at DESC, id DESC`). The dashboard
+loads the first page and appends older pages via a "Load older" button.
+
+**POST Request:**
+```json
+{
+  "text": "Hello world",
+  "enhanced": true,
+  "mode": "formal",
+  "language": "en"
 }
 ```
 

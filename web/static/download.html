@@ -11,11 +11,12 @@
 <link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/download.css">
+<link rel="stylesheet" href="/static/css/cookie-consent.css">
 </head>
 <body>
 <nav class="nav">
   <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
-  <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
+  <button class="nav-toggle" aria-label="Toggle menu" type="button"><span></span><span></span><span></span></button>
   <div class="nav-links">
     <a href="/#features">Features</a>
     <a href="/pricing">Pricing</a>
@@ -45,11 +46,11 @@
         <h3 class="card-title">Windows</h3>
         <div class="version">Windows 10+ · <span data-voxylis-version>latest</span></div>
         <div class="size" id="dl-win-note">Checking availability…</div>
-        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn btn-lg" id="dl-win" onclick="trackDownload('windows')">⬇ Download for Windows</a>
-        <ul class="features" style="list-style:none;padding:0;margin:var(--sp-6) 0 0;display:flex;flex-direction:column;gap:var(--sp-3);width:100%">
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>System-wide hotkey</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Auto-start on boot</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Tray icon</span></li>
+        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn btn-lg" id="dl-win" data-track-download="windows">⬇ Download for Windows</a>
+        <ul class="feature-list">
+          <li><span class="check">✓</span><span>System-wide hotkey</span></li>
+          <li><span class="check">✓</span><span>Auto-start on boot</span></li>
+          <li><span class="check">✓</span><span>Tray icon</span></li>
         </ul>
       </article>
 
@@ -59,11 +60,11 @@
         <h3 class="card-title">macOS</h3>
         <div class="version">macOS 12+ · <span data-voxylis-version>latest</span> source</div>
         <div class="size" id="dl-macos-note">Checking availability…</div>
-        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn btn-lg" id="dl-macos" onclick="trackDownload('macos')">⬇ Download for macOS</a>
-        <ul class="features" style="list-style:none;padding:0;margin:var(--sp-6) 0 0;display:flex;flex-direction:column;gap:var(--sp-3);width:100%">
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Python 3.10+ source bundle</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>One-command setup (run.sh)</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Hotkey workflow + tray menu</span></li>
+        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn btn-lg" id="dl-macos" data-track-download="macos">⬇ Download for macOS</a>
+        <ul class="feature-list">
+          <li><span class="check">✓</span><span>Python 3.10+ source bundle</span></li>
+          <li><span class="check">✓</span><span>One-command setup (run.sh)</span></li>
+          <li><span class="check">✓</span><span>Hotkey workflow + tray menu</span></li>
         </ul>
       </article>
 
@@ -73,18 +74,18 @@
         <h3 class="card-title">Linux</h3>
         <div class="version">Ubuntu 20.04+ / Fedora / Arch · <span data-voxylis-version>latest</span> source</div>
         <div class="size" id="dl-linux-note">Checking availability…</div>
-        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn btn-lg" id="dl-linux" onclick="trackDownload('linux')">⬇ Download for Linux</a>
-        <ul class="features" style="list-style:none;padding:0;margin:var(--sp-6) 0 0;display:flex;flex-direction:column;gap:var(--sp-3);width:100%">
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Python 3.10+ source bundle</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>One-command setup (run.sh)</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>X11 + Wayland</span></li>
+        <a href="https://github.com/sumitagg24/Voxyai/releases" class="btn btn-lg" id="dl-linux" data-track-download="linux">⬇ Download for Linux</a>
+        <ul class="feature-list">
+          <li><span class="check">✓</span><span>Python 3.10+ source bundle</span></li>
+          <li><span class="check">✓</span><span>One-command setup (run.sh)</span></li>
+          <li><span class="check">✓</span><span>X11 + Wayland</span></li>
         </ul>
       </article>
     </div>
   </div>
 </section>
 
-<section class="section" style="border-top:1px solid var(--border-hair)">
+<section class="section section-top">
   <div class="container">
     <header class="section-header">
       <span class="label">VX.0S2 · Requirements</span>
@@ -95,40 +96,40 @@
         <header class="card-header">
           <span class="label">Windows</span>
         </header>
-        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)">
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>OS</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">Windows 10 / 11</span></li>
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>RAM</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">4 GB minimum</span></li>
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>Disk</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">100 MB free</span></li>
-          <li style="display:flex;justify-content:space-between"><span>Audio</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">Any mic device</span></li>
+        <ul class="req-list">
+          <li><span>OS</span><span class="req-value">Windows 10 / 11</span></li>
+          <li><span>RAM</span><span class="req-value">4 GB minimum</span></li>
+          <li><span>Disk</span><span class="req-value">100 MB free</span></li>
+          <li><span>Audio</span><span class="req-value">Any mic device</span></li>
         </ul>
       </article>
       <article class="card">
         <header class="card-header">
           <span class="label">macOS</span>
         </header>
-        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)">
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>OS</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">macOS 12 (Monterey)+</span></li>
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>RAM</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">4 GB minimum</span></li>
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>Disk</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">120 MB free</span></li>
-          <li style="display:flex;justify-content:space-between"><span>Audio</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">Any mic device</span></li>
+        <ul class="req-list">
+          <li><span>OS</span><span class="req-value">macOS 12 (Monterey)+</span></li>
+          <li><span>RAM</span><span class="req-value">4 GB minimum</span></li>
+          <li><span>Disk</span><span class="req-value">120 MB free</span></li>
+          <li><span>Audio</span><span class="req-value">Any mic device</span></li>
         </ul>
       </article>
       <article class="card">
         <header class="card-header">
           <span class="label">Linux</span>
         </header>
-        <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:var(--sp-2)">
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>OS</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">Ubuntu 20.04+ / Fedora 36+</span></li>
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>RAM</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">2 GB minimum</span></li>
-          <li style="display:flex;justify-content:space-between;padding-bottom:var(--sp-2);border-bottom:1px solid var(--border-hair)"><span>Disk</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">80 MB free</span></li>
-          <li style="display:flex;justify-content:space-between"><span>Display</span><span class="muted" style="font-family:var(--font-mono);font-size:var(--text-sm)">X11 or Wayland</span></li>
+        <ul class="req-list">
+          <li><span>OS</span><span class="req-value">Ubuntu 20.04+ / Fedora 36+</span></li>
+          <li><span>RAM</span><span class="req-value">2 GB minimum</span></li>
+          <li><span>Disk</span><span class="req-value">80 MB free</span></li>
+          <li><span>Display</span><span class="req-value">X11 or Wayland</span></li>
         </ul>
       </article>
     </div>
   </div>
 </section>
 
-<section class="section" style="text-align:center;border-top:1px solid var(--border-hair)">
+<section class="section section-center">
   <div class="container">
     <h2 class="section-title">Prefer the web?</h2>
     <p class="section-subtitle">Try the dashboard directly in your browser — no download needed.</p>
@@ -144,105 +145,20 @@
         <div class="footer-col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
         <div class="footer-col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
         <div class="footer-col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
-        <div class="footer-col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
+        <div class="footer-col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" data-cookie-choices>Cookie choices</a></div>
       </nav>
     </div>
-    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" style="color:inherit">Contact</a></span></div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" class="link-inherit">Contact</a></span></div>
   </div>
 </footer>
 
-<script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
 <script src="/static/js/config.js"></script>
 <script src="/static/js/api.js"></script>
 <script src="/static/js/sentry-init.js" defer></script>
 <script src="/static/js/cookie-consent.js" defer></script>
-<script>
-// OS auto-detection
-(function(){
-  var ua = navigator.userAgent || '';
-  var pl = navigator.platform || '';
-  var isAndroid = ua.indexOf('Android') > -1;
-  var isWin  = pl.indexOf('Win') > -1 || ua.indexOf('Windows') > -1;
-  var isMac  = pl.indexOf('Mac') > -1 || ua.indexOf('Mac') > -1;
-  var isLinux = ua.indexOf('Linux') > -1 && !isAndroid;
-  var cardId = null;
-  if (isWin)  cardId = 'card-windows';
-  else if (isMac)  cardId = 'card-macos';
-  else if (isLinux) cardId = 'card-linux';
-  if (cardId) {
-    var card = document.getElementById(cardId);
-    if (card) {
-      card.classList.add('highlighted');
-      var badge = document.createElement('div');
-      badge.className = 'label';
-      badge.style.background = 'var(--rec-lamp)';
-      badge.style.color = 'var(--fg-inverse)';
-      badge.style.padding = '2px 8px';
-      badge.style.borderRadius = 'var(--radius-sm)';
-      badge.style.fontSize = 'var(--text-xs)';
-      badge.textContent = 'Your OS';
-      var versionEl = card.querySelector('.version');
-      if (versionEl) card.insertBefore(badge, versionEl);
-    }
-  }
-})();
 
-// Load download URLs from API truth
-function applyDownloadUrls(d) {
-  var avail = d.available || {};
-  var releases = d.releases_url || 'https://github.com/sumitagg24/Voxyai/releases';
-  function setBtn(id, noteId, url, ok, okNote, fallbackNote) {
-    var btn = document.getElementById(id);
-    var note = document.getElementById(noteId);
-    if (ok && url) {
-      btn.href = url;
-      btn.setAttribute('download', '');
-      if (note) note.textContent = okNote;
-    } else {
-      btn.href = releases;
-      btn.removeAttribute('download');
-      if (note) note.textContent = fallbackNote;
-    }
-  }
-  setBtn('dl-win', 'dl-win-note', d.windows, avail.windows,
-    'Installer (.exe) — clicking starts the download',
-    'No packaged installer yet — see releases or build from source');
-  setBtn('dl-macos', 'dl-macos-note', d.macos, avail.macos,
-    'Packaged download — clicking starts the file',
-    'Source build — clone the repo and run run.sh (see releases)');
-  setBtn('dl-linux', 'dl-linux-note', d.linux, avail.linux,
-    'Packaged download — clicking starts the file',
-    'Source build — clone the repo and run run.sh (see releases)');
-}
-fetch((window.VOXYLIS_API_BASE||'')+'/api/download/urls')
-  .then(function(r){return r.json()})
-  .then(applyDownloadUrls)
-  .catch(function(){});
 
-// Version
-fetch('/version.json').then(function(r){return r.json()}).then(function(d){
-  if(!d||!d.version)return;
-  document.querySelectorAll('[data-voxylis-version]').forEach(function(el){el.textContent='v'+d.version});
-}).catch(function(){});
-
-function trackDownload(platform) {
-  try { window.voxyBeacon && window.voxyBeacon('/api/download/track', { platform: platform }); } catch(e) {}
-}
-
-// Scroll reveal
-var revealEls = document.querySelectorAll('.card, .req-card');
-var io = new IntersectionObserver(function(entries) {
-  entries.forEach(function(e) {
-    if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
-  });
-}, { threshold: 0.1 });
-document.querySelectorAll('.card, .req-card').forEach(function(el){ el.classList.add('reveal'); io.observe(el); });
-</script>
-
-<script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
-<script src="/static/js/config.js"></script>
-<script src="/static/js/api.js"></script>
-<script src="/static/js/sentry-init.js" defer></script>
-<script src="/static/js/cookie-consent.js" defer></script>
+<script src="/static/js/site.js"></script>
+<script src="/static/js/download.js"></script>
 </body>
 </html>

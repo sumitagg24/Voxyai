@@ -66,6 +66,13 @@ def favicon():
     return current_app.send_static_file("favicon.ico")
 
 
+@pages_bp.route("/apple-touch-icon.png")
+def apple_touch_icon():
+    """Every page links /apple-touch-icon.png at the root (iOS home-screen
+    icon); without this route every page load logs a 404 console error."""
+    return current_app.send_static_file("apple-touch-icon.png")
+
+
 @pages_bp.route("/og-image.png")
 def og_image():
     """Open Graph images are referenced from the site root; serve it there."""

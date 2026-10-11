@@ -1,0 +1,38 @@
+/* 404.html — page styles (Control Room) */
+
+body { min-height: 100vh; display: flex; flex-direction: column; }
+
+.notfound {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-16) var(--sp-4);
+}
+
+.error-code {
+  font-family: var(--font-mono);
+  font-size: clamp(4rem, 14vw, 9rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.error-code .zero { color: var(--rec-lamp); }
+
+.error-actions {
+  margin-top: var(--sp-8);
+  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.error-hint {
+  margin-top: var(--sp-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+}

@@ -39,7 +39,7 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 **Website / backend**
 
 - Account system with email verification, password reset, session rotation,
-  Auth0 social login, and QR sign-in from the desktop app.
+  Auth0 social login, and a QR companion-device sign-in API.
 - Dashboard with history, usage stats and a Q&A panel.
 - Pricing, downloads, blog, docs and legal pages, all reading one canonical
   version.
@@ -62,11 +62,14 @@ Menu entry, and offers optional desktop shortcut and run-at-login tasks. The
 first-run wizard walks through microphone, shortcut, provider key, language and a
 test recording.
 
-> **Windows SmartScreen.** Public releases are signed when the signing
-> certificate is available to CI. Unsigned development builds show
-> *"Windows protected your PC"* on first run — that means Microsoft has no
-> reputation for the file yet, not that it is malicious. See
-> [docs/RELEASE.md](docs/RELEASE.md) for the signing setup.
+> **Windows SmartScreen.** Public releases are signed only when the
+> code-signing certificate is configured in CI, which it is not today — expect
+> *"Windows protected your PC"* on first run. That means Microsoft has no
+> download reputation for the file yet, not that it is malicious. Click
+> **More info → Run anyway**, and verify the download against the published
+> `SHA256SUMS.txt`. Once a certificate is wired in, the prompt shows
+> **Voxylis** as the publisher instead. The purchase and wiring plan is in
+> [docs/RELEASE.md](docs/RELEASE.md) § Code signing.
 
 ### From source
 
@@ -200,8 +203,8 @@ id in the `X-Session-Id` header (or a `session_id` body field).
 | POST | `/api/auth/update-profile` | authenticated |
 | GET | `/api/auth/auth0/config` | whether social login is configured |
 | POST | `/api/auth/auth0` | social login exchange |
-| POST | `/api/auth/qr/start` | QR sign-in from the desktop app |
-| GET | `/api/auth/qr/status` | poll QR approval state |
+| POST | `/api/auth/qr/start` | start a companion-device login (returns code + device_token) |
+| GET | `/api/auth/qr/status` | poll approval; requires the ticket's device_token |
 | POST | `/api/auth/qr/approve` | approve from an authenticated browser |
 
 ### User and content

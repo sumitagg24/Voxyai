@@ -200,7 +200,8 @@ def test_verification_token_is_single_use(outbox):
         assert client.post("/api/auth/confirm-email", json={"token": token}).status_code == 200
         reused = client.post("/api/auth/confirm-email", json={"token": token})
         assert reused.status_code == 400
-        assert "used" in reused.get_json()["error"].lower()
+        # P6.7: used/unknown/expired tokens are deliberately indistinguishable.
+        assert "invalid or expired" in reused.get_json()["error"].lower()
 
 
 def test_expired_verification_token_is_rejected(outbox):
@@ -219,7 +220,8 @@ def test_expired_verification_token_is_rejected(outbox):
     with web_app.app.test_client() as client:
         response = client.post("/api/auth/confirm-email", json={"token": token})
     assert response.status_code == 400
-    assert "expired" in response.get_json()["error"].lower()
+    # P6.7: expired tokens answer exactly like unknown ones (no token oracle).
+    assert "invalid or expired" in response.get_json()["error"].lower()
 
 
 def test_resend_verification_retires_the_previous_link(outbox):
@@ -406,7 +408,8 @@ def test_expired_reset_token_is_rejected(outbox):
 
         response = client.post("/api/auth/reset-password", json={"token": token, "password": "a-brand-new-password"})
     assert response.status_code == 400
-    assert "expired" in response.get_json()["error"].lower()
+    # P6.7: expired tokens answer exactly like unknown ones (no token oracle).
+    assert "invalid or expired" in response.get_json()["error"].lower()
 
 
 def test_a_new_reset_request_retires_the_previous_link(outbox):

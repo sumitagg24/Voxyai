@@ -258,6 +258,20 @@ def process_audio(audio_data: np.ndarray, mode: str = "enhance") -> Optional[str
 - [ ] Commit messages are clear
 - [ ] No merge conflicts
 
+### CI gates every PR must pass
+- `Lint`, `Tests`, `Dependency audit` — self-explanatory.
+- `Site audit (a11y + links + console)` — boots the real Flask app with a
+  seeded database and audits every public page in headless Chromium:
+  axe-core accessibility (fails on **serious/critical** violations), an
+  internal link checker, and a no-console-errors-on-load check. Run it
+  locally with `python scripts/site_audit.py --verbose` (needs
+  `pip install -r requirements-server.txt playwright` and
+  `python -m playwright install chromium`). It exits non-zero on any
+  finding. If you touched `web/static/**`, run it before pushing.
+- The site-audit job is a **required status check** on `main`
+  (Settings → Branches → add "Site audit (a11y + links + console)"); keep it
+  required so a broken page or a CSP regression cannot merge silently.
+
 ### PR Description Template
 ```markdown
 ## Description

@@ -337,7 +337,7 @@ def _extract_session() -> str:
     """Pull session_id from header or JSON body."""
     session_id = request.headers.get("X-Session-Id", "")
     if not session_id:
-        data = request.get_json(silent=True) or {}
+        data = _json_body()
         session_id = data.get("session_id", "")
     return session_id
 
@@ -515,6 +515,18 @@ def _text(value) -> str:
     accepted the bogus value. Coerce first, validate after.
     """
     return value.strip() if isinstance(value, str) else ""
+
+
+def _json_body() -> dict:
+    """Return the request body as a dict; any non-object JSON becomes ``{}``.
+
+    ``request.json or {}`` does not protect against type confusion: a JSON
+    string, number or array is truthy and then explodes with AttributeError on
+    the first ``.get()`` (a 500 an attacker can trigger at will). Every
+    endpoint that expects an object reads it through here.
+    """
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
 
 
 def _email_verified_flag(user_id) -> bool:

@@ -205,12 +205,7 @@ def dodo_webhook():
 
     conn = _get_db()
     try:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS processed_events ("
-            " event_id TEXT PRIMARY KEY,"
-            " source TEXT NOT NULL DEFAULT '',"
-            " created_at TEXT NOT NULL DEFAULT (datetime('now')))"
-        )
+        # processed_events is created by schema migration 10 (web.db), not here.
         if conn.execute("SELECT 1 FROM processed_events WHERE event_id = ?", (event_id,)).fetchone():
             return jsonify({"success": True, "acked": True, "duplicate": True, "event_id": event_id}), 200
 

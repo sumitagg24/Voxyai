@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request
 from flask_limiter.util import get_remote_address
 
 from web import observability
-from web.auth_helpers import _text, normalize_email
+from web.auth_helpers import _json_body, _text, normalize_email
 from web.content.blog_posts import LEGACY_BLOG_SLUGS
 from web.db import _get_db
 from web.extensions import cache, limiter
@@ -182,7 +182,7 @@ def blog_post(slug):
 @limiter.limit("60 per minute", key_func=get_remote_address)
 def download_track():
     """Track download clicks (lightweight counter)."""
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     raw_platform = str(data.get("platform", request.args.get("platform", "unknown")) or "unknown")
     platform = raw_platform.strip().lower()[:32]
     if not re.fullmatch(r"[a-z0-9_-]{0,32}", platform):
@@ -191,11 +191,7 @@ def download_track():
         platform = "unknown"
     conn = _get_db()
     try:
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS download_events "
-            "(id INTEGER PRIMARY KEY AUTOINCREMENT, platform TEXT NOT NULL, "
-            "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
-        )
+        # download_events is created by schema migration 12 (web.db), not here.
         conn.execute("INSERT INTO download_events (platform) VALUES (?)", (platform,))
         conn.commit()
     except Exception:
@@ -257,7 +253,7 @@ def health():
 @content_bp.route("/api/contact", methods=["POST"])
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def contact_submit():
-    data = request.json or {}
+    data = _json_body()
     name = _text(data.get("name"))
     email = _text(data.get("email"))
     subject = _text(data.get("subject"))
@@ -308,7 +304,7 @@ def contact_submit():
 @content_bp.route("/api/newsletter", methods=["POST"])
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def newsletter_subscribe():
-    data = request.json or {}
+    data = _json_body()
     email = normalize_email(_text(data.get("email")))
 
     if not email:
@@ -339,7 +335,7 @@ def unsubscribe():
     """
     token = (request.args.get("token") or "").strip()
     if not token and request.is_json:
-        token = ((request.get_json(silent=True) or {}).get("token") or "").strip()
+        token = (_json_body().get("token") or "").strip()
 
     masked = None
     conn = _get_db()

@@ -398,3 +398,7 @@ h4 { font-size: var(--text-xl); }
 .w-full { width: 100%; }
 .hidden { display: none !important; }
 .visible { display: block !important; }
+
+/* Utility: inherit surrounding text color (footer contact links). */
+.link-inherit { color: inherit; }
+.link-inherit:hover { color: inherit; opacity: 1; }

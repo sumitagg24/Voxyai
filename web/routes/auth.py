@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import hmac
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -16,10 +17,10 @@ from web.auth_helpers import (
     _delete_session_ids,
     _ensure_admin,
     _hash_password,
-    _hash_session_id,
     _is_disposable_email,
     _is_legacy_sha256,
     _issue_email_token,
+    _json_body,
     _load_onboarding,
     _onboarding_steps,
     _password_domain_allowed,
@@ -55,6 +56,40 @@ _jwks_cache: dict = {"keys": [], "fetched_at": None}
 
 def _new_qr_code() -> str:
     return "".join(secrets.choice(_QR_ALPHABET) for _ in range(6))
+
+
+def _mint_qr_session(conn, code: str, approved_user_id) -> tuple:
+    """Mint and claim one session for an approved QR ticket (P6.1, race-safe).
+
+    Two concurrent polls after approval can both observe ``session_id IS
+    NULL``. The claim is therefore a compare-and-swap: only the UPDATE that
+    still finds the row unclaimed may keep the session it created. A loser
+    discards its own session row and re-reads the winner's id, so one approval
+    maps to exactly one session (TOCTOU fix).
+
+    Returns ``(session_id, approved_user_id)``; an empty ``session_id`` when
+    the ticket vanished between the caller's read and the claim.
+    """
+    session_id = _create_session(approved_user_id)
+    cur = conn.execute(
+        "UPDATE qr_tickets SET session_id = ? WHERE code = ? AND session_id IS NULL",
+        (session_id, code),
+    )
+    conn.commit()
+    if cur.rowcount:
+        return session_id, approved_user_id
+
+    # Lost the race: the session we just created is never handed to a client,
+    # so remove it rather than leaving an orphaned credential behind.
+    _delete_session_ids(conn, session_id)
+    conn.commit()
+    winner = conn.execute(
+        "SELECT session_id, approved_user_id FROM qr_tickets WHERE code = ?",
+        (code,),
+    ).fetchone()
+    if winner is None or not winner["session_id"]:
+        return "", approved_user_id
+    return winner["session_id"], winner["approved_user_id"] or approved_user_id
 
 
 def _auth0_jwks(domain: str) -> dict:
@@ -115,7 +150,7 @@ def auth0_config():
 @limiter.limit("20 per hour", key_func=get_remote_address)
 def auth_auth0():
     """Log in (or auto-register) with a verified Auth0 ID token."""
-    data = request.json or {}
+    data = _json_body()
     id_token = data.get("id_token", "")
     if not id_token:
         return jsonify({"success": False, "error": "Missing id_token"}), 400
@@ -197,8 +232,15 @@ def auth_auth0():
 @auth_bp.route("/api/auth/qr/start", methods=["POST"])
 @limiter.limit("20 per hour", key_func=get_remote_address)
 def qr_start():
-    """Create a QR login ticket (5-minute expiry). No auth needed to start."""
-    data = request.json or {}
+    """Create a QR login ticket (5-minute expiry). No auth needed to start.
+
+    The response also carries a per-ticket ``device_token``. The device that
+    started the login must present it on every status poll: the QR code (and
+    the 6-char code inside it) is visible to anyone who can see the screen,
+    but the token never leaves the polling client, so an observer cannot
+    claim the session that the approval mints.
+    """
+    data = _json_body()
     device = str(data.get("device_name", ""))[:60]
     conn = _get_db()
     code = None
@@ -211,29 +253,47 @@ def qr_start():
         conn.close()
         return jsonify({"success": False, "error": "Try again"}), 500
     expires = (utcnow() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    device_token = secrets.token_urlsafe(32)
     conn.execute(
-        "INSERT INTO qr_tickets (code, device_name, expires_at) VALUES (?, ?, ?)",
-        (code, device, expires),
+        "INSERT INTO qr_tickets (code, device_name, device_token, expires_at) VALUES (?, ?, ?, ?)",
+        (code, device, device_token, expires),
     )
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "code": code, "expires_in": 300}), 200
+    return jsonify({"success": True, "code": code, "device_token": device_token, "expires_in": 300}), 200
+
+
+def _qr_device_token_from_request() -> str:
+    """The polling client's ticket secret: query param or dedicated header."""
+    return (request.args.get("device_token", "") or request.headers.get("X-QR-Device-Token", "") or "").strip()
 
 
 @auth_bp.route("/api/auth/qr/status", methods=["GET"])
 @limiter.limit("60 per hour", key_func=get_remote_address)
 def qr_status():
-    """Poll a QR ticket. Returns a Voxylis session once approved on the phone."""
+    """Poll a QR ticket. Returns a Voxylis session once approved on the phone.
+
+    Requires the ``device_token`` issued by ``/api/auth/qr/start`` for the
+    ticket, so knowing the 6-char code alone (e.g. by seeing the QR) is not
+    enough to receive the session.
+    """
     code = (request.args.get("code", "") or "").upper().strip()
     if not code:
         return jsonify({"success": False, "error": "Missing code"}), 400
+    device_token = _qr_device_token_from_request()
     conn = _get_db()
     t = conn.execute("SELECT * FROM qr_tickets WHERE code = ?", (code,)).fetchone()
     if t is None:
         conn.close()
         return jsonify({"success": False, "error": "Unknown code"}), 404
+    stored_token = t["device_token"] if "device_token" in t.keys() else None
+    if not stored_token or not device_token or not hmac.compare_digest(stored_token, device_token):
+        # Tickets minted before this column existed have no token: fail closed.
+        conn.close()
+        return jsonify({"success": False, "error": "Invalid device token"}), 403
     if t["status"] == "expired" or utcnow() > datetime.strptime(t["expires_at"], "%Y-%m-%d %H:%M:%S"):
-        conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ?", (code,))
+        # Conditional so a concurrent approval cannot be clobbered to 'expired'.
+        conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ? AND status = 'pending'", (code,))
         conn.commit()
         conn.close()
         return jsonify({"success": True, "status": "expired"}), 200
@@ -250,12 +310,13 @@ def qr_status():
                 ),
                 200,
             )
-        session_id = _create_session(t["approved_user_id"])
-        conn.execute("UPDATE qr_tickets SET session_id = ? WHERE code = ?", (session_id, code))
-        conn.commit()
+        session_id, approved_user_id = _mint_qr_session(conn, code, t["approved_user_id"])
+        if not session_id:
+            conn.close()
+            return jsonify({"success": True, "status": "pending"}), 200
         row = conn.execute(
             "SELECT name, email_or_phone FROM users WHERE id = ?",
-            (t["approved_user_id"],),
+            (approved_user_id,),
         ).fetchone()
         conn.close()
         return (
@@ -279,7 +340,7 @@ def qr_status():
 @limiter.limit("30 per hour", key_func=get_remote_address)
 def qr_approve(user_id):
     """Approve a QR login from the logged-in phone. Logs the other device in as you."""
-    data = request.json or {}
+    data = _json_body()
     code = _text(data.get("code")).upper()
     if not code:
         return jsonify({"success": False, "error": "Missing code"}), 400
@@ -288,17 +349,27 @@ def qr_approve(user_id):
     if t is None:
         conn.close()
         return jsonify({"success": False, "error": "Unknown code"}), 404
+    if t["status"] == "approved":
+        # Idempotent: a second phone tapping approve must not disturb the
+        # ticket (previously it flipped an approved ticket to 'expired').
+        conn.close()
+        return jsonify({"success": True, "message": "Login already approved"}), 200
     if t["status"] != "pending" or utcnow() > datetime.strptime(t["expires_at"], "%Y-%m-%d %H:%M:%S"):
-        conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ?", (code,))
+        # Only a still-pending ticket may be moved to 'expired'.
+        conn.execute("UPDATE qr_tickets SET status = 'expired' WHERE code = ? AND status = 'pending'", (code,))
         conn.commit()
         conn.close()
         return jsonify({"success": False, "error": "Code expired"}), 410
-    conn.execute(
-        "UPDATE qr_tickets SET status = 'approved', approved_user_id = ? WHERE code = ?",
+    # Compare-and-swap: a racing approve (or the expiry sweep above) can only
+    # win while the ticket is still pending, so the status can never regress.
+    cur = conn.execute(
+        "UPDATE qr_tickets SET status = 'approved', approved_user_id = ? " "WHERE code = ? AND status = 'pending'",
         (user_id, code),
     )
     conn.commit()
     conn.close()
+    if cur.rowcount == 0:
+        return jsonify({"success": False, "error": "Code expired"}), 410
     return jsonify({"success": True, "message": "Login approved"}), 200
 
 
@@ -334,7 +405,7 @@ def admin_users(user_id):
 @auth_bp.route("/api/auth/signup", methods=["POST"])
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def auth_signup():
-    data = request.json or {}
+    data = _json_body()
     name = _text(data.get("name"))
     email_or_phone = normalize_email(_text(data.get("email_or_phone")))
     password = _text(data.get("password"))
@@ -448,7 +519,7 @@ def auth_signup():
 @auth_bp.route("/api/auth/login", methods=["POST"])
 @limiter.limit("10 per 15 minutes", key_func=get_remote_address)
 def auth_login():
-    data = request.json or {}
+    data = _json_body()
     email_or_phone = normalize_email(_text(data.get("email_or_phone")))
     password = _text(data.get("password"))
 
@@ -516,7 +587,7 @@ def auth_login():
 
 @auth_bp.route("/api/auth/verify", methods=["POST"])
 def auth_verify():
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     session_id = data.get("session_id", "") or request.headers.get("X-Session-Id", "")
     if not session_id or not isinstance(session_id, str):
         return jsonify({"valid": False, "error": "Missing session_id"}), 400
@@ -551,7 +622,7 @@ def auth_verify():
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
 def auth_logout():
-    data = request.json or {}
+    data = _json_body()
     session_id = data.get("session_id", "")
     if not session_id:
         return jsonify({"success": False, "error": "Missing session_id"}), 400
@@ -566,7 +637,7 @@ def auth_logout():
 @auth_bp.route("/api/auth/forgot-password", methods=["POST"])
 @limiter.limit("5 per hour", key_func=get_remote_address)
 def forgot_password():
-    data = request.json or {}
+    data = _json_body()
     email = normalize_email(_text(data.get("email")))
     if not email or not _EMAIL_RE.match(email):
         return jsonify({"success": False, "error": "Valid email required"}), 400
@@ -607,7 +678,7 @@ def forgot_password():
 @auth_bp.route("/api/auth/reset-password", methods=["POST"])
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def reset_password():
-    data = request.json or {}
+    data = _json_body()
     token = _text(data.get("token"))
     new_password = _text(data.get("password"))
 
@@ -618,14 +689,20 @@ def reset_password():
 
     conn = _get_db()
     row = conn.execute("SELECT id, user_id, expires_at, used FROM password_resets WHERE token = ?", (token,)).fetchone()
-    if row is None or row["used"]:
+    # Atomic single-use claim: the UPDATE only lands while the row is still
+    # unused and unexpired, so two concurrent submissions of the same link
+    # cannot both pass. One message for every failure (unknown, used, expired):
+    # distinguishing them is a free oracle on which reset tokens ever existed.
+    now_str = utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    claimed = 0
+    if row is not None:
+        claimed = conn.execute(
+            "UPDATE password_resets SET used = 1 WHERE id = ? AND used = 0 AND expires_at > ?",
+            (row["id"], now_str),
+        ).rowcount
+    if not claimed:
         conn.close()
-        return jsonify({"success": False, "error": "Invalid or used token"}), 400
-
-    expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S")
-    if utcnow() > expires:
-        conn.close()
-        return jsonify({"success": False, "error": "Token expired"}), 400
+        return jsonify({"success": False, "error": "Invalid or expired token"}), 400
 
     pw_hash = _hash_password(new_password)
     conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, row["user_id"]))
@@ -712,7 +789,7 @@ def send_verification(user_id):
 @auth_bp.route("/api/auth/confirm-email", methods=["POST"])
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def confirm_email():
-    data = request.json or {}
+    data = _json_body()
     token = _text(data.get("token"))
     if not token:
         return jsonify({"success": False, "error": "Token required"}), 400
@@ -721,17 +798,20 @@ def confirm_email():
     row = conn.execute(
         "SELECT id, user_id, expires_at, used FROM email_verifications WHERE token = ?", (token,)
     ).fetchone()
-    if row is None or row["used"]:
+    # Atomic single-use claim, same as reset-password. Single message for
+    # unknown/used/expired: no oracle on which verification tokens existed.
+    now_str = utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    claimed = 0
+    if row is not None:
+        claimed = conn.execute(
+            "UPDATE email_verifications SET used = 1 WHERE id = ? AND used = 0 AND expires_at > ?",
+            (row["id"], now_str),
+        ).rowcount
+    if not claimed:
         conn.close()
-        return jsonify({"success": False, "error": "Invalid or used token"}), 400
-
-    expires = datetime.strptime(row["expires_at"], "%Y-%m-%d %H:%M:%S")
-    if utcnow() > expires:
-        conn.close()
-        return jsonify({"success": False, "error": "Token expired"}), 400
+        return jsonify({"success": False, "error": "Invalid or expired token"}), 400
 
     conn.execute("UPDATE users SET email_verified = 1 WHERE id = ?", (row["user_id"],))
-    conn.execute("UPDATE email_verifications SET used = 1 WHERE id = ?", (row["id"],))
     conn.commit()
     conn.close()
     return jsonify(

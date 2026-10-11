@@ -1,0 +1,36 @@
+/* contact.html — page styles (Control Room) */
+
+.contact-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--sp-16); align-items: start; }
+@media (max-width: 900px) { .contact-grid { grid-template-columns: 1fr; gap: var(--sp-8); } }
+
+.side-info h3 { font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--sp-6); }
+.info-item { margin-bottom: var(--sp-6); }
+.info-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+  margin-bottom: var(--sp-1);
+}
+.info-item a { text-decoration: underline; text-underline-offset: 3px; }
+
+.social-links { display: flex; gap: var(--sp-3); margin-top: var(--sp-6); }
+.social-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  transition: border-color var(--motion-fast), background var(--motion-fast), color var(--motion-fast);
+}
+.social-links a:hover { border-color: var(--fg-primary); background: var(--bg-elevated); }
+
+.msg { margin-top: var(--sp-4); padding: var(--sp-4); border: 1px solid var(--border-hair); border-radius: var(--radius-md); font-size: var(--text-sm); display: none; }
+.msg-success { border-color: var(--success); color: var(--success); }
+.msg-error { border-color: var(--rec-lamp); color: var(--rec-lamp); }
+.msg.show { display: block; }

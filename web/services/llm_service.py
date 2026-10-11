@@ -34,6 +34,7 @@ ENHANCEMENT_MODE_PROMPTS = {
     "creative": "Rewrite the following text with creative flair — vivid language, varied sentence structure, engaging tone. Preserve the original meaning. Output ONLY the enhanced text, nothing else.",
 }
 
+
 # Server timeout: connect=5s, read=30s. openai/groq clients accept an
 # httpx.Timeout or a float (total). Prefer httpx.Timeout when available.
 def _server_timeout():
@@ -215,7 +216,9 @@ class LLMService:
     SYSTEM_PROMPT_QA = SYSTEM_PROMPT_QA
     ENHANCEMENT_MODE_PROMPTS = ENHANCEMENT_MODE_PROMPTS
 
-    def chat(self, prompt: str, system_prompt: str = SYSTEM_PROMPT_QA, max_tokens: int = 512, temperature: float = 0.7) -> str:
+    def chat(
+        self, prompt: str, system_prompt: str = SYSTEM_PROMPT_QA, max_tokens: int = 512, temperature: float = 0.7
+    ) -> str:
         return chat(prompt, system_prompt=system_prompt, max_tokens=max_tokens, temperature=temperature)
 
     def transcribe(self, audio_bytes: bytes, filename: str = "audio.wav", mode: str = "PUSH_TO_TALK") -> Dict[str, Any]:

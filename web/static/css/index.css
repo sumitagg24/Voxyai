@@ -1,0 +1,46 @@
+/* index.html — page styles (Control Room) */
+
+.plat-tags { justify-content: center; }
+.plat-tags .label { margin: 0; }
+
+/* Badge injected by index.js/download.js when the visitor's OS matches a card.
+   Neutral outline (never the recording-red accent, which is reserved). */
+.os-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--border-hair);
+  color: var(--fg-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--sp-3);
+}
+
+.card.highlighted { border-color: var(--fg-primary); }
+
+.hero-actions {
+  margin-top: var(--sp-8);
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.download-btns {
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.plat-tags {
+  margin-top: var(--sp-6);
+  display: flex;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.section-center { text-align: center; border-top: 1px solid var(--border-hair); }

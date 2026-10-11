@@ -115,6 +115,11 @@ Task Scheduler or the host's scheduler. Before you take traffic:
    (stop the app first; `--force` is required before a non-empty live database
    is overwritten). Restore verifies the backup's integrity, replaces the file
    atomically and removes stale WAL sidecars.
+   For the Litestream/B2 replica, run the quarterly drill instead:
+   `scripts/drill_restore.sh` (see [RUNBOOK.md](RUNBOOK.md) § Quarterly
+   restore drill). It restores into a scratch file, runs `PRAGMA
+   integrity_check` plus the `web.backup` integrity helpers, and exits `3`
+   with an honest skip message when Litestream is not configured on that host.
 4. Decide who owns restore, and write it down somewhere outside this repo.
 
 The retention window is whatever `--keep` you schedule: 14 daily backups is
@@ -283,7 +288,10 @@ whose name matches the current version.
 ## J. Windows code signing — **MANUAL CONFIGURATION REQUIRED**
 
 Unsigned installers trigger SmartScreen warnings, so this is required for a real
-release. You need an Authenticode certificate (OV or EV) from a CA.
+release. The cheapest credible options (prices checked October 2026) are an OV
+certificate at ~$99–$400/yr, or Azure Artifact Signing (formerly Trusted
+Signing) Basic at $9.99/mo; the full purchase and wiring plan is in
+[RELEASE.md](RELEASE.md) § Code signing.
 
 | Item | Where | Type |
 |---|---|---|

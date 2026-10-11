@@ -1,0 +1,82 @@
+/* auth.html — page styles (Control Room) */
+
+#consent-overlay.hidden { display: none; }
+
+.consent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  text-align: center;
+}
+
+.consent-list li {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+
+.consent-list .check { color: var(--success); font-weight: 700; }
+
+.auth-alt { margin-top: var(--sp-6); text-align: center; color: var(--fg-muted); font-size: var(--text-sm); }
+
+.auth-social { display: flex; gap: var(--sp-3); justify-content: center; margin-top: var(--sp-3); }
+
+.auth-social .btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.auth-main {
+  min-height: calc(100vh - var(--nav-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-8) var(--sp-4);
+}
+
+.auth-narrow { max-width: 440px; width: 100%; }
+
+.auth-head { text-align: center; margin-bottom: var(--sp-8); }
+
+.auth-title { font-size: var(--text-3xl); font-weight: 700; letter-spacing: -0.02em; }
+
+.form-row-split { display: flex; justify-content: space-between; align-items: center; }
+
+.auth-toggle { margin: 0; font-size: var(--text-sm); font-weight: 400; }
+
+.auth-forgot { padding: 0; font-size: var(--text-sm); }
+
+.auth-submit { margin-top: var(--sp-2); }
+
+.auth-link { color: var(--fg-primary); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Consent overlay: hidden until auth.js adds .open (never visible by default). */
+.consent-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-4);
+}
+.consent-overlay.open { display: flex; }
+
+.consent-card { max-width: 480px; width: 100%; margin: auto; }
+
+.consent-head { text-align: center; margin-bottom: var(--sp-6); }
+
+.consent-title { font-size: var(--text-2xl); font-weight: 700; }
+
+.consent-sub { text-align: center; margin-bottom: var(--sp-6); }
+
+.consent-note { font-size: var(--text-sm); text-align: center; margin-bottom: var(--sp-6); }
+
+.consent-actions { display: flex; gap: var(--sp-3); justify-content: center; }

@@ -544,6 +544,101 @@ def test_cross_user_user_id_parameters_are_ignored(app_client):
     assert (leak.get_json() or {}).get("subscription", {}).get("tier") == "free"
 
 
+# ── QR sign-in (P6.1 TOCTOU) ─────────────────────────────────────────────────
+
+
+def test_qr_status_mints_one_session_and_is_idempotent(app_client):
+    """Baseline: approve once, then every poll sees the same session."""
+    client, web_app = app_client
+    user = ApiUser(client, "qr-flow@gmail.com")
+
+    started = client.post("/api/auth/qr/start", json={"device_name": "test laptop"}).get_json()
+    assert started["success"] is True
+    code = started["code"]
+    device_token = started["device_token"]
+    assert device_token, "qr/start must issue a device_token"
+
+    approved = client.post("/api/auth/qr/approve", json={"code": code}, headers=user.headers)
+    assert approved.status_code == 200
+
+    first = client.get(f"/api/auth/qr/status?code={code}&device_token={device_token}").get_json()
+    assert first["status"] == "approved" and first["session_id"]
+    second = client.get(f"/api/auth/qr/status?code={code}&device_token={device_token}").get_json()
+    assert second["status"] == "approved" and second["session_id"] == first["session_id"]
+
+    # The phone account also has its own login session; the QR flow added one.
+    conn = web_app._get_db()
+    count = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE user_id = ?", (user.user_id,)).fetchone()["c"]
+    conn.close()
+    assert count == 2, "approval must mint exactly one session"
+
+
+def test_qr_status_concurrent_polls_mint_exactly_one_session(app_client):
+    """P6.1: two concurrent polls after approval must not mint two sessions.
+
+    Both requests are held at the same point (inside ``_mint_qr_session``,
+    after each has already read the ticket as approved with ``session_id IS
+    NULL``), so the compare-and-swap claim is exercised deterministically
+    rather than by timing luck.
+    """
+    import threading
+
+    from web.routes import auth as auth_routes
+
+    client, web_app = app_client
+    user = ApiUser(client, "qr-race@gmail.com")
+
+    conn = web_app._get_db()
+    conn.execute(
+        "INSERT INTO qr_tickets (code, status, approved_user_id, device_token, expires_at) "
+        "VALUES ('RACECODE', 'approved', ?, 'race-device-token', datetime('now', '+5 minutes'))",
+        (user.user_id,),
+    )
+    conn.commit()
+    before = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE user_id = ?", (user.user_id,)).fetchone()["c"]
+    conn.close()
+
+    real_mint = auth_routes._mint_qr_session
+    barrier = threading.Barrier(2, timeout=10)
+
+    def synchronized_mint(conn_, code, approved_user_id):
+        barrier.wait()
+        return real_mint(conn_, code, approved_user_id)
+
+    auth_routes._mint_qr_session = synchronized_mint
+    results: dict = {}
+
+    def poll(name):
+        c = web_app.app.test_client()
+        response = c.get("/api/auth/qr/status?code=RACECODE&device_token=race-device-token")
+        results[name] = (response.status_code, response.get_json())
+
+    threads = [threading.Thread(target=poll, args=(f"poller-{i}",)) for i in range(2)]
+    try:
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+    finally:
+        auth_routes._mint_qr_session = real_mint
+
+    assert all(status == 200 for status, _ in results.values()), results
+    payloads = [payload for _, payload in results.values()]
+    assert all(p["status"] == "approved" and p["session_id"] for p in payloads), payloads
+    assert len({p["session_id"] for p in payloads}) == 1, "both polls must return the same session"
+
+    # The losing poll's session was discarded: exactly one new session total.
+    conn = web_app._get_db()
+    after = conn.execute("SELECT COUNT(*) AS c FROM sessions WHERE user_id = ?", (user.user_id,)).fetchone()["c"]
+    conn.close()
+    assert after == before + 1, f"expected one new session, got {after - before}"
+
+
+def test_qr_status_rejects_unknown_code(app_client):
+    client, _ = app_client
+    assert client.get("/api/auth/qr/status?code=ZZZZZZ").status_code == 404
+
+
 # ── owner provisioning security regressions ───────────────────────────────────
 
 

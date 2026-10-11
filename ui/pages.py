@@ -1601,7 +1601,7 @@ class AboutPage(BasePage):
             )
             return
         self.update_status.setText("Verified. Voxylis will close so the installer can replace files.")
-        if updater.launch_installer(result.path):
+        if updater.launch_installer(result):
             from PyQt5.QtWidgets import QApplication
 
             QApplication.quit()

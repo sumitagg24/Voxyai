@@ -1,0 +1,85 @@
+/* docs/*.html — shared documentation layout (Control Room) */
+
+.docs-layout {
+  display: flex;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-4);
+  align-items: flex-start;
+}
+
+.docs-side {
+  width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: calc(var(--nav-height) + var(--sp-4));
+}
+
+.docs-side h3 {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+  margin: 0 0 var(--sp-4);
+}
+
+.docs-nav-list { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+.docs-nav-list a {
+  display: block;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+
+.docs-nav-list a:hover { background: var(--bg-surface); color: var(--fg-primary); }
+.docs-nav-list a.on { background: var(--bg-elevated); color: var(--fg-primary); }
+
+.docs-main { flex: 1; min-width: 0; max-width: 780px; }
+.docs-main h1 { font-size: var(--text-3xl); margin-bottom: var(--sp-3); }
+
+.docs-top {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+  margin-bottom: var(--sp-6);
+}
+.docs-top a { color: var(--fg-muted); }
+
+.lead { color: var(--fg-muted); font-size: var(--text-lg); margin-bottom: var(--sp-6); }
+
+.docs-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+  padding: var(--sp-6);
+}
+.docs-card + .docs-card { margin-top: var(--sp-4); }
+
+.docs-main code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-hair);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.docs-main ul, .docs-main ol { padding-left: var(--sp-6); }
+.docs-main li { margin-bottom: var(--sp-2); line-height: 1.6; }
+
+.docs-pager {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--sp-8);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 760px) {
+  .docs-layout { flex-direction: column; }
+  .docs-side { width: 100%; position: static; }
+}

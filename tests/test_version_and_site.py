@@ -92,14 +92,20 @@ def test_download_links_are_only_advertised_when_published(app_client, monkeypat
 
 def test_download_page_checks_availability_before_relinking():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
-    assert "available" in text
     assert "dl-win-note" in text
+    # The availability check lives in the external download.js bundle
+    # (strict CSP forbids inline scripts).
+    js = (STATIC / "js" / "download.js").read_text(encoding="utf-8")
+    assert "available" in js
 
 
 def test_download_page_reads_the_version_from_one_source():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
     assert "data-voxylis-version" in text
-    assert "/version.json" in text
+    # The version fetch lives in the external download.js bundle
+    # (strict CSP forbids inline scripts).
+    js = (STATIC / "js" / "download.js").read_text(encoding="utf-8")
+    assert "/version.json" in js
     # No hard-coded release asset: buttons start at the releases page and are
     # re-pointed only when /api/download/urls reports available=true. The
     # *displayed* version text is filled from version.json at runtime, so no
@@ -122,16 +128,20 @@ def test_social_login_requires_explicit_consent_before_session():
         "consent-overlay",
         "consent-continue",
         "consent-cancel",
-        "showConsent(",
-        "pendingIdToken",
         "nothing was created or stored",
     ):
         assert marker in text, f"auth.html missing consent gate: {marker}"
+    # The consent logic lives in the external auth.js bundle (strict CSP
+    # forbids inline scripts): the gate must exist there, wired to the same
+    # overlay element ids.
+    js = (STATIC / "js" / "auth.js").read_text(encoding="utf-8")
+    for marker in ("showConsent(", "pendingIdToken"):
+        assert marker in js, f"auth.js missing consent gate: {marker}"
     # The token-exchange success path must park at the consent dialog,
     # never create the session directly.
-    assert "showConsent(tokens.id_token)" in text
+    assert "showConsent(tokens.id_token)" in js
     # Cancel path discards the token instead of proceeding.
-    assert "pendingIdToken = ''" in text
+    assert "pendingIdToken = ''" in js
 
 
 def test_legal_pages_exist_for_oauth_consent_screen():
@@ -299,7 +309,6 @@ def test_wake_word_is_fully_removed():
         text = (STATIC / relative).read_text(encoding="utf-8", errors="ignore")
         assert "wakeword" not in text.lower(), f"wake word remnant in {relative}"
         assert "voxylis_wakeword" not in text
-    import web.app as web_app
     import web.tier as tier
 
     assert "wake_word" not in tier.TIER_FEATURES.get("pro", set())

@@ -40,6 +40,12 @@ jobs:
     name: Windows installer
     runs-on: windows-latest
     needs: [version-check]
+    # Signing is optional: with WINDOWS_CERT_BASE64 + WINDOWS_CERT_PASSWORD set
+    # (an OV/EV .pfx from a public CA) the steps below sign and verify both the
+    # EXE and the installer; without them the run produces an unsigned
+    # development build, and the logs make that explicit. Purchase + wiring
+    # plan: docs/RELEASE.md § Code signing (OV cert, or Azure Artifact Signing
+    # as the fallback — the latter needs additional secrets and is not wired).
     env:
       WINDOWS_CERT_BASE64: ${{ secrets.WINDOWS_CERT_BASE64 }}
       WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}

@@ -15,7 +15,6 @@ Hardening added here:
   * recordings record their duration and target app for history/diagnostics.
 """
 
-import os
 import sys
 import threading
 import time

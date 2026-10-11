@@ -1,0 +1,46 @@
+/* about.html — page styles (Control Room) */
+
+.about-prose { max-width: 640px; }
+.about-prose p + p { margin-top: var(--sp-4); }
+
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid var(--border-hair);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--fg-muted);
+  margin-bottom: var(--sp-4);
+}
+
+.role {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+  margin-top: var(--sp-1);
+}
+
+.value-num {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--fg-muted);
+  letter-spacing: -0.02em;
+}
+
+.section-top { border-top: 1px solid var(--border-hair); }
+
+.section-center { text-align: center; }
+
+.hero-actions {
+  margin-top: var(--sp-8);
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: center;
+  flex-wrap: wrap;
+}

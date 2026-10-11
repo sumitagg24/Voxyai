@@ -37,6 +37,7 @@ def test_blueprints_registered_and_routes_present(app_client):
         "/dashboard",
         "/favicon.ico",
         "/og-image.png",
+        "/apple-touch-icon.png",
         "/docs/<page>",
         "/blog/<slug>",
         "/api/auth/auth0/config",

@@ -93,6 +93,31 @@ jobs:
           path: coverage.xml
           if-no-files-found: ignore
 
+  site-audit:
+    # P6.9: boots the real Flask app with a seeded DB and audits every page in
+    # headless Chromium — axe-core accessibility (fail on serious/critical),
+    # an internal link checker, and a no-console-errors-on-load check.
+    # scripts/site_audit.py exits non-zero on any finding.
+    #
+    # This job MUST be a required status check:
+    #   Settings → Branches → Branch protection for `main` → add "Site audit".
+    name: Site audit (a11y + links + console)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install server runtime + Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-server.txt "playwright>=1.40.0"
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Audit every page
+        run: python scripts/site_audit.py
+
   dependency-audit:
     name: Dependency audit
     runs-on: ubuntu-latest

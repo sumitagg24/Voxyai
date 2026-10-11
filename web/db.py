@@ -58,6 +58,115 @@ def _get_db() -> sqlite3.Connection:
     return conn
 
 
+#: Every schema change ships as a numbered, recorded step here (P6.4). Rules:
+#: append only — never edit or renumber a released step — and keep each step
+#: idempotent, because a database that predates the ``schema_migrations``
+#: table already contains the effects of older steps and will run them once
+#: for the record.
+def _add_user_column_if_missing(conn: sqlite3.Connection, column: str, ddl: str) -> None:
+    """ALTER TABLE users, but only when the column is actually absent."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if column not in cols:
+        conn.execute(f"ALTER TABLE users ADD COLUMN {ddl}")
+        conn.commit()
+
+
+def _create_processed_events(conn: sqlite3.Connection) -> None:
+    """Webhook replay-dedup table (was created ad-hoc in the route)."""
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS processed_events ("
+        " event_id TEXT PRIMARY KEY,"
+        " source TEXT NOT NULL DEFAULT '',"
+        " created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
+    conn.commit()
+
+
+def _create_download_events(conn: sqlite3.Connection) -> None:
+    """Download-click counter table (was created ad-hoc in the route)."""
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS download_events "
+        "(id INTEGER PRIMARY KEY AUTOINCREMENT, platform TEXT NOT NULL, "
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
+    conn.commit()
+
+
+def _add_qr_device_token(conn: sqlite3.Connection) -> None:
+    """P6.7: per-ticket client secret so only the ticket creator can claim
+    the session that an approval mints (blocks QR-observation session theft)."""
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(qr_tickets)").fetchall()]
+    if "device_token" not in cols:
+        conn.execute("ALTER TABLE qr_tickets ADD COLUMN device_token TEXT")
+        conn.commit()
+
+
+def _migrations() -> list:
+    """The ordered migration ledger (resolved lazily so step functions defined
+    later in this module are available)."""
+    return [
+        (
+            1,
+            "users: add onboarding",
+            lambda c: _add_user_column_if_missing(c, "onboarding", "onboarding TEXT NOT NULL DEFAULT '{}'"),
+        ),
+        (
+            2,
+            "users: add settings",
+            lambda c: _add_user_column_if_missing(c, "settings", "settings TEXT NOT NULL DEFAULT '{}'"),
+        ),
+        (
+            3,
+            "users: add hotkeys",
+            lambda c: _add_user_column_if_missing(c, "hotkeys", "hotkeys TEXT NOT NULL DEFAULT '{}'"),
+        ),
+        (
+            4,
+            "users: add email_verified",
+            lambda c: _add_user_column_if_missing(c, "email_verified", "email_verified INTEGER NOT NULL DEFAULT 0"),
+        ),
+        (5, "users: add tier", lambda c: _add_user_column_if_missing(c, "tier", "tier TEXT NOT NULL DEFAULT 'free'")),
+        (6, "users: add role", lambda c: _add_user_column_if_missing(c, "role", "role TEXT NOT NULL DEFAULT 'user'")),
+        (
+            7,
+            "users: add is_owner",
+            lambda c: _add_user_column_if_missing(c, "is_owner", "is_owner INTEGER NOT NULL DEFAULT 0"),
+        ),
+        (8, "users: add auth0_sub", lambda c: _add_user_column_if_missing(c, "auth0_sub", "auth0_sub TEXT")),
+        (9, "email case-normalization + lower() unique indexes", _dedupe_case_variant_emails),
+        (10, "processed_events table", _create_processed_events),
+        (11, "qr_tickets: add device_token", _add_qr_device_token),
+        (12, "download_events table", _create_download_events),
+    ]
+
+
+def _apply_migrations(conn: sqlite3.Connection) -> None:
+    """Run every migration that has not been recorded yet (exactly once).
+
+    The ``schema_migrations`` row is written only after the step function
+    returns, so a crashed step is retried on the next boot rather than being
+    silently marked as applied.
+    """
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS schema_migrations ("
+        " version INTEGER PRIMARY KEY,"
+        " name TEXT NOT NULL DEFAULT '',"
+        " applied_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    )
+    conn.commit()
+    applied = {row[0] for row in conn.execute("SELECT version FROM schema_migrations").fetchall()}
+    for version, name, step in _migrations():
+        if version in applied:
+            continue
+        step(conn)
+        conn.execute(
+            "INSERT INTO schema_migrations (version, name) VALUES (?, ?)",
+            (version, name),
+        )
+        conn.commit()
+        logger.info("schema migration %d applied: %s", version, name)
+
+
 def _init_db() -> None:
     """Create tables and seed blog data if needed."""
 
@@ -65,7 +174,8 @@ def _init_db() -> None:
     conn = _get_db()
     cur = conn.cursor()
 
-    cur.executescript("""
+    cur.executescript(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             name          TEXT    NOT NULL,
@@ -175,40 +285,13 @@ def _init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
         CREATE INDEX IF NOT EXISTS idx_usage_records_user_id_feature ON usage_records(user_id, feature, created_at);
         CREATE INDEX IF NOT EXISTS idx_users_email ON users(email_or_phone);
-        """)
+        """
+    )
     conn.commit()
 
-    # Migrate legacy DBs that lack newer columns
-    cols = [r[1] for r in cur.execute("PRAGMA table_info(users)").fetchall()]
-    if "onboarding" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN onboarding TEXT NOT NULL DEFAULT '{}'")
-        conn.commit()
-    if "settings" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN settings TEXT NOT NULL DEFAULT '{}'")
-        conn.commit()
-    if "hotkeys" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN hotkeys TEXT NOT NULL DEFAULT '{}'")
-        conn.commit()
-    if "email_verified" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0")
-        conn.commit()
-    if "tier" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN tier TEXT NOT NULL DEFAULT 'free'")
-        conn.commit()
-    if "role" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
-        conn.commit()
-    if "is_owner" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0")
-        conn.commit()
-    if "auth0_sub" not in cols:
-        cur.execute("ALTER TABLE users ADD COLUMN auth0_sub TEXT")
-        conn.commit()
-
-    # P1.2 one-time email-normalization migration: dedupe case-variant
-    # duplicates, lowercase stored addresses, then enforce case-insensitive
-    # uniqueness going forward. Idempotent: re-running finds no duplicates.
-    _dedupe_case_variant_emails(conn)
+    # Numbered, recorded schema steps (column adds, email normalization,
+    # unique indexes, processed_events). Each runs exactly once per database.
+    _apply_migrations(conn)
 
     for owner_email in _owner_emails():
         # Same verified-address rule as _ensure_owner(): the startup sweep must
@@ -224,7 +307,8 @@ def _init_db() -> None:
 
     # Blog content is seeded/updated on every start so corrections to copy are
     # actually published (the upsert in _seed_blog also prunes withdrawn posts).
-    cur.executescript("""
+    cur.executescript(
+        """
         CREATE TABLE IF NOT EXISTS blog_posts (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             slug      TEXT NOT NULL UNIQUE,
@@ -235,7 +319,8 @@ def _init_db() -> None:
             content   TEXT NOT NULL DEFAULT '',
             read_time TEXT NOT NULL DEFAULT '5 min read'
         );
-        """)
+        """
+    )
     _seed_blog(conn)
     conn.close()
 

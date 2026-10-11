@@ -99,6 +99,10 @@ class DownloadResult:
     verified: bool = False
     error: str = ""
     progress: list = field(default_factory=list)
+    #: Manifest values the downloaded file was verified against; carried so
+    #: launch_installer can re-verify the file on disk before executing it.
+    expected_sha256: str = ""
+    expected_size: int = 0
 
 
 class Updater:
@@ -205,6 +209,8 @@ class Updater:
             result.error = "no-update"
             result.detail = "No update to download."
             return result
+        result.expected_sha256 = info.sha256
+        result.expected_size = info.size
 
         target = paths.updates_dir() / f"Voxylis-Setup-{info.latest}.exe"
         partial = target.with_suffix(".part")
@@ -249,10 +255,30 @@ class Updater:
 
     # ── apply ────────────────────────────────────────────────────────────
 
-    def launch_installer(self, path: Path, silent: bool = False) -> bool:
-        """Run the verified installer. The app must exit for files to replace."""
-        if not path or not path.is_file():
+    def launch_installer(self, result: DownloadResult, silent: bool = False) -> bool:
+        """Run a downloaded update — but only a verified one.
+
+        The gate lives here, not only in the calling UI (P6.8): a result that
+        was never verified is refused, and even a verified result is
+        re-checked on disk against the manifest checksum before anything is
+        executed, so a file swapped or truncated between download and launch
+        cannot run.
+        """
+        if not isinstance(result, DownloadResult) or not result.ok or result.path is None:
+            log_warning("Refusing to launch: no completed download to apply")
             return False
+        if not result.verified:
+            log_warning(f"Refusing to launch unverified update: {result.detail or 'not verified'}")
+            return False
+        if not result.path.is_file():
+            log_warning(f"Refusing to launch: {result.path} no longer exists")
+            return False
+        still_good, detail = self._verify(result.path, result.expected_sha256, result.expected_size)
+        if not still_good:
+            log_warning(f"Refusing to launch: file changed after download ({detail})")
+            return False
+
+        path = result.path
         if sys.platform.startswith("win"):
             args = [str(path)]
             if silent:

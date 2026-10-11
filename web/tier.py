@@ -151,7 +151,14 @@ def pricing_features(tier: str) -> list:
     if tier == TIER_PRO:
         return base + [_mode_label(tier), "Q&A (Pro+)", "Priority support"]
     if tier == TIER_BUSINESS:
-        return base + ["Everything in Pro", "Q&A (Pro+)", "Team collaboration", "API access", "Custom integrations", "Dedicated support"]
+        return base + [
+            "Everything in Pro",
+            "Q&A (Pro+)",
+            "Team collaboration",
+            "API access",
+            "Custom integrations",
+            "Dedicated support",
+        ]
     return base
 
 

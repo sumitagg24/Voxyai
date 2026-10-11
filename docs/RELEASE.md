@@ -56,13 +56,51 @@ build script: without Inno Setup it skips and says so.
 
 ### Code signing
 
-Set `CERT_PATH` (a `.pfx`) and `CERT_PASSWORD` before running the build, or add
-`WINDOWS_CERT_BASE64` + `WINDOWS_CERT_PASSWORD` repository secrets for CI.
-`signtool` signs both the EXE and the installer. **Unsigned builds are
-development builds**: they trigger SmartScreen, and the download page says so
-rather than implying otherwise. An EV/OV certificate from a public CA is
-required; a self-signed certificate does not improve SmartScreen for other
-users.
+**Current status: releases are unsigned.** `release.yml` signs `Voxylis.exe`
+and the installer only when the `WINDOWS_CERT_BASE64` + `WINDOWS_CERT_PASSWORD`
+secrets exist and skips signing otherwise, producing a development build. An
+unsigned build shows Windows SmartScreen's *"Windows protected your PC"* on
+first run. That is a reputation signal, not a malware verdict.
+
+Two credible paths, cheapest first (prices checked October 2026):
+
+| Path | Cost | SmartScreen behaviour | Notes |
+|---|---|---|---|
+| **Azure Artifact Signing** (formerly Trusted Signing), Basic | **$9.99/mo** (~$120/yr), 5,000 signatures/mo included, $0.005 per extra | Reputation accrues to a Microsoft-issued certificate | Azure account + identity validation (individual or organization, a few business days); no hardware token; sign locally or in CI |
+| **OV code-signing certificate** (SSL Dragon / Certum / Sectigo / SSL.com) | **~$99–$400/yr** depending on CA and term | Publisher is the verified legal name; SmartScreen clears only after download reputation accrues (weeks) | Ships as hardware token or cloud HSM; export to `.pfx` for CI |
+| EV certificate | ~$300–$690/yr | Immediate reputation for the certificate | Hardware token/HSM in CI is awkward; not recommended here |
+
+**Chosen plan while no certificate exists:** buy the cheapest credible OV
+certificate and wire it into the *existing* workflow secrets, because
+`release.yml` already signs with them and no CI change is needed. Azure
+Artifact Signing Basic is the documented fallback if OV identity validation
+stalls; it would need additional secrets (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
+`AZURE_CLIENT_SECRET`, signing account + certificate profile) and an extra
+signing step that is **not** wired today.
+
+To install an OV certificate in CI:
+
+1. Export the CA-issued certificate to `voxylis.pfx`, then base64 it:
+   `base64 -w0 voxylis.pfx` (Git Bash) or
+   `[Convert]::ToBase64String([IO.File]::ReadAllBytes("voxylis.pfx"))` (PowerShell).
+2. Repository → Settings → Secrets and variables → Actions, add
+   `WINDOWS_CERT_BASE64` (the base64 text) and `WINDOWS_CERT_PASSWORD`
+   (the PFX password).
+3. Push a `v*` tag. The workflow signs `dist/Voxylis/Voxylis.exe` and
+   `installer/output/Voxylis-Setup-<version>.exe`, then runs
+   `signtool verify /pa` over the installer.
+4. Verify the artifact locally before announcing anything:
+
+   ```powershell
+   Get-AuthenticodeSignature .\Voxylis-Setup-<version>.exe | Format-List Status, SignerCertificate
+   ```
+
+   `Status` must read `Valid` and the signer must be the expected publisher.
+
+Local builds can instead set `CERT_PATH` (a `.pfx`) and `CERT_PASSWORD` before
+running `build_windows.bat`. Never commit a certificate or its password; a
+self-signed certificate does not improve SmartScreen for other users and must
+not be shipped as "signed".
 
 ## 4. Publish
 
@@ -89,6 +127,24 @@ users.
 `https://github.com/sumitagg24/Voxyai/releases/latest/download/update-manifest.json`
 (override with `VOXYLIS_UPDATE_FEED`). A download **without** a `sha256` in the
 manifest is refused by the updater — never publish an unverifiable entry.
+The manifest must be attached to the **Latest** release (that is the feed URL);
+`release.yml` uploads it with every tag, so publishing a newer release makes
+older clients see it on their next check.
+
+The whole flow (check → version compare → download → checksum/size verify →
+launch gate) is covered by `tests/test_updater_e2e.py` against a local stub
+feed. `launch_installer` re-verifies the downloaded file against the manifest
+checksum before executing it, so a file swapped between download and launch
+never runs. For a live check of the real feed against the published asset
+digests, run:
+
+```bash
+VOXYLIS_UPDATE_E2E_NETWORK=1 python -m pytest tests/test_updater_e2e.py -v
+```
+
+*(Verified against v3.0.0 — the current Latest release — in October 2026:
+manifest, checksum and asset size agree. There is no v3.1.0 release yet, so a
+3.0.0 client correctly reports "up to date".)*
 
 3. Update the website download metadata if the file name changed, then confirm
    `GET /api/health` reports the same version.
@@ -116,7 +172,9 @@ manifest is refused by the updater — never publish an unverifiable entry.
 ## Known blockers for a fully signed release
 
 * **Code-signing certificate** is not present in this repository. Until it is
-  provided as a secret, releases are unsigned development builds.
+  provided as a secret, releases are unsigned development builds and trigger
+  SmartScreen. The exact purchase + wiring plan (OV ~$99–$400/yr, or Azure
+  Artifact Signing at $9.99/mo) is in § Code signing above.
 * **Payment provider** is not integrated. Checkout reports "unavailable" and
   tiers can only change through a verified webhook, an audited admin action, or
   a development override that production refuses. Do not advertise a purchase

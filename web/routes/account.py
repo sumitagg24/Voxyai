@@ -13,6 +13,7 @@ from web.auth_helpers import (
     _extract_session,
     _hash_password,
     _hash_session_id,
+    _json_body,
     _load_onboarding,
     _session_created_at,
     _text,
@@ -95,7 +96,7 @@ def onboarding():
         completed = {}
 
     if request.method == "POST":
-        data = request.get_json(silent=True) or {}
+        data = _json_body()
         step_id = _text(data.get("step"))
         valid_ids = {s["id"] for s in _ONBOARDING_STEPS}
         if step_id not in valid_ids:
@@ -288,7 +289,7 @@ def hotkeys(user_id):
 @require_auth
 @limiter.limit("10 per hour", key_func=get_remote_address)
 def update_profile(user_id):
-    data = request.json or {}
+    data = _json_body()
     if "name" in data and not isinstance(data["name"], str):
         # Fail closed rather than silently ignoring a type-confused field.
         return jsonify({"success": False, "error": "Invalid name"}), 400
@@ -368,7 +369,7 @@ def delete_account(user_id):
     transcriptions, usage, tokens, preferences); the confirmation email is sent
     last, after the address has been captured.
     """
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     password = _text(data.get("password"))
     confirm = _text(data.get("confirm")).upper()
 

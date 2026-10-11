@@ -20,7 +20,7 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
 
 ## Daily operations
 
-- UptimeRobot alerts → open `https://<your-name>.onrender.com/api/health`.
+- UptimeRobot alerts → open `https://voxylis-api.onrender.com/api/health`.
   `email.configured` and `monitoring.enabled` are reported there.
 - Render Dashboard → Logs for tracebacks; Sentry for grouped errors.
 - Contact-form spam → `contact_messages` table; decide retention below.
@@ -31,11 +31,40 @@ Owner: _<your name>_ · Last verified: _<date>_ · Version: 3.0.0
   (see `docker-entrypoint.sh` + `LITESTREAM_*` env). A Render restart restores
   from the replica automatically on boot.
 - Weekly: download `voxylis.db` from the B2 bucket (off-provider copy).
-- Restore drill: `litestream restore -o /tmp/restore.db
-  s3://<bucket>/voxylis.db` → `PRAGMA integrity_check` ok.
+- Restore drill: `scripts/drill_restore.sh` (see below). The older manual form
+  is `litestream restore -if-replica-exists -o /tmp/restore.db
+  s3://<bucket>/voxylis.db` followed by `PRAGMA integrity_check`.
   (Local/tooling path `python -m web.backup` still works for manual snapshots.)
 - Retention: B2 keeps the live replica; keep 4 weekly downloads.
   Restore owner: _<name>_.
+
+## Quarterly restore drill
+
+Cadence: once per quarter (first week of January, April, July, October).
+Owner: _<name>_.
+
+1. Run the drill from the repo root, with the deployment's Litestream
+   environment available (the Render shell has it) or a local replica:
+
+   ```sh
+   scripts/drill_restore.sh                       # B2 replica (LITESTREAM_* env)
+   scripts/drill_restore.sh --local-replica DIR   # replica directory on disk
+   ```
+
+2. The script restores into a scratch file and verifies it with
+   `PRAGMA integrity_check`, the `web.backup` integrity helpers, and a check
+   that `users`, `sessions` and `transcriptions` exist. It prints the sha256
+   and size of what was restored.
+3. Exit codes: `0` passed, `1` verification failed (treat as an incident),
+   `2` usage error, `3` skipped because Litestream is not installed or not
+   configured on that host — an honest skip, never a pass. If the host has no
+   Litestream config, run the drill on the Render shell instead.
+4. Record the outcome in the drill log below. A drill that has not been run on
+   the current schema is not evidence that restores work.
+
+| Date (UTC) | Operator | Mode | Result | sha256 (first 12) |
+|---|---|---|---|---|
+| _<date>_ | _<name>_ | B2 | _pass/skip/fail_ | _<hash>_ |
 
 ## Retention decisions
 

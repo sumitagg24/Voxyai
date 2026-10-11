@@ -10,6 +10,7 @@ from flask_limiter.util import get_remote_address
 from web import observability
 from web.auth_helpers import (
     _extract_session,
+    _json_body,
     _text,
     _verify_session,
     check_transcription_quota,
@@ -98,6 +99,31 @@ _HISTORY_LANGUAGES = frozenset(
 #: Free-tier history-write cap per hour (abuse guard; well above normal use and
 #: above the 100/month STT quota so the P1.5 regression test can exceed 100).
 _HISTORY_FREE_HOURLY_CAP = 500
+
+#: GET /api/history pagination bounds (P6.3). Defaults preserve the old
+#: LIMIT 100 behaviour for clients that send no pagination parameters.
+_HISTORY_DEFAULT_PAGE_SIZE = 100
+_HISTORY_MAX_PAGE_SIZE = 100
+
+
+def _history_pagination_args() -> tuple:
+    """Parse ``?page=&page_size=`` for GET /api/history.
+
+    Returns ``(page, page_size)``. Non-numeric or out-of-range input falls
+    back to defaults rather than erroring, and ``page_size`` is clamped to
+    the 1..100 range so a client cannot request an unbounded page.
+    """
+
+    def _positive_int(raw, default: int) -> int:
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return default
+        return value if value >= 1 else default
+
+    page = _positive_int(request.args.get("page"), 1)
+    page_size = _positive_int(request.args.get("page_size"), _HISTORY_DEFAULT_PAGE_SIZE)
+    return page, min(page_size, _HISTORY_MAX_PAGE_SIZE)
 
 
 @usage_bp.route("/api/qa", methods=["POST"])
@@ -322,8 +348,7 @@ def history():
     # Attempt to get session from header or body
     session_id = request.headers.get("X-Session-Id", "")
     if not session_id:
-        data = request.get_json(silent=True) or {}
-        session_id = data.get("session_id", "")
+        session_id = _json_body().get("session_id", "")
 
     user_id = _verify_session(session_id)
 
@@ -413,11 +438,14 @@ def history():
     if user_id is None:
         return jsonify({"success": False, "error": "Login required"}), 401
 
+    page, page_size = _history_pagination_args()
     conn = _get_db()
+    total = conn.execute("SELECT COUNT(*) AS c FROM transcriptions WHERE user_id = ?", (user_id,)).fetchone()["c"]
     rows = conn.execute(
         "SELECT id, text, enhanced, mode, language, created_at "
-        "FROM transcriptions WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
-        (user_id,),
+        "FROM transcriptions WHERE user_id = ? "
+        "ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+        (user_id, page_size, (page - 1) * page_size),
     ).fetchall()
     conn.close()
 
@@ -432,7 +460,20 @@ def history():
         }
         for r in rows
     ]
-    return jsonify({"status": "success", "history": history})
+    total_pages = (total + page_size - 1) // page_size if total else 0
+    return jsonify(
+        {
+            "status": "success",
+            "history": history,
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": total_pages,
+                "has_more": page * page_size < total,
+            },
+        }
+    )
 
 
 @usage_bp.route("/api/history/<int:item_id>", methods=["DELETE"])
@@ -598,7 +639,7 @@ def upgrade_tier(user_id):
     development override; the real production path is a verified payment
     webhook handled by :mod:`web.services.subscription_service`.
     """
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     new_tier = _text(data.get("tier")).lower()
     actor_is_admin = is_admin(user_id=user_id)
     source = subscription_service.resolve_actor_source(actor_is_admin)

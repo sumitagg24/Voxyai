@@ -11,11 +11,12 @@
 <link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/pricing.css">
+<link rel="stylesheet" href="/static/css/cookie-consent.css">
 </head>
 <body>
 <nav class="nav">
   <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
-  <button class="nav-toggle" aria-label="Toggle menu" onclick="document.querySelector('.nav-links').classList.toggle('open');document.querySelector('.nav-right').classList.toggle('open')"><span></span><span></span><span></span></button>
+  <button class="nav-toggle" aria-label="Toggle menu" type="button"><span></span><span></span><span></span></button>
   <div class="nav-links">
     <a href="/#features">Features</a>
     <a href="/pricing">Pricing</a>
@@ -45,37 +46,36 @@
         <header class="card-header">
           <span class="label">Free</span>
           <h3 class="card-title">Free</h3>
-          <p class="muted" style="font-size:var(--text-3xl);font-weight:700">$0<span style="font-weight:400;font-size:var(--text-base);opacity:0.6">/month</span></p>
+          <p class="muted tier-price">$0<small>/month</small></p>
         </header>
-        <p class="muted" style="margin-bottom:var(--sp-6)">Perfect for getting started</p>
-        <ul class="features" style="list-style:none;padding:0;margin:0 0 var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-3)">
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>100 transcriptions/month</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Languages your speech provider supports</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Formal enhancement mode</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Community support</span></li>
+        <p class="muted tier-desc">Perfect for getting started</p>
+        <ul class="feature-list">
+          <li><span class="check">✓</span><span>100 transcriptions/month</span></li>
+          <li><span class="check">✓</span><span>Languages your speech provider supports</span></li>
+          <li><span class="check">✓</span><span>Formal enhancement mode</span></li>
+          <li><span class="check">✓</span><span>Community support</span></li>
         </ul>
         <a href="/auth" class="btn btn-full" id="cta-free">Get Started</a>
-        <p class="muted" style="font-size:var(--text-xs);text-align:center;margin-top:var(--sp-3)">No credit card required</p>
+        <p class="muted tier-note">No credit card required</p>
       </article>
 
       <!-- PRO -->
-      <article class="card" style="border-color:var(--rec-lamp)" id="tier-pro">
-        <span class="label" style="background:var(--rec-lamp);color:var(--fg-inverse);padding:2px 8px;border-radius:var(--radius-sm);font-size:var(--text-xs);display:inline-block;margin-bottom:var(--sp-3)">Popular</span>
+      <article class="card" id="tier-pro">
         <header class="card-header">
           <span class="label">Pro</span>
           <h3 class="card-title">Pro</h3>
-          <p class="muted" style="font-size:var(--text-3xl);font-weight:700">$9.99<span style="font-weight:400;font-size:var(--text-base);opacity:0.6">/month</span></p>
+          <p class="muted tier-price">$9.99<small>/month</small></p>
         </header>
-        <p class="muted" style="margin-bottom:var(--sp-6)">For power users</p>
-        <ul class="features" style="list-style:none;padding:0;margin:0 0 var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-3)">
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>1,000 transcriptions/month</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Languages your speech provider supports</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>All five enhancement modes</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Q&A (Pro+)</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Priority support</span></li>
+        <p class="muted tier-desc">For power users</p>
+        <ul class="feature-list">
+          <li><span class="check">✓</span><span>1,000 transcriptions/month</span></li>
+          <li><span class="check">✓</span><span>Languages your speech provider supports</span></li>
+          <li><span class="check">✓</span><span>All five enhancement modes</span></li>
+          <li><span class="check">✓</span><span>Q&A (Pro+)</span></li>
+          <li><span class="check">✓</span><span>Priority support</span></li>
         </ul>
-        <a href="/auth" class="btn btn-full" id="cta-pro" style="background:var(--rec-lamp);border-color:var(--rec-lamp)">Start Free Trial</a>
-        <p class="muted" style="font-size:var(--text-xs);text-align:center;margin-top:var(--sp-3)">Cancel anytime. No questions asked.</p>
+        <a href="/auth" class="btn btn-full" id="cta-pro">Upgrade to Pro</a>
+        <p class="muted tier-note">Cancel anytime. No questions asked.</p>
       </article>
 
       <!-- BUSINESS -->
@@ -83,32 +83,31 @@
         <header class="card-header">
           <span class="label">Business</span>
           <h3 class="card-title">Business</h3>
-          <p class="muted" style="font-size:var(--text-3xl);font-weight:700">$29.99<span style="font-weight:400;font-size:var(--text-base);opacity:0.6">/month</span></p>
+          <p class="muted tier-price">$29.99<small>/month</small></p>
         </header>
-        <p class="muted" style="margin-bottom:var(--sp-6)">For teams</p>
-        <ul class="features" style="list-style:none;padding:0;margin:0 0 var(--sp-6);display:flex;flex-direction:column;gap:var(--sp-3)">
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>5,000 transcriptions/month</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Everything in Pro</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Team collaboration</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>API access</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Custom integrations</span></li>
-          <li style="display:flex;align-items:flex-start;gap:var(--sp-2)"><span style="color:var(--success);font-weight:700;flex-shrink:0;margin-top:2px">✓</span><span>Dedicated support</span></li>
+        <p class="muted tier-desc">For teams</p>
+        <ul class="feature-list">
+          <li><span class="check">✓</span><span>5,000 transcriptions/month</span></li>
+          <li><span class="check">✓</span><span>Everything in Pro</span></li>
+          <li><span class="check">✓</span><span>Team collaboration</span></li>
+          <li><span class="check">✓</span><span>API access</span></li>
+          <li><span class="check">✓</span><span>Custom integrations</span></li>
+          <li><span class="check">✓</span><span>Dedicated support</span></li>
         </ul>
         <a href="/contact" class="btn btn-ghost btn-full" id="cta-business">Contact Sales</a>
-        <p class="muted" style="font-size:var(--text-xs);text-align:center;margin-top:var(--sp-3)">Volume discounts available</p>
-      </article>
+              </article>
     </div>
 
     <!-- HONESTY NOTICE -->
-    <div class="card" style="margin-top:var(--sp-12);max-width:800px;margin-left:auto;margin-right:auto">
+    <div class="card pricing-notice">
       <span class="label">Honesty</span>
       <h3 class="card-title">What you see is what you get</h3>
       <p class="muted">We use Dodo Payments (merchant of record) for checkout. If no checkout links are configured in this deployment, the buttons above will honestly say so and point you to the releases page. No fake countdowns, no "14-day trial" that doesn't exist, no annual discounts that don't exist.</p>
-      <p class="muted" style="margin-top:var(--sp-3)"><strong>Not purchasable yet</strong> — payments aren't configured in this deployment. The buttons above will open the Dodo hosted checkout when configured; otherwise they'll show an honest message.</p>
+      <p class="muted"><strong>Not purchasable yet</strong> — payments aren't configured in this deployment. The buttons above will open the Dodo hosted checkout when configured; otherwise they'll show an honest message.</p>
     </div>
 
     <!-- Test guard: ensure the page contains the honest disclaimer -->
-    <span style="display:none" data-test-guard>not purchasable yet</span>
+    <span hidden data-test-guard>not purchasable yet</span>
   </div>
 </section>
 
@@ -120,55 +119,19 @@
         <div class="footer-col"><h5>Product</h5><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="/download">Download</a></div>
         <div class="footer-col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
         <div class="footer-col"><h5>Resources</h5><a href="/docs/installation">Docs</a><a href="/#faq">FAQ</a><a href="/contact">Support</a></div>
-        <div class="footer-col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" onclick="try{localStorage.removeItem('voxy_cookie_consent')}catch(e){}location.reload();return false">Cookie choices</a></div>
+        <div class="footer-col"><h5>Legal</h5><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="#" data-cookie-choices>Cookie choices</a></div>
       </nav>
     </div>
-    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" style="color:inherit">Contact</a></span></div>
+    <div class="footer-bot"><span>Voxylis © 2026</span><span>Voice that works like code.</span><span><a href="/contact" class="link-inherit">Contact</a></span></div>
   </div>
 </footer>
 
-<script>window.VOXYLIS_API_BASE='https://voxylis-api.onrender.com';</script>
 <script src="/static/js/config.js"></script>
 <script src="/static/js/api.js"></script>
 <script src="/static/js/sentry-init.js" defer></script>
 <script src="/static/js/cookie-consent.js" defer></script>
-<script>
-// CTA wiring: respect checkout_available from /api/subscription
-async function wireCTAs() {
-  try {
-    const resp = await fetch((window.VOXYLIS_API_BASE||'')+'/api/subscription', {headers:{'Accept':'application/json'}});
-    if (!resp.ok) return;
-    const data = await resp.json();
-    const available = data.subscription?.checkout_available === true;
-    const ctaFree = document.getElementById('cta-free');
-    const ctaPro = document.getElementById('cta-pro');
-    const ctaBusiness = document.getElementById('cta-business');
-    function setCTA(btn, available) {
-      if (!btn) return;
-      if (available) {
-        btn.onclick = null; // let the anchor href work (Dodo link)
-      } else {
-        btn.href = '/pricing';
-        btn.onclick = (e) => { e.preventDefault(); alert('Plans can\'t be purchased in this deployment yet.'); };
-        btn.textContent = btn.id === 'cta-free' ? 'Get Started (not available)' : (btn.id === 'cta-pro' ? 'Start Free Trial (not available)' : 'Contact Sales (not available)');
-        btn.classList.add('btn-ghost');
-      }
-    }
-    if (ctaFree) setCTA(ctaFree, available);
-    if (ctaPro) setCTA(ctaPro, available);
-    if (ctaBusiness) setCTA(ctaBusiness, available);
-  } catch(e) { console.warn('CTA wire failed:', e); }
-}
-wireCTAs();
 
-// Version
-fetch('/version.json').then(function(r){return r.json()}).then(function(d){
-  if(!d||!d.version)return;
-  document.querySelectorAll('[data-voxylis-version]').forEach(function(el){el.textContent='v'+d.version});
-}).catch(function(){});
-</script>
-<script src="/static/js/api.js"></script>
-<script src="/static/js/sentry-init.js" defer></script>
-<script src="/static/js/cookie-consent.js" defer></script>
+<script src="/static/js/site.js"></script>
+<script src="/static/js/pricing.js"></script>
 </body>
 </html>

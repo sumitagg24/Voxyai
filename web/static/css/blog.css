@@ -1,0 +1,46 @@
+/* blog.html — page styles (Control Room) */
+
+.blog-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  color: inherit;
+  transition: border-color var(--motion-fast);
+}
+.blog-card:hover { border-color: var(--fg-primary); }
+
+.blog-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+}
+
+.blog-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+}
+
+.blog-excerpt { font-size: var(--text-sm); color: var(--fg-muted); line-height: 1.6; }
+
+.blog-readmore {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  margin-top: auto;
+  font-weight: 500;
+}
+
+.blog-loading,
+.blog-empty {
+  grid-column: 1 / -1;
+  padding: var(--sp-12) 0;
+  text-align: center;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}

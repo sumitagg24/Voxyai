@@ -1,7 +1,45 @@
-"""One-shot route verification. Run from repo root: py web/verify_routes.py."""
+"""One-shot route verification. Run from repo root: py web/verify_routes.py.
 
+This script writes a fixture user (``verify_routes@voxylis.com``) into whatever
+database it is pointed at, so it must never touch a real deployment database.
+:func:`_guard_database` refuses to run unless the target path looks like a
+scratch/test database, or the environment is explicitly non-production.
+"""
+
+import os
 import sys
 from pathlib import Path
+
+#: Substrings that mark a database path as disposable scratch space. Broad on
+#: purpose: the cost of a false positive is one ignored instruction, the cost
+#: of a false negative is test rows in a production database.
+_SCRATCH_PATH_MARKERS = ("/tmp", "\\temp", "pytest", "test")
+
+
+def _guard_database() -> None:
+    """Refuse to run against a database that could be a real deployment."""
+    explicit = os.environ.get("VOXYLIS_DB_PATH", "").strip()
+    db_path = explicit or str(Path(__file__).resolve().parent / "data" / "voxylis.db")
+    env = (os.environ.get("VOXYLIS_ENV") or "").strip().lower()
+    normalized = db_path.replace("\\", "/").lower()
+
+    looks_scratch = any(marker.replace("\\", "/") in normalized for marker in _SCRATCH_PATH_MARKERS)
+    if looks_scratch or env != "production":
+        return
+
+    print(
+        "REFUSING TO RUN: verify_routes.py inserts a test user and must not touch a "
+        "production database.\n"
+        f"  database: {db_path}\n"
+        f"  VOXYLIS_ENV: {env}\n"
+        "Point VOXYLIS_DB_PATH at a scratch file (a path containing 'tmp', 'temp', "
+        "'pytest' or 'test'), or run with VOXYLIS_ENV=development.",
+        file=sys.stderr,
+    )
+    sys.exit(2)
+
+
+_guard_database()
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from web.app import app, _create_session, _get_db  # noqa: E402  (path bootstrap must run first)
