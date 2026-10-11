@@ -135,3 +135,7 @@ installer/*.exe
 screenshots/
 landing-verify.png
 .freebuff/
+
+# Local tooling caches (never product code)
+.playwright-mcp/
+vercel/

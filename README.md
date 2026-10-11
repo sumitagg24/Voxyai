@@ -1,9 +1,17 @@
 # Voxylis
 
-![Version](https://img.shields.io/badge/version-3.0.0-blue)
+![CI](https://github.com/sumitagg24/Voxyai/actions/workflows/ci.yml/badge.svg)
+![Release](https://img.shields.io/badge/release-v3.1.0-1f9d63)
+![Version](https://img.shields.io/badge/version-3.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10+-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D4)
+
+**[Download the app →](https://voxylis-web.vercel.app/download)** ·
+[Website](https://voxylis-web.vercel.app) ·
+[Pricing](https://voxylis-web.vercel.app/pricing) ·
+[Docs](https://voxylis-web.vercel.app/docs/installation) ·
+[Releases](https://github.com/sumitagg24/Voxyai/releases)
 
 Voxylis is a voice-first desktop assistant for Windows. Press a hotkey, speak
 naturally, and AI-enhanced text lands at the cursor in whatever application has
