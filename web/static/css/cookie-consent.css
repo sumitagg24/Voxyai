@@ -1,35 +1,35 @@
-/* Voxylis cookie consent banner + preferences modal (Control Room).
+/* Voxylis cookie consent banner + preferences modal.
  * Same-origin stylesheet for /static/js/cookie-consent.js (the strict CSP
  * forbids the <style> injection the banner used to do at runtime).
- * Dark surfaces, hairlines, 6px radii, white primary buttons. Colours meet
- * WCAG AA on their surfaces; the modal row hint passes 4.5:1.
+ * Colours meet WCAG AA on their surfaces; the modal row hint passes 4.5:1.
  */
-.voxy-cc{position:fixed;left:20px;bottom:20px;z-index:2000;max-width:380px;background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-hair);border-radius:var(--radius-md);padding:24px;font-family:var(--font-grotesk);display:none}
+.voxy-cc{position:fixed;left:20px;bottom:20px;z-index:2000;max-width:380px;background:#fff;color:#1e1e1e;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.22);padding:24px;font-family:'Space Grotesk',Inter,system-ui,sans-serif;display:none}
 .voxy-cc.open{display:block}
-.voxy-cc h2{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0 0 10px;color:var(--fg-primary)}
-.voxy-cc p{font-size:14px;line-height:1.6;color:var(--fg-muted);margin:0 0 18px}
-.voxy-cc p a{color:var(--fg-primary);text-decoration:underline;text-underline-offset:2px}
-.voxy-cc a{color:var(--fg-primary);text-decoration:none}
+.voxy-cc h2{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0 0 10px;color:#1e1e1e}
+.voxy-cc p{font-size:14px;line-height:1.6;color:#3a3a3a;margin:0 0 18px}
+.voxy-cc p a{color:#1a73e8;text-decoration:underline;text-underline-offset:2px}
+.voxy-cc a{color:#1a73e8;text-decoration:none}
 .voxy-cc a:hover{text-decoration:underline}
 .voxy-cc button{font-family:inherit;cursor:pointer}
-.voxy-cc-btn{display:block;width:100%;padding:12px;border:1px solid var(--border-hair);background:transparent;color:var(--fg-primary);border-radius:var(--radius-md);font-size:15px;font-weight:600;margin-bottom:10px}
-.voxy-cc-btn:hover{border-color:var(--fg-muted)}
-.voxy-cc-btn.primary{background:var(--fg-primary);color:var(--fg-inverse);border-color:var(--fg-primary)}
-.voxy-cc-btn.primary:hover{background:#fff}
-.voxy-cc-custom{display:block;width:100%;background:none;border:none;color:var(--fg-primary);font-size:15px;font-weight:500;padding:6px;text-decoration:none}
+.voxy-cc-btn{display:block;width:100%;padding:12px;border:1px solid #e0e0e0;background:#fff;color:#1e1e1e;border-radius:999px;font-size:15px;font-weight:600;margin-bottom:10px;transition:background .15s,border-color .15s}
+.voxy-cc-btn:hover{background:#f5f5f5;border-color:#1e1e1e}
+.voxy-cc-btn.primary{background:#1e1e1e;color:#fff;border-color:#1e1e1e}
+.voxy-cc-btn.primary:hover{background:#000}
+.voxy-cc-custom{display:block;width:100%;background:none;border:none;color:#1e1e1e;font-size:15px;font-weight:500;padding:6px;text-decoration:none}
 .voxy-cc-custom:hover{text-decoration:underline}
-.voxy-cm{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2001;display:none;align-items:center;justify-content:center;padding:20px}
+.voxy-cm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2001;display:none;align-items:center;justify-content:center;padding:20px}
 .voxy-cm.open{display:flex}
-.voxy-cm-box{background:var(--bg-elevated);color:var(--fg-primary);border:1px solid var(--border-hair);border-radius:var(--radius-md);max-width:440px;width:100%;padding:28px;font-family:var(--font-grotesk)}
-.voxy-cm-box h3{font-size:20px;font-weight:700;margin:0 0 6px;color:var(--fg-primary)}
-.voxy-cm-box>p{font-size:14px;color:var(--fg-muted);margin:0 0 16px;line-height:1.6}
-.voxy-cm-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--border-hair)}
+.voxy-cm-box{background:#fff;color:#1e1e1e;border-radius:16px;max-width:440px;width:100%;padding:28px;font-family:'Space Grotesk',Inter,system-ui,sans-serif}
+.voxy-cm-box h3{font-size:20px;font-weight:700;margin:0 0 6px;color:#1e1e1e}
+.voxy-cm-box>p{font-size:14px;color:#3a3a3a;margin:0 0 16px;line-height:1.6}
+.voxy-cm-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #eee}
 .voxy-cm-row b{display:block;font-size:15px}
-.voxy-cm-row span{display:block;font-size:13px;color:var(--fg-muted);margin-top:2px;line-height:1.5}
-.voxy-cm-row input{width:44px;height:24px;accent-color:var(--fg-primary);flex-shrink:0;margin-top:2px;cursor:pointer}
+.voxy-cm-row span{display:block;font-size:13px;color:#5f636e;margin-top:2px;line-height:1.5}
+.voxy-cm-row input{width:44px;height:24px;accent-color:#1e1e1e;flex-shrink:0;margin-top:2px;cursor:pointer}
 .voxy-cm-row input:disabled{cursor:not-allowed}
 .voxy-cm-actions{display:flex;gap:12px;margin-top:20px}
-.voxy-cm-actions button{flex:1;padding:12px;border-radius:var(--radius-md);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
-.voxy-cm-save{background:var(--fg-primary);color:var(--fg-inverse);border:1px solid var(--fg-primary)}
-.voxy-cm-cancel{background:transparent;color:var(--fg-primary);border:1px solid var(--border-hair)}
+.voxy-cm-actions button{flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+.voxy-cm-save{background:#1e1e1e;color:#fff;border:1px solid #1e1e1e}
+.voxy-cm-cancel{background:#fff;color:#1e1e1e;border:1px solid #e0e0e0}
 @media(max-width:480px){.voxy-cc{left:12px;right:12px;bottom:12px;max-width:none}}
+@media(prefers-reduced-motion:reduce){.voxy-cc-btn,.voxy-cm-actions button{transition:none}}

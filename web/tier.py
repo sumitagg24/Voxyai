@@ -110,7 +110,7 @@ TIER_META = {
         "price": 9.99,
         "period": "month",
         "description": "For power users",
-        "cta": "Upgrade to Pro",
+        "cta": "Start Free Trial",
         "popular": True,
     },
     TIER_BUSINESS: {

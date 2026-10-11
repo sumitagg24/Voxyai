@@ -44,10 +44,3 @@
 }
 
 .section-center { text-align: center; border-top: 1px solid var(--border-hair); }
-
-/* FAQ: native details/summary, no JS, keyboard-accessible. */
-.faq-list { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--sp-3); }
-.faq-item { background: var(--bg-surface); border: 1px solid var(--border-hair); border-radius: var(--radius-md); padding: var(--sp-4) var(--sp-6); }
-.faq-item summary { cursor: pointer; font-weight: 600; font-size: var(--text-lg); }
-.faq-item summary::marker { color: var(--fg-muted); }
-.faq-item p { color: var(--fg-muted); line-height: 1.7; margin: var(--sp-3) 0 0; }

@@ -115,23 +115,33 @@ def test_download_page_reads_the_version_from_one_source():
     assert not re.search(r"v\d+\.\d+\.\d+", visible)
 
 
-def test_website_signin_is_password_only_with_no_dead_provider_buttons():
-    """The website must not advertise a social flow that does not exist.
+def test_social_login_requires_explicit_consent_before_session():
+    """No Voxylis session may exist until the user presses Continue.
 
-    The only backend Auth0 endpoint (POST /api/auth/auth0) consumes a
-    pre-obtained id_token; the website has no token source (the desktop app
-    runs its own OAuth device flow), so provider buttons that 405/404 were
-    removed. auth.html offers password sign-in; auth.js references no
-    provider redirects and no token-approval endpoint.
+    The provider verifies the user first; then auth.html must show WHAT
+    Voxylis receives (name, email, photo) with Continue/Cancel, and only the
+    Continue handler may call finishAuth0Login. Cancel must discard the
+    token and state plainly that nothing was stored.
     """
     text = (STATIC / "auth.html").read_text(encoding="utf-8")
-    for marker in ("googleBtn", "githubBtn", "consent-overlay", "Or continue with"):
-        assert marker not in text, f"auth.html references a removed social flow: {marker}"
-    assert 'id="signinForm"' in text
+    for marker in (
+        "consent-overlay",
+        "consent-continue",
+        "consent-cancel",
+        "nothing was created or stored",
+    ):
+        assert marker in text, f"auth.html missing consent gate: {marker}"
+    # The consent logic lives in the external auth.js bundle (strict CSP
+    # forbids inline scripts): the gate must exist there, wired to the same
+    # overlay element ids.
     js = (STATIC / "js" / "auth.js").read_text(encoding="utf-8")
-    for marker in ("?provider=", "auth0/approve", "voxyShowConsent", "pendingIdToken"):
-        assert marker not in js, f"auth.js references a removed social flow: {marker}"
-    assert "/api/auth/login" in js
+    for marker in ("showConsent(", "pendingIdToken"):
+        assert marker in js, f"auth.js missing consent gate: {marker}"
+    # The token-exchange success path must park at the consent dialog,
+    # never create the session directly.
+    assert "showConsent(tokens.id_token)" in js
+    # Cancel path discards the token instead of proceeding.
+    assert "pendingIdToken = ''" in js
 
 
 def test_legal_pages_exist_for_oauth_consent_screen():

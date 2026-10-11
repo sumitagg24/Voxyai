@@ -8,12 +8,16 @@
   text-align: center;
 }
 
-/* Loading state: a plain lamp dot + label. Spinners are outside the motion
-   spec (state transitions only); a static indicator is honest here. */
-.post-loading .lamp {
-  display: block;
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border-hair);
+  border-top-color: var(--fg-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
   margin: 0 auto var(--sp-4);
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .post-header { max-width: 720px; margin: 0 auto; padding: var(--sp-12) var(--sp-4) var(--sp-6); }
 .post-back { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--text-sm); color: var(--fg-muted); margin-bottom: var(--sp-6); }

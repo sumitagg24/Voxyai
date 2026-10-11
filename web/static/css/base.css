@@ -184,7 +184,7 @@ h4 { font-size: var(--text-xl); }
 .nav-brand .glyph {
   width: 28px; height: 28px;
   border: 1.5px solid var(--fg-primary);
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   display: grid; place-items: center;
   font-size: 14px; font-weight: 700;
 }
@@ -289,10 +289,8 @@ h4 { font-size: var(--text-xl); }
 }
 .input:focus, .select:focus, .textarea:focus {
   border-color: var(--focus-ring);
-  /* Flat outline, never a glow: red bloom is an anti-pattern. */
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
-  box-shadow: none;
+  box-shadow: 0 0 0 3px rgba(255, 92, 92, 0.2);
+  outline: none;
 }
 .input::placeholder { color: var(--fg-muted); opacity: 0.6; }
 

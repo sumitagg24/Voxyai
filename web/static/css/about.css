@@ -6,7 +6,7 @@
 .avatar {
   width: 56px;
   height: 56px;
-  border-radius: var(--radius-md);
+  border-radius: 50%;
   border: 1px solid var(--border-hair);
   display: grid;
   place-items: center;
