@@ -7,6 +7,10 @@ so the app looks like one product and a theme change is a single edit.
 """
 
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from PyQt5.QtWidgets import QLabel, QPushButton, QWidget, QFrame
 
 # ── palette (Control Room) ──────────────────────────────────────────────────────
 # Mirrors web/static/css/base.css tokens
