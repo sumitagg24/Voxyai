@@ -1,4 +1,4 @@
-/* auth.html — page styles (Control Room) */
+/* auth.html — page styles */
 
 #consent-overlay.hidden { display: none; }
 
@@ -60,7 +60,7 @@
 .consent-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(30, 30, 30, 0.45);
   z-index: 100;
   display: none;
   align-items: center;
