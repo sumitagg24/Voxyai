@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -24,17 +24,17 @@
     <div class="dashboard-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h3>🎙️ Voxylis</h3>
+                <h3><span class="lamp lamp--sm"></span> Voxylis</h3>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-section="overview"><span class="icon">📊</span> Overview</a>
-                <a href="#" class="nav-item" data-section="history"><span class="icon">📝</span> History</a>
-                <a href="#" class="nav-item" data-section="qa"><span class="icon">🤖</span> Q&amp;A</a>
-                <a href="#" class="nav-item" data-section="settings"><span class="icon">⚙️</span> Settings</a>
-                <a href="#" class="nav-item" data-section="hotkeys"><span class="icon">⌨️</span> Hotkeys</a>
-                <a href="#" class="nav-item" data-section="subscription"><span class="icon">💳</span> Plan</a>
-                <a href="docs/installation" class="nav-link"><span class="icon">📖</span> Docs</a>
-                <a href="#" class="nav-link mt-auto" id="logoutBtn"><span class="icon">🚪</span> Log out</a>
+                <a href="#" class="nav-item active" data-section="overview">Overview</a>
+                <a href="#" class="nav-item" data-section="history">History</a>
+                <a href="#" class="nav-item" data-section="qa">Q&amp;A</a>
+                <a href="#" class="nav-item" data-section="settings">Settings</a>
+                <a href="#" class="nav-item" data-section="hotkeys">Hotkeys</a>
+                <a href="#" class="nav-item" data-section="subscription">Plan</a>
+                <a href="docs/installation" class="nav-link">Docs</a>
+                <a href="#" class="nav-link mt-auto" id="logoutBtn">Log out</a>
             </nav>
         </aside>
 
@@ -44,8 +44,7 @@
                     <div class="label section-label">VX.0S1 · Overview</div>
                     <div class="status-pill" id="agentStatus"><span class="dot"></span><span id="agentStatusText">Ready — tap the orb to talk</span></div>
                     <div class="orb-wrap" id="orbWrap">
-                        <span class="orb-ring"></span><span class="orb-ring"></span>
-                        <button class="orb" id="micOrb" aria-label="Talk to Voxylis">🎙️</button>
+                        <button class="orb" id="micOrb" aria-label="Talk to Voxylis"><span class="lamp lamp--lg" id="orbLamp"></span></button>
                     </div>
                     <canvas class="wave-canvas" id="waveCanvas" width="560" height="84"></canvas>
                     <p class="agent-hint" id="agentHint">Browser mic + live transcript. For system-wide dictation use the desktop hotkey <b>Win+Shift</b>. <span id="serverStatus"></span></p>
@@ -65,28 +64,24 @@
                 <h2>Overview</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon">📝</div>
                         <div class="stat-info">
                             <h3 class="stat-value" id="statTranscriptions">–</h3>
                             <p class="stat-label">Transcriptions</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">⏱️</div>
                         <div class="stat-info">
                             <h3 class="stat-value" id="statTime">–</h3>
                             <p class="stat-label">Total time</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">🌍</div>
                         <div class="stat-info">
                             <h3 class="stat-value" id="statLanguages">–</h3>
                             <p class="stat-label">Languages</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">✨</div>
                         <div class="stat-info">
                             <h3 class="stat-value" id="statEnhancements">–</h3>
                             <p class="stat-label">Enhancements</p>

@@ -19,7 +19,7 @@
   gap: var(--sp-2);
 }
 
-.consent-list .check { color: var(--success); font-weight: 700; }
+.consent-list .check { color: var(--fg-primary); font-weight: 700; }
 
 .auth-alt { margin-top: var(--sp-6); text-align: center; color: var(--fg-muted); font-size: var(--text-sm); }
 
@@ -28,8 +28,14 @@
 .auth-social .btn {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  /* 6px, not full-round: the identity allows 4–6px radii only. Glyphs inherit
+     this color (both marks use currentColor) for a monochrome pair. */
+  border-radius: var(--radius-md);
+  color: var(--fg-primary);
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .auth-main {

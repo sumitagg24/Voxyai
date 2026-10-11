@@ -79,16 +79,7 @@
     })(trackers[t]);
   }
 
-  // Scroll reveal (progressive enhancement).
-  try {
-    var revealEls = document.querySelectorAll('.card, .req-card');
-    if ('IntersectionObserver' in window && revealEls.length) {
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
-        });
-      }, { threshold: 0.1 });
-      revealEls.forEach(function (el) { el.classList.add('reveal'); io.observe(el); });
-    }
-  } catch (e) { /* reveal is decorative */ }
+  // No scroll-reveal: content must be visible on load, on anchor jumps and
+  // in full-page renders. Decorative scroll animation is outside the
+  // Control Room motion spec (state transitions only).
 })();
