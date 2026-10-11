@@ -170,7 +170,12 @@ def _apply_migrations(conn: sqlite3.Connection) -> None:
 def _init_db() -> None:
     """Create tables and seed blog data if needed."""
 
-    DB_DIR.mkdir(parents=True, exist_ok=True)
+    if get_db_path().parent == DB_DIR:
+        # Only ensure the default data directory when the database actually
+        # lives there. With VOXYLIS_DB_PATH pointed elsewhere (serverless
+        # hosting: /tmp), the application tree is read-only and must not be
+        # touched — attempting the mkdir crashes the import.
+        DB_DIR.mkdir(parents=True, exist_ok=True)
     conn = _get_db()
     cur = conn.cursor()
 
