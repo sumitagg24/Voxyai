@@ -10,6 +10,7 @@ transcripts in the report — redacted samples are enough.
 
 ## Trust boundaries
 
+```
 untrusted ───────────────────────────────────────────────────────────► trusted
 browser JS   desktop client   network        backend
    │              │              │              │
@@ -18,6 +19,7 @@ browser JS   desktop client   network        backend
    │              │              └─ TLS; provider responses are untrusted input
    │              └─ no authority: it reads state, never grants it
    └─ no authority: Origin/Referer are never used for authorization
+```
 
 **The desktop client and the website can never grant themselves anything.**
 Tier, role and feature flags are read-only projections of server state.
