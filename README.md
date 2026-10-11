@@ -39,7 +39,7 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 **Website / backend**
 
 - Account system with email verification, password reset, session rotation,
-  Auth0 social login, and a QR companion-device sign-in API.
+  Auth0 social login via the desktop app, and a QR companion-device sign-in API.
 - Dashboard with history, usage stats and a Q&A panel.
 - Pricing, downloads, blog, docs and legal pages, all reading one canonical
   version.
