@@ -96,11 +96,18 @@ def installed_3000(monkeypatch):
     yield
 
 
+@pytest.fixture
+def windows_host(monkeypatch):
+    """The stub feed publishes a windows installer only; CI runs on Linux.
+    Pin the host platform before check()/download() pick the installers key."""
+    monkeypatch.setattr(sys, "platform", "win32")
+
+
 def _updater(base_url: str) -> Updater:
     return Updater(feed_url=f"{base_url}/update-manifest.json")
 
 
-def test_check_reports_newer_release_with_checksum(stub_feed, installed_3000):
+def test_check_reports_newer_release_with_checksum(stub_feed, installed_3000, windows_host):
     info = _updater(stub_feed).check()
     assert info.error == ""
     assert info.available is True
@@ -125,7 +132,7 @@ def test_check_degrades_gracefully_on_malformed_feed(stub_feed, installed_3000):
     assert info.error == "unavailable"  # fetch_manifest rejects the bad JSON
 
 
-def test_download_verifies_sha256_and_size(stub_feed, installed_3000):
+def test_download_verifies_sha256_and_size(stub_feed, installed_3000, windows_host):
     updater = _updater(stub_feed)
     info = updater.check()
     result = updater.download(info)
@@ -162,7 +169,7 @@ def test_launch_installer_refuses_unverified_results(stub_feed, installed_3000, 
     assert popen_recorder == []
 
 
-def test_launch_installer_refuses_tampered_file_after_download(stub_feed, installed_3000, popen_recorder):
+def test_launch_installer_refuses_tampered_file_after_download(stub_feed, installed_3000, popen_recorder, windows_host):
     updater = _updater(stub_feed)
     info = updater.check()
     result = updater.download(info)
@@ -174,7 +181,9 @@ def test_launch_installer_refuses_tampered_file_after_download(stub_feed, instal
     assert popen_recorder == [], "a tampered installer must never be executed"
 
 
-def test_launch_installer_runs_only_the_verified_download(stub_feed, installed_3000, popen_recorder, monkeypatch):
+def test_launch_installer_runs_only_the_verified_download(
+    stub_feed, installed_3000, popen_recorder, monkeypatch, windows_host
+):
     updater = _updater(stub_feed)
     info = updater.check()
     result = updater.download(info)
@@ -188,7 +197,7 @@ def test_launch_installer_runs_only_the_verified_download(stub_feed, installed_3
     assert popen_recorder[0] == [str(result.path)]
 
 
-def test_download_rejects_checksum_mismatch_from_feed(stub_feed, installed_3000):
+def test_download_rejects_checksum_mismatch_from_feed(stub_feed, installed_3000, windows_host):
     """A manifest whose checksum does not match the served bytes must not
     produce a verified download (and launch_installer then refuses it)."""
     original = _FeedHandler.do_GET
