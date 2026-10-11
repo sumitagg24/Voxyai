@@ -46,11 +46,11 @@ grep -rniE "gsk_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}" \
 ## 3. Build
 
 ```bash
-build_windows.bat        # Windows: version sync → icons → PyInstaller → iscc → verify
-build_linux.sh           # Linux bundle
+scripts/build_windows.bat        # Windows: version sync → icons → PyInstaller → iscc → verify
+scripts/build_linux.sh           # Linux bundle
 ```
 
-`build_windows.bat` fails the build if a credential pattern (`gsk_`, `sk-`,
+`scripts/build_windows.bat` fails the build if a credential pattern (`gsk_`, `sk-`,
 `SECRET_KEY`) is found inside `dist/Voxylis/`. The installer is optional in the
 build script: without Inno Setup it skips and says so.
 
@@ -98,7 +98,7 @@ To install an OV certificate in CI:
    `Status` must read `Valid` and the signer must be the expected publisher.
 
 Local builds can instead set `CERT_PATH` (a `.pfx`) and `CERT_PASSWORD` before
-running `build_windows.bat`. Never commit a certificate or its password; a
+running `scripts/build_windows.bat`. Never commit a certificate or its password; a
 self-signed certificate does not improve SmartScreen for other users and must
 not be shipped as "signed".
 

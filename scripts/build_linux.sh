@@ -1,4 +1,5 @@
 #!/bin/bash
+cd "$(dirname "$0")/.." || exit 1
 # Build the Linux bundle from the shared PyInstaller spec.
 #
 # Linux is a source/binary bundle, not a packaged installer: the supported

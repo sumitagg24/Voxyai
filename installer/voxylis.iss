@@ -10,7 +10,7 @@
 ;   2. iscc /DAppVersion=3.0.0 installer\voxylis.iss
 ;   -> installer\output\Voxylis-Setup-3.0.0.exe
 ;
-; The version is passed in from config/version.py by build_windows.bat so the
+; The version is passed in from config/version.py by scripts/build_windows.bat so the
 ; installer, the EXE metadata and /api/health can never disagree.
 
 #ifndef AppVersion

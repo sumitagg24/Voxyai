@@ -198,8 +198,8 @@ packaging/
 ├── voxylis.ico      multi-size icon used by EXE, installer and shortcuts
 └── make_icons.py    regenerates the icon set from the brand mark
 installer/voxylis.iss   Inno Setup 6 → Voxylis-Setup-<version>.exe
-build_windows.bat        sync version → PyInstaller → iscc → optional signing
-build_linux.sh           source tarball build
+scripts/build_windows.bat        sync version → PyInstaller → iscc → optional signing
+scripts/build_linux.sh           source tarball build
 ```
 
 Update flow (`core/updater.py`): fetch `update-manifest.json` from the release

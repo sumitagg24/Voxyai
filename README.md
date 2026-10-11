@@ -13,6 +13,20 @@
 [Docs](https://voxylis-web.vercel.app/docs/installation) ·
 [Releases](https://github.com/sumitagg24/Voxyai/releases)
 
+## Documentation
+
+
+| Doc | What it covers |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | how the pieces fit, trust boundaries |
+| [API](docs/API.md) | every endpoint, QR + pagination + webhooks |
+| [Deployment](docs/DEPLOYMENT.md) | localhost, Vercel, Render |
+| [Release](docs/RELEASE.md) | version bump, signing, publishing |
+| [Runbook](docs/RUNBOOK.md) | ops, backups, the quarterly DR drill |
+| [Security](docs/SECURITY.md) | policy, controls, known limitations |
+| [Privacy](docs/PRIVACY.md) | data handling |
+| [Design](docs/DESIGN.md) | the light design system |
+
 Voxylis is a voice-first desktop assistant for Windows. Press a hotkey, speak
 naturally, and AI-enhanced text lands at the cursor in whatever application has
 focus — a browser, an editor, a chat window, a terminal. A companion website and
