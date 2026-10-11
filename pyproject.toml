@@ -15,7 +15,7 @@ entrypoint = "web.app:app"
 [project]
 # Vercel's uv builder REQUIRES this table. Server-only deps mirrored from
 # requirements-server.txt (Flask never imports the desktop stack).
-# version MUST equal config/version.py — bump together on release (R3!).
+# version MUST equal config/version.py - bump together on release (R3!).
 name = "voxylis"
 version = "3.0.0"
 requires-python = "==3.12.*"
