@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 #: Marketing / product name shown in the UI and installers.
 APP_NAME = "Voxylis"

@@ -17,7 +17,7 @@ entrypoint = "web.app:app"
 # requirements-server.txt (Flask never imports the desktop stack).
 # version MUST equal config/version.py - bump together on release (R3!).
 name = "voxylis"
-version = "3.0.0"
+version = "3.1.0"
 requires-python = "==3.12.*"
 dependencies = [
     "flask>=3.0.0",

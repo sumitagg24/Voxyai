@@ -3,7 +3,7 @@
 All notable changes to Voxylis. The canonical version lives in
 `config/version.py`; see `docs/RELEASE.md` for the release procedure.
 
-## Unreleased — Master Prompt Pack v2 (foundation, backend, redesign, desktop)
+## 3.1.0 — 2026-10-11
 
 ### Foundation & Cleanup (P0)
 
@@ -40,7 +40,7 @@ All notable changes to Voxylis. The canonical version lives in
 
 ### Website Redesign (P3)
 
-* **Control Room design system** (`docs/DESIGN.md`): dark charcoal surfaces (`#0e0f12`/`#16181d`/`#1d2027`), off-white text, hairline `#2a2d35`, red `#ff5c5c` ONLY for REC/live/destructive, green `#3ecf8e` ONLY success/online; one grotesk + one mono (self-hosted woff2); 4–6px radii, 1px hairlines, no shadows; record lamp motif (solid dot + ring); motion 150–250ms state changes only; no literal hardware, no gradients, no glassmorphism, no badge clutter.
+* **Unified light design system** (`docs/DESIGN.md`): one light editorial palette across marketing pages and dashboard (paper `#fafafa`, ink `#1e1e1e`, hairline `#e5e5e5`, muted `#5f636e`); red ONLY for REC/destructive (AA `#d64545` on light), green ONLY success/online; one grotesk + one mono (self-hosted); hairline borders, subtle card shadows; record lamp motif; 150–250ms state transitions; no gradients, no glassmorphism, no badge clutter. The earlier dark "Control Room" pass was fully reverted and every dark-theme token, selector and JS hook was purged.
 * **Vendored assets**: Space Grotesk + JetBrains Mono (woff2) in `web/static/fonts/`; Chart.js in `web/static/vendor/`; no CDN at runtime.
 * **Consolidated CSS**: `base.css` + per-page files; one grid, one button, one card, one input; inline styles removed.
 * **Honest copy**: features/pricing from `web/tier.py`; download from `/api/download/urls`; pricing CTAs respect `checkout_available`; Q&A shows real 403 upgrade.
@@ -49,10 +49,13 @@ All notable changes to Voxylis. The canonical version lives in
 * **Responsive**: 1440/768/390; mobile nav no library.
 * **Perf**: `font-display: swap`, preload woff2, lazy images, JS <60KB (excl Chart.js).
 * **CSP**: `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.ingest.sentry.io...` — no CDN.
+* **Same-origin downloads**: the download buttons hit `/download/<platform>`, which 302s to the resolved release asset — visitors download the app from the website and are never bounced to a GitHub page. `DOWNLOAD_URL_*` env overrides still win.
+* **Serverless-ready startup**: the default data directory is only created when the database actually lives in the app tree; with `VOXYLIS_DB_PATH` pointed elsewhere (Vercel/immutable filesystems) the app imports cleanly on a read-only tree.
+* **CI correctness**: updater e2e tests pin the host platform (the stub feed publishes a Windows installer), so the suite is green on Linux CI, not only on Windows.
 
 ### Desktop Frontend (P4)
 
-* **Control Room theme applied**: `ui/theme.py` mirrors web tokens; helper factories (`h1`, `body`, `primary_button`, `field_row`, `section_frame`, `lamp`, `meter`); same object names so `pages.py` works unchanged.
+* **Light theme only**: `ui/theme.py` ships the light palette (mirrors the website); the dark palette was removed; helper factories (`h1`, `body`, `primary_button`, `field_row`, `section_frame`, `lamp`, `meter`); same object names so `pages.py` works unchanged.
 * **Desktop degrades gracefully offline**: reads entitlements from `/api/me`; local mode with clear copy when server unreachable.
 
 ---
