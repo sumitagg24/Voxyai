@@ -20,8 +20,7 @@ body { min-height: 100vh; display: flex; flex-direction: column; }
   line-height: 1;
 }
 
-/* All numerals off-white: red is REC-only, and a missing page is not live. */
-.error-code .zero { color: var(--fg-primary); }
+.error-code .zero { color: var(--rec-lamp); }
 
 .error-actions {
   margin-top: var(--sp-8);

@@ -235,12 +235,11 @@ def test_public_routes_respond(app_client, path):
     assert client.get(path).status_code == 200, path
 
 
-def test_unknown_docs_page_serves_the_styled_404(app_client):
+def test_unknown_docs_page_is_a_json_404(app_client):
     client, _ = app_client
     response = client.get("/docs/does-not-exist")
     assert response.status_code == 404
-    assert response.content_type.startswith("text/html")
-    assert b"404" in response.data or b"not found" in response.data.lower()
+    assert response.get_json()["error"] == "Page not found"
 
 
 def test_blog_exposes_the_current_post_set(app_client):

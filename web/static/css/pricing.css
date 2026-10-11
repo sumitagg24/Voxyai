@@ -7,22 +7,15 @@
 
 #pricingGrid .card .btn { margin-top: auto; }
 
-/* Pro is the default paid path: a white hairline sets it apart without any
-   accent color (red stays REC-only). */
-#tier-pro { border-color: var(--fg-primary); }
-
 .tier-price {
   font-size: var(--text-3xl);
   font-weight: 700;
   letter-spacing: -0.02em;
-  /* Key data gets top hierarchy: numerals in primary, never muted grey. */
-  color: var(--fg-primary);
 }
 
 .tier-price small {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 400;
-  font-family: var(--font-mono);
   color: var(--fg-muted);
 }
 
@@ -42,9 +35,7 @@
 }
 
 .feature-list .check {
-  /* Neutral tick: green is reserved for success/online states, and a dozen
-     green checks read as default AI styling, not Control Room. */
-  color: var(--fg-primary);
+  color: var(--success);
   font-weight: 700;
   flex-shrink: 0;
   margin-top: 2px;

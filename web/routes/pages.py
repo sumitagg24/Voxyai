@@ -2,7 +2,7 @@
 
 import os
 
-from flask import Blueprint, current_app, redirect, send_from_directory, url_for
+from flask import Blueprint, current_app, jsonify, redirect, send_from_directory, url_for
 
 from web.content.blog_posts import LEGACY_BLOG_SLUGS
 from web.db import _get_db
@@ -91,9 +91,7 @@ def docs(page):
     ]
     if page in valid_pages:
         return send_from_directory(os.path.join(current_app.static_folder, "docs"), f"{page}.html")
-    # Site surface, not an API: an unknown docs page gets the styled 404
-    # page (with nav/footer/identity), never a raw JSON string.
-    return current_app.send_static_file("404.html"), 404
+    return jsonify({"error": "Page not found"}), 404
 
 
 @pages_bp.route("/blog/<slug>")

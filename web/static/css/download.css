@@ -33,8 +33,7 @@
 }
 
 .feature-list .check {
-  /* Neutral tick (see pricing.css): green is reserved for success states. */
-  color: var(--fg-primary);
+  color: var(--success);
   font-weight: 700;
   flex-shrink: 0;
   margin-top: 2px;
@@ -81,3 +80,10 @@
 .section-top { border-top: 1px solid var(--border-hair); }
 
 .section-center { text-align: center; border-top: 1px solid var(--border-hair); }
+
+/* Scroll-reveal (progressive enhancement; no-JS shows content as-is). */
+.reveal { opacity: 0; transform: translateY(12px); transition: opacity .4s ease, transform .4s ease; }
+.reveal.visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}

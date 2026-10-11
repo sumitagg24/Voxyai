@@ -300,9 +300,6 @@ h4 { font-size: var(--text-xl); }
   width: 44px; height: 24px;
   background: var(--border-hair);
   border-radius: 999px; position: relative;
-  /* Inline span by default: without this the width/height are ignored, the
-     track collapses and the thumb overlaps the label text. */
-  display: inline-block; flex-shrink: 0;
   transition: background var(--motion-fast);
 }
 .toggle .toggle-thumb {
@@ -314,10 +311,6 @@ h4 { font-size: var(--text-xl); }
 .toggle input:checked + .toggle-track { background: var(--rec-lamp); }
 .toggle input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); background: var(--fg-inverse); }
 .toggle label { cursor: pointer; font-size: var(--text-sm); color: var(--fg-primary); }
-/* A toggle inside a form group must stay a flex row: .form-group label
-   (display:block) otherwise wins on specificity and the thumb overlaps
-   the label text. */
-.form-group label.toggle { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 0; }
 
 /* ============================================================
    LAMP MOTIF
@@ -334,7 +327,7 @@ h4 { font-size: var(--text-xl); }
 .lamp--live {
   background: var(--rec-lamp);
   border-color: var(--rec-lamp);
-  /* No glow/bloom: the identity reserves a flat red fill for live states. */
+  box-shadow: 0 0 8px var(--rec-lamp), 0 0 16px rgba(255,92,92,0.4);
 }
 .lamp--sm { --lamp-size: 8px; }
 .lamp--lg { --lamp-size: 14px; }

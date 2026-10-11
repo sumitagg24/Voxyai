@@ -1,52 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Troubleshooting — Voxylis Docs</title>
-<link rel="icon" href="/favicon.ico" sizes="32x32">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<link rel="preload" href="/static/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="stylesheet" href="/static/css/base.css">
-<link rel="stylesheet" href="/static/css/docs.css">
-<link rel="stylesheet" href="/static/css/cookie-consent.css">
+<head><meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Troubleshooting - Voxylis Docs</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%99%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+<link rel="preload" href="../static/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="../static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="../static/css/base.css">
+<link rel="stylesheet" href="../static/css/troubleshooting.css">
+<link rel="stylesheet" href="../static/css/cookie-consent.css">
 </head>
-<body>
-<nav class="nav">
-  <a href="/" class="nav-brand">
-    <span class="glyph">V</span>
-    <span>Voxylis</span>
-  </a>
-  <button class="nav-toggle" aria-label="Toggle menu"><span></span><span></span><span></span></button>
-  <div class="nav-links">
-    <a href="/#features">Features</a>
-    <a href="/pricing">Pricing</a>
-    <a href="/docs/installation" class="active">Docs</a>
-    <a href="/#faq">FAQ</a>
-    <a href="/blog">Blog</a>
-  </div>
-  <div class="nav-right">
-    <a href="/auth" class="signin">Sign In</a>
-    <a href="/download" class="btn">Download App</a>
-  </div>
-</nav>
-<div class="docs-layout">
-<nav class="docs-side">
-    <h3>Voxylis Docs</h3>
-    <div class="docs-nav-list">
-      <a href="/docs/installation">Installation</a>
-      <a href="/docs/configuration">Configuration</a>
-      <a href="/docs/voice-commands">Voice Commands</a>
-      <a href="/docs/qa-feature">Q and A Feature</a>
-      <a href="/docs/troubleshooting" class="on">Troubleshooting</a>
-      <a href="/docs/tips-tricks">Tips and Tricks</a>
-      <a href="/dashboard">Open dashboard</a>
-    </div>
-  </nav>
-<main class="docs-main"><div class="docs-top"><a href="/">Voxylis</a> / Docs / Troubleshooting</div>
-<h1>Troubleshooting</h1><p class="lead">Fix the most common issues.</p><div class="docs-card"><ul><li><b>Provider authentication failed</b> - the key was rejected. Settings &rarr; AI Providers &rarr; paste a valid key. Get a free one at console.groq.com/keys.</li><li><b>Hotkey does nothing</b> - the shortcut may be taken by another application. Settings &rarr; Shortcuts &rarr; record a different combination. Reserved Windows shortcuts are rejected up front.</li><li><b>No microphone input</b> - Settings &rarr; Microphone, pick the device and check the level meter while speaking.</li><li><b>Empty transcription</b> - recordings shorter than a second, or silent ones, are skipped on purpose; you will see a "nothing was heard" notice, not an error.</li><li><b>Nothing is typed into the target app</b> - some elevated windows (Task Manager, UAC prompts) reject synthetic input. Injection reports success only when the strategy actually completed, so you get an error rather than a silent loss; Diagnostics shows the last attempt. Also make sure the target window still had focus when you spoke.</li><li><b>Text was typed twice</b> - the target application was slow to accept input. Voxylis blocks a duplicate injection while one is in flight; if a repeat still slips through, say <b>undo</b> or press Ctrl+Z in that application.</li><li><b>App will not start</b> - another copy may already be running (Voxylis is single-instance). Logs are in <code>%LOCALAPPDATA%\Voxylis\logs</code>; Diagnostics &rarr; Copy diagnostics produces a redacted report with no keys or transcripts.</li></ul></div>
-<div class="docs-pager"><span><a href="/docs/qa-feature">&larr; Q and A Feature</a></span><span><a href="/docs/tips-tricks">Tips and Tricks &rarr;</a></span></div></main>
-</div><script src="/static/js/sentry-init.js" defer></script>
-<script src="/static/js/cookie-consent.js" defer></script>
+<body><header class="site-nav"><a class="brand" href="/"><span class="glyph">V</span><span>Voxylis</span></a><nav class="links"><a href="/#features">Features</a><a href="/pricing">Pricing</a><a href="installation">Docs</a><a href="/dashboard" class="btn">Open Dashboard</a></nav></header><div class="layout">
+<nav class="side"><h3>Voxylis Docs</h3><a href="installation">Installation</a><a href="configuration">Configuration</a><a href="voice-commands">Voice Commands</a><a href="qa-feature" class="on">Q and A Feature</a><a href="troubleshooting">Troubleshooting</a><a href="tips-tricks">Tips and Tricks</a><br /><a href="/dashboard">Open dashboard</a></nav>
+<main class="main"><div class="top"><a href="/">Voxylis</a> / Docs / Troubleshooting</div>
+<h1>Troubleshooting</h1><p class="lead">Fix the most common issues.</p><div class="card"><ul><li><b>Provider authentication failed</b> - the key was rejected. Settings &rarr; AI Providers &rarr; paste a valid key. Get a free one at console.groq.com/keys.</li><li><b>Hotkey does nothing</b> - the shortcut may be taken by another application. Settings &rarr; Shortcuts &rarr; record a different combination. Reserved Windows shortcuts are rejected up front.</li><li><b>No microphone input</b> - Settings &rarr; Microphone, pick the device and check the level meter while speaking.</li><li><b>Empty transcription</b> - recordings shorter than a second, or silent ones, are skipped on purpose; you will see a "nothing was heard" notice, not an error.</li><li><b>Nothing is typed into the target app</b> - some elevated windows (Task Manager, UAC prompts) reject synthetic input. Injection reports success only when the strategy actually completed, so you get an error rather than a silent loss; Diagnostics shows the last attempt. Also make sure the target window still had focus when you spoke.</li><li><b>Text was typed twice</b> - the target application was slow to accept input. Voxylis blocks a duplicate injection while one is in flight; if a repeat still slips through, say <b>undo</b> or press Ctrl+Z in that application.</li><li><b>App will not start</b> - another copy may already be running (Voxylis is single-instance). Logs are in <code>%LOCALAPPDATA%\Voxylis\logs</code>; Diagnostics &rarr; Copy diagnostics produces a redacted report with no keys or transcripts.</li></ul></div>
+<div class="pager"><span><a href="qa-feature">&larr; Q and A Feature</a></span><span><a href="tips-tricks">Tips and Tricks &rarr;</a></span></div></main>
+</div><script src="../static/js/cookie-consent.js" defer></script>
 </body></html>

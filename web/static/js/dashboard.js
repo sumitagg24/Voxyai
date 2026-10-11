@@ -90,9 +90,9 @@ class TierManager {
                 form.textContent = '';
                 const wrap = document.createElement('div');
                 wrap.className = 'tier-locked';
-                const kicker = document.createElement('div');
-                kicker.className = 'label';
-                kicker.textContent = 'VX.UPGRADE · PRO';
+                const lock = document.createElement('div');
+                lock.className = 'tier-locked-icon';
+                lock.textContent = '🔒';
                 const heading = document.createElement('h3');
                 heading.textContent = 'Q&A requires a Pro plan';
                 const sub = document.createElement('p');
@@ -101,7 +101,7 @@ class TierManager {
                 link.href = '/pricing';
                 link.className = 'btn btn-primary';
                 link.textContent = 'View Plans';
-                wrap.appendChild(kicker);
+                wrap.appendChild(lock);
                 wrap.appendChild(heading);
                 wrap.appendChild(sub);
                 wrap.appendChild(link);
@@ -250,8 +250,8 @@ function initializeCharts() {
                 datasets: [{
                     label: 'Transcriptions',
                     data: [12, 19, 3, 5, 2, 3, 15],
-                    borderColor: '#b9bec7',
-                    backgroundColor: 'rgba(185, 190, 199, 0.12)',
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
                     tension: 0.4,
                     fill: true
                 }]
@@ -282,11 +282,11 @@ function initializeCharts() {
                 datasets: [{
                     data: [45, 20, 15, 12, 8],
                     backgroundColor: [
-                        '#eaeaea',
-                        '#b9bec7',
-                        '#6b7280',
-                        '#3a3f47',
-                        '#23262c'
+                        '#6366f1',
+                        '#ec4899',
+                        '#f59e0b',
+                        '#10b981',
+                        '#8b5cf6'
                     ]
                 }]
             },
@@ -314,7 +314,7 @@ function initializeSettings() {
     const autoStartToggle = document.getElementById('autoStartToggle');
 
     // Load saved settings
-    const savedTheme = localStorage.getItem('voxylis_theme') || 'dark';
+    const savedTheme = localStorage.getItem('voxylis_theme') || 'light';
     const savedLanguage = localStorage.getItem('voxylis_language') || 'en';
     const savedNotifications = localStorage.getItem('voxylis_notifications') !== 'false';
     const savedSound = localStorage.getItem('voxylis_sound') !== 'false';
@@ -908,7 +908,7 @@ document.addEventListener('DOMContentLoaded', initializeDashboard);
         function drawWave(data) {
             const W = canvas.width, H = canvas.height, mid = H / 2;
             ctx.clearRect(0, 0, W, H);
-            ctx.fillStyle = "#b9bec7";
+            ctx.fillStyle = "#7c6cff";
             const n = 64, bw = W / n;
             for (let i = 0; i < n; i++) {
                 const v = data ? data[i] / 255 : 0.06 + 0.05 * Math.abs(Math.sin(Date.now() / 350 + i * 0.55));
@@ -1129,8 +1129,8 @@ function renderCharts(stats, history) {
                 datasets: [{
                     label: 'Transcriptions',
                     data: weekly.counts,
-                    borderColor: '#eaeaea',
-                    backgroundColor: 'rgba(234, 234, 234, 0.08)',
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
                     tension: 0.4,
                     fill: true,
                 }],
@@ -1161,7 +1161,7 @@ function renderCharts(stats, history) {
                 labels: top.length ? top.map(function (t) { return t[0]; }) : ['No data yet'],
                 datasets: [{
                     data: top.length ? top.map(function (t) { return t[1]; }) : [1],
-                    backgroundColor: ['#eaeaea', '#b9bec7', '#6b7280', '#3a3f47', '#23262c'],
+                    backgroundColor: ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6'],
                 }],
             },
             options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
@@ -1203,7 +1203,7 @@ window.appendHistoryItems = function (history) {
         var meta = document.createElement('p');
         meta.className = 'history-meta';
         var when = h.timestamp ? new Date(h.timestamp).toLocaleString() : '';
-                meta.textContent = (h.language || '') + ' \u00b7 ' + (h.mode || '') + ' \u00b7 ' + when + (h.enhanced ? ' \u00b7 enhanced' : '');
+        meta.textContent = (h.language || '') + ' \u00b7 ' + (h.mode || '') + ' \u00b7 ' + when + (h.enhanced ? ' \u00b7 \u2728' : '');
         left.appendChild(text);
         left.appendChild(meta);
         var actions = document.createElement('div');
@@ -1219,7 +1219,7 @@ window.appendHistoryItems = function (history) {
         var delBtn = document.createElement('button');
         delBtn.className = 'btn btn-icon';
         delBtn.type = 'button';
-        delBtn.textContent = '\u00d7';
+        delBtn.textContent = '\ud83d\uddd1';
         delBtn.setAttribute('aria-label', 'Delete entry');
         delBtn.addEventListener('click', async function () {
             try {
