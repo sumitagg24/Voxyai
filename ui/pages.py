@@ -926,7 +926,7 @@ class AIPage(BasePage):
         from ui.custom_modes_window import CustomModesWindow
 
         window = CustomModesWindow(self.orchestrator.get_config("custom_modes", {}) or {})
-        window.setStyleSheet(theme.stylesheet(str(self.orchestrator.get_config("theme", "dark"))))
+        window.setStyleSheet(theme.stylesheet(str(self.orchestrator.get_config("theme", "light"))))
         window.modes_changed.connect(self._save_custom_modes)
         window.setAttribute(Qt.WA_DeleteOnClose, True)
         window.show()

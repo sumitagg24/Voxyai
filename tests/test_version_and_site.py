@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 import pytest
+from web.routes import content as content_routes
 
 from config import version
 
@@ -77,6 +78,9 @@ def test_download_links_are_only_advertised_when_published(app_client, monkeypat
     client, _ = app_client
     for name in ("DOWNLOAD_URL_WINDOWS", "DOWNLOAD_URL_MACOS", "DOWNLOAD_URL_LINUX"):
         monkeypatch.delenv(name, raising=False)
+    # Isolate from the live GitHub feed: no published release in this test.
+    monkeypatch.setattr(content_routes, "_github_latest_assets", lambda: {})
+    monkeypatch.setattr(content_routes, "_DOWNLOAD_CACHE", {"at": 0.0, "payload": None})
 
     payload = client.get("/api/download/urls").get_json()
     assert payload["available"] == {"windows": False, "macos": False, "linux": False}
@@ -88,6 +92,50 @@ def test_download_links_are_only_advertised_when_published(app_client, monkeypat
     published = client.get("/api/download/urls").get_json()
     assert published["available"]["windows"] is True
     assert published["windows"] == "https://cdn.example.com/Voxylis-Setup.exe"
+
+
+def test_download_routes_redirect_to_the_published_asset(app_client, monkeypatch):
+    """Buttons hit the same-origin /download/<platform> routes; a published
+    installer 302s straight to the asset, a missing one falls back to the
+    honest /download page — never to a GitHub page."""
+    client, _ = app_client
+    import web.routes.content as content_routes
+
+    monkeypatch.setattr(content_routes, "_DOWNLOAD_CACHE", {"at": 0.0, "payload": None})
+    monkeypatch.setattr(
+        content_routes,
+        "_github_latest_assets",
+        lambda: {"Voxylis-Setup-9.9.9.exe": "https://assets.example.com/Voxylis-Setup-9.9.9.exe"},
+    )
+
+    # Static buttons point at the same-origin routes (no GitHub hrefs).
+    html = (STATIC / "download.html").read_text(encoding="utf-8")
+    assert 'href="/download/windows"' in html
+    assert "releases/download" not in html
+
+    r = client.get("/download/windows")
+    assert r.status_code == 302
+    assert r.headers["Location"] == "https://assets.example.com/Voxylis-Setup-9.9.9.exe"
+
+    monkeypatch.setattr(content_routes, "_github_latest_assets", lambda: {})
+    r = client.get("/download/macos")
+    assert r.status_code == 302
+    assert r.headers["Location"].endswith("/download")
+
+    r = client.get("/download/bogus")
+    assert r.status_code == 302
+    assert r.headers["Location"].endswith("/download")
+
+
+def test_resolver_queries_the_json_api_not_the_html_page():
+    """github.com/releases/latest serves HTML; the resolver must use
+    api.github.com or it silently never resolves a published installer."""
+    import inspect
+
+    import web.routes.content as content_routes
+
+    src = inspect.getsource(content_routes._github_latest_assets)
+    assert "api.github.com/repos/" in src
 
 
 def test_download_page_checks_availability_before_relinking():

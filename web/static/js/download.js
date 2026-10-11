@@ -25,33 +25,24 @@
     }
   }
 
-  // Load download URLs from API truth.
+  // Availability notes. Buttons point at the same-origin /download/<platform>
+  // routes (in the HTML), which resolve the real asset server-side — clicks
+  // download from the site and never land on a GitHub page.
   function applyDownloadUrls(d) {
     var avail = d.available || {};
-    var releases = d.releases_url || 'https://github.com/sumitagg24/Voxyai/releases';
-    function setBtn(id, noteId, url, ok, okNote, fallbackNote) {
-      var btn = document.getElementById(id);
-      var note = document.getElementById(noteId);
-      if (!btn) return;
-      if (ok && url) {
-        btn.href = url;
-        btn.setAttribute('download', '');
-        if (note) note.textContent = okNote;
-      } else {
-        btn.href = releases;
-        btn.removeAttribute('download');
-        if (note) note.textContent = fallbackNote;
-      }
+    function setNote(id, ok, okNote, fallbackNote) {
+      var note = document.getElementById(id);
+      if (note) note.textContent = ok ? okNote : fallbackNote;
     }
-    setBtn('dl-win', 'dl-win-note', d.windows, avail.windows,
+    setNote('dl-win-note', avail.windows,
       'Installer (.exe) — clicking starts the download',
-      'No packaged installer yet — see releases or build from source');
-    setBtn('dl-macos', 'dl-macos-note', d.macos, avail.macos,
+      'No packaged installer yet — build from source (see releases)');
+    setNote('dl-macos-note', avail.macos,
       'Packaged download — clicking starts the file',
-      'Source build — clone the repo and run run.sh (see releases)');
-    setBtn('dl-linux', 'dl-linux-note', d.linux, avail.linux,
+      'No packaged build yet — clone the repo and run run.sh');
+    setNote('dl-linux-note', avail.linux,
       'Packaged download — clicking starts the file',
-      'Source build — clone the repo and run run.sh (see releases)');
+      'No packaged build yet — clone the repo and run run.sh');
   }
 
   fetch((window.VOXYLIS_API_BASE || '') + '/api/download/urls')

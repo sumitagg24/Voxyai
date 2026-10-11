@@ -115,7 +115,7 @@ class OnboardingWindow(QDialog):
             "mode": self.config.get("enhancement_mode", "formal"),
         }
         self.setWindowTitle(f"{version.APP_NAME} setup")
-        self.setStyleSheet(theme.stylesheet(self.config.get("theme", "dark")))
+        self.setStyleSheet(theme.stylesheet(self.config.get("theme", "light")))
         self.setFixedSize(560, 470)
         self.setModal(True)
         self._build_ui()

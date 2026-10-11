@@ -1,139 +1,114 @@
-# Voxylis Design System — Control Room
+# Voxylis Design System — Light Editorial
 
-**Identity**: A precision instrument for voice. Dark console surfaces, one red record lamp as the only live indicator. Abstract metaphor — type, hairlines, one lamp — never literal hardware.
+**Identity**: A precision instrument for voice, on paper. Clean light surfaces,
+ink typography, hairline borders, one red record lamp as the only live
+indicator. The site and the desktop app are one product: the marketing pages,
+the dashboard and `ui/theme.py` share one palette.
 
 ## Visual Language & Metaphor
-- **Primary metaphor**: Broadcast control room. Dark surface + one live indicator (REC lamp). Everything reads as a precise readout.
-- **Borrowed**: Instrument Panel spec-sheet density for dashboard; Field Recorder monospace for metadata/timecodes/sizes.
-- **Anti-metaphor**: No knobs, faders, patch cables, VU needles, console photos. No gradient overlays, glassmorphism, rounded-corner soup, badge clutter, stock "AI waveform" hero art.
+- **Primary metaphor**: Precision instrument sheet. Light paper + ink + one live
+  indicator (REC lamp). Everything reads as a confident spec sheet.
+- **Borrowed**: Editorial layout for the marketing pages; monospace for
+  metadata/timecodes/sizes in the dashboard.
+- **Anti-metaphor**: No knobs, faders, patch cables, VU needles, console photos.
+  No gradient overlays, glassmorphism, rounded-corner soup, badge clutter,
+  stock "AI waveform" hero art. No dark theme anywhere.
 
 ## Color System (CSS Custom Properties)
 ```css
 :root {
-  --bg-deep:       #0e0f12;
-  --bg-surface:    #16181d;
-  --bg-elevated:   #1d2027;
-  --fg-primary:    #eaeaea;
-  --fg-muted:      #8a8d93;
-  --fg-inverse:    #0e0f12;
-  --border-hair:   #2a2d35;
-  --rec-lamp:      #ff5c5c;    /* ONLY: recording/live/REC + destructive */
-  --success:       #3ecf8e;    /* ONLY: success/online */
-  --focus-ring:    #ff5c5c;
-  --shadow-none:   none;
+  --bg-deep:       #fafafa;   /* page paper */
+  --bg-surface:    #ffffff;   /* cards, nav on scroll */
+  --bg-elevated:   #f1f1ef;   /* hover fills, meters track */
+  --fg-primary:    #1e1e1e;   /* ink */
+  --fg-muted:      #5f636e;
+  --fg-inverse:    #ffffff;
+  --border-hair:   #e5e5e5;
+  --rec-lamp:      #ff5c5c;   /* decorative REC lamp motif */
+  --rec-strong:    #d64545;   /* REC/destructive — AA on light */
+  --success:       #1f9d63;   /* ONLY success/online — AA on light */
+  --focus-ring:    #1e1e1e;
+  --shadow-card:   0 1px 2px rgba(0,0,0,.05), 0 1px 3px rgba(0,0,0,.04);
+  --shadow-pop:    0 8px 24px rgba(0,0,0,.08);
 }
 ```
-No other colors. Red never glows/blooms. Green never appears except success/online.
+The dashboard's tokens are the same values (`#1e1e1e` ink, `#5f636e` muted,
+`#e5e5e5` hairline, pink/teal accents it already owned). Red never glows.
+Green never appears except success/online.
 
 ## Typography
-- **Heading/Body**: One grotesk (vendored `.woff2`, self-hosted). No Google Fonts CDN.
-- **Labels/Numbers/Timecodes**: One monospace (vendored `.woff2`).
-- **Families**: 2 total. **Weights**: 4 max (regular, medium, semibold, bold).
-- **Scale**: `clamp()` fluid steps; `font-display: swap`; preload both families.
-- **No** letter-spacing tricks, no text-transform for hierarchy.
+- **Heading/Body**: One grotesk (self-hosted). No Google Fonts CDN.
+- **Labels/Numbers/Timecodes**: One monospace (self-hosted).
+- **Families**: 2 total. **Weights**: 4 max.
+- **Scale**: fluid steps; `font-display: swap`; preload both families.
 
 ## Spacing & Shape
 - **Spacing scale**: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 (CSS vars `--sp-*`).
-- **Radii**: 4–6px only (`--radius-sm: 4px`, `--radius-md: 6px`). No pill, no full-round.
-- **Borders**: 1px hairline (`var(--border-hair)`). No shadows (`box-shadow: none`).
+- **Radii**: 6–8px (`--radius-sm: 6px`, `--radius-md: 8px`). No pill buttons.
+- **Borders**: 1px hairline. Shadows only the two tokens above (card, pop).
 - **Grid**: Single 12-col fluid grid (`--container-max: 1280px`).
 
 ## Components
-- **Button**: Primary (rec-lamp bg, inverse text), Secondary (hairline border, fg text), Destructive (rec-lamp, inverse). No gradient, no shadow.
-- **Card**: Surface bg, 1px hairline border, 6px radius. No shadow.
-- **Input**: Surface bg, 1px hairline, 4px radius, focus ring = rec-lamp.
-- **Table/Log**: Monospace cells, hairline horizontal rules, timestamp column.
-- **Meter/Level**: Strip chart — mono labels, rec-lamp bars, no gradients.
-- **Lamp**: Solid 8–10px dot + 1px ring, rec-lamp fill when live. Fade 150–250ms ease-out.
+- **Button**: Primary (ink bg, white text), Secondary (hairline border, ink
+  text), Destructive (`--rec-strong`). Subtle hover lift, no gradient.
+- **Card**: White surface, 1px hairline, 8px radius, `--shadow-card`.
+- **Input**: White bg, 1px hairline, 6px radius, ink focus ring.
+- **Meter/Level**: mono labels, `--rec-strong` bars, no gradients.
+- **Lamp**: solid dot + ring, red when live. 150–250ms ease-out.
 
 ## Motion
-- **Allowed**: State transitions only (lamp fade, meter bars, modal open/close).
-- **Duration**: 150–250ms ease-out.
-- **Respects**: `prefers-reduced-motion` → instant.
-- **Never**: Float, bounce, parallax, hover grow/shrink, loading spinners (use lamp).
+- **Allowed**: state transitions only (lamp fade, meter bars, modal open/close).
+- **Duration**: 150–250ms ease-out. Respects `prefers-reduced-motion`.
+- **Never**: float, bounce, parallax, loading spinners.
 
 ## Imagery
-- **Real screenshots** of the actual app (dark theme) only.
-- **og-image**: Lamp motif on charcoal, 1200×630.
-- **Everything else**: Typographic. No illustrations, no 3D blobs, no stock photos.
+- **Real screenshots** of the actual app (light theme) only.
+- **og-image**: Lamp motif, 1200×630.
+- **Everything else**: Typographic. No illustrations, no 3D blobs, no stock.
 
 ## Explicit ANTI-PATTERNS
+- ❌ A dark theme anywhere (site or desktop) — light is the only shipped look
 - ❌ Red glow/bloom/box-shadow
 - ❌ Gradient overlays (backgrounds, buttons, text)
-- ❌ Glassmorphism / backdrop-filter
+- ❌ Glassmorphism / backdrop-filter (exception: the sticky nav's translucent
+  blur is allowed — it blurs the light paper, never dark content)
 - ❌ Rounded-corner soup (pill buttons, full-round cards)
 - ❌ Badge clutter (status chips, "NEW", "PRO" pills)
-- ❌ Stock "AI voice waveform" hero art
-- ❌ Stock photos / generic illustrations
+- ❌ Stock "AI voice waveform" hero art / stock photos
 - ❌ More than 2 font families / 4 weights
-- ❌ More than 3 colors in any view (bg, fg, rec-lamp OR success)
-- ❌ Shadow soup (layered box-shadows)
-- ❌ Floating/bouncing/breathing decorative elements
-- ❌ CDN font loading (fonts.googleapis.com, fonts.gstatic.com)
-- ❌ CDN script loading (cdn.jsdelivr.net, unpkg.com — vendor instead)
+- ❌ Shadow soup (layered box-shadows beyond the two tokens)
+- ❌ CDN font/script loading (vendor instead)
 
 ---
 
-## Desktop ANTI-PATTERNS (P4.2 BUILD — PyQt5 app)
-The desktop reads as the same product as the website. `ui/theme.py` is the single
-source of Control Room tokens for Qt (`stylesheet()`, `palette()`, font stacks).
+## Desktop (PyQt5 app)
+The desktop reads as the same product as the website. `ui/theme.py` is the
+single source of tokens for Qt (`stylesheet()`, `palette()`, font stacks) and
+is **light-only** — the dark palette was removed by owner decision.
 
 - ❌ Gradient buttons/backgrounds (flat fills only)
-- ❌ Emoji or stock icons in place of text glyphs (✓ / • / mono labels); no qtawesome
+- ❌ Emoji or stock icons in place of text glyphs; no qtawesome
 - ❌ Magic hex colours outside `ui/theme.py` — use `theme.palette()` tokens
-- ❌ `setStyleSheet` outside `ui/theme.py` (token-built f-string helpers in a widget are the only exception)
+- ❌ `setStyleSheet` outside `ui/theme.py` (token-built f-string helpers excepted)
 - ❌ Off-scale margins/spacing — use the 4 / 8 / 12 / 16 / 24 / 32 scale
-- ❌ Decorative animations (the overlay waveform is a live level readout, not decoration)
-- ❌ Shipping dark without light: both palettes must pass contrast; recording red is ONLY for REC/live/destructive states
-- ❌ One-off window styling that drifts from the app (every window imports `ui.theme`, never invents its own look)
+- ❌ Decorative animations (the overlay waveform is a live readout)
+- ❌ One-off window styling that drifts from the app
 
-## Desktop REDUCTION + AI-TELLS audit (P4.4)
-Audit performed against the `--design-shots` renders (Home, History, Microphone,
-AI Providers, Shortcuts, Privacy, Account, Diagnostics, About, onboarding, overlay
-idle/recording). Outcomes:
-
-- **Label surfaces**: labels/checkboxes are transparent so cards read as one
-  surface, not a patchwork of label boxes (`ui/theme.py`).
-- **Magic hex**: eliminated outside `ui/theme.py`; the app-icon glyph now draws
-  with `icon_on_accent` on an `accent_fill` square.
-- **Link colour**: the About project link uses `accent`, not browser-default blue.
-- **Contrast**: both DARK and LIGHT palettes pass WCAG ≥4.5:1 for text, muted,
-  dim, success, warning, danger, recording, accent-as-text, and white-on-button.
-  DARK `text_dim`/`accent` and LIGHT `success`/`warning`/`recording`/`text_dim`
-  were darkened/lightened to reach the threshold; `accent_fill` was split from
-  `accent` so the white Primary-button label passes.
-- **Controls**: every button/combo/checkbox is wired (audited; the language
-  combos connect via `currentIndexChanged → _save`). No orphan settings.
-- **No gradient/emoji-icon/one-off-window tells remain.**
+**Contrast**: the LIGHT palette passes WCAG ≥4.5:1 for text, muted, dim,
+success, warning, danger, recording, accent-as-text, and white-on-button.
 
 ---
 
 ## Implementation Notes
-- **Vendor**: Chart.js → `web/static/vendor/chart.min.js` (only on dashboard). `web/static/vendor/` for all 3rd-party.
-- **Fonts**: `.woff2` in `web/static/fonts/`. Preload + `font-display: swap`.
-- **CSS**: `web/static/css/base.css` (tokens + components) + one small per-page file max.
-- **JS**: `web/static/js/api.js` + `config.js` + small per-page modules. Total < 60KB minified (excl Chart.js).
-- **CSP**: `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://*.ingest.sentry.io`. No `unsafe-inline`, no CDN.
-- **Pages**: index, pricing, download, auth, dashboard, blog, blog-post, about, contact, privacy, terms, docs/*, 404.
-- **Honesty**: All features/pricing from `web/tier.py`; download from `/api/download/urls`; pricing CTAs from `checkout_available`; Q&A shows real 403 upgrade.
-- **Session**: All requests via `voxyFetch()`; `X-Session-Rotated` handled in `api.js`.
-- **A11y**: Landmarks, focus-visible, contrast ≥4.5:1, `prefers-reduced-motion`, keyboard-reachable, alt text.
-- **Responsive**: 1440 / 768 / 390. Mobile nav without library.
-- **Perf**: `font-display: swap`, preload woff2, lazy images, JS < 60KB minified (excl Chart.js).
-
----
-
-## Handoff Checklist (P3.3 BUILD)
-- [ ] `docs/DESIGN.md` written (this file)
-- [ ] Fonts vendored to `web/static/fonts/`
-- [ ] Chart.js vendored to `web/static/vendor/`
-- [ ] `web/static/css/base.css` with all tokens + components
-- [ ] Per-page CSS files (max 1 each)
-- [ ] All inline styles removed from HTML
-- [ ] CSP header updated in `web/app.py`
-- [ ] `web/static/js/config.js` for `VOXYLIS_API_BASE`
-- [ ] Chart.js only on dashboard
-- [ ] Honest copy from `web/tier.py` + API endpoints
-- [ ] Mobile nav works without library
-- [ ] `prefers-reduced-motion` honored
-- [ ] `py -m pytest tests -q` + `py -m web.verify_routes` green
+- **Vendor**: Chart.js → `web/static/vendor/chart.min.js` (dashboard only).
+- **Fonts**: self-hosted in `web/static/fonts/`. Preload + swap.
+- **CSS**: `web/static/css/base.css` (tokens + components) + one per-page file.
+- **JS**: `api.js` + `config.js` + small per-page modules (< 60KB excl Chart.js).
+- **CSP**: `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' ...sentry.io`. No `unsafe-inline`, no CDN.
+- **Downloads**: buttons hit same-origin `/download/<platform>` routes that 302
+  to the resolved release asset — visitors download from the site, never a
+  GitHub page.
+- **Honesty**: features/pricing from `web/tier.py`; availability from
+  `/api/download/urls`; pricing CTAs respect `checkout_available`.
+- **A11y**: landmarks, focus-visible, contrast ≥4.5:1, reduced-motion, alt text.
+- **Responsive**: 1440 / 768 / 390. Mobile nav without a library.

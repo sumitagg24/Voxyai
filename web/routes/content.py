@@ -5,7 +5,7 @@ import os
 import re
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, redirect, request
 from flask_limiter.util import get_remote_address
 
 from web import observability
@@ -44,8 +44,12 @@ def _github_latest_assets():
         return cached
     assets: dict = {}
     try:
+        # The JSON endpoint is api.github.com — github.com serves HTML even
+        # with the GitHub+json Accept header (this resolver silently returned
+        # nothing for exactly that reason).
+        owner_repo = REPOSITORY_URL.split("github.com/", 1)[1].strip("/")
         resp = http_requests.get(
-            f"{REPOSITORY_URL}/releases/latest",
+            f"https://api.github.com/repos/{owner_repo}/releases/latest",
             headers={"Accept": "application/vnd.github+json"},
             timeout=10,
         )
@@ -66,14 +70,8 @@ def _github_latest_assets():
     return assets
 
 
-@content_bp.route("/api/download/urls", methods=["GET"])
-def download_urls():
-    """Resolve real download targets, and say plainly which ones exist.
-
-    v3.0.0 IS published: the latest release assets are resolved via the
-    GitHub API (cached 1h). DOWNLOAD_URL_* env vars override any platform
-    when set. ``available`` lets the page tell the truth instead of guessing.
-    """
+def _resolve_download_urls() -> dict:
+    """Resolve real download targets and availability (see download_urls)."""
     windows = (os.environ.get("DOWNLOAD_URL_WINDOWS") or "").strip()
     macos = (os.environ.get("DOWNLOAD_URL_MACOS") or "").strip()
     linux = (os.environ.get("DOWNLOAD_URL_LINUX") or "").strip()
@@ -97,19 +95,42 @@ def download_urls():
                 if lower.endswith(".tar.gz") or lower.endswith(".AppImage") or lower.endswith(".deb"):
                     linux = url
                     break
-    return jsonify(
-        {
-            "windows": windows or RELEASES_PAGE_URL,
-            "macos": macos or f"{REPOSITORY_URL}#macos-installation",
-            "linux": linux or f"{REPOSITORY_URL}#linux-installation",
-            "available": {
-                "windows": bool(windows),
-                "macos": bool(macos),
-                "linux": bool(linux),
-            },
-            "releases_url": RELEASES_PAGE_URL,
-        }
-    )
+    return {
+        "windows": windows or RELEASES_PAGE_URL,
+        "macos": macos or f"{REPOSITORY_URL}#macos-installation",
+        "linux": linux or f"{REPOSITORY_URL}#linux-installation",
+        "available": {
+            "windows": bool(windows),
+            "macos": bool(macos),
+            "linux": bool(linux),
+        },
+        "releases_url": RELEASES_PAGE_URL,
+    }
+
+
+@content_bp.route("/api/download/urls", methods=["GET"])
+def download_urls():
+    """API truth for the download page (targets + availability flags)."""
+    return jsonify(_resolve_download_urls())
+
+
+@content_bp.route("/download/<platform>", methods=["GET"])
+def download_go(platform: str):
+    """Same-origin download entry point.
+
+    Clicking a download button on the website lands here and is redirected
+    straight to the resolved installer asset — the visitor downloads the app
+    from the site, and is never shown a GitHub page. Unknown platforms 404;
+    a platform without a published installer redirects back to /download,
+    where the card says so plainly.
+    """
+    platform = (platform or "").strip().lower()
+    if platform not in ("windows", "macos", "linux"):
+        return redirect("/download", code=302)
+    resolved = _resolve_download_urls()
+    if resolved["available"].get(platform) and resolved.get(platform):
+        return redirect(resolved[platform], code=302)
+    return redirect("/download", code=302)
 
 
 @content_bp.route("/api/download/detect", methods=["GET"])

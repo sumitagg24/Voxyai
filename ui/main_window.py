@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
 
     def _theme(self) -> str:
         try:
-            return self.orchestrator.get_config("theme", "dark") or "dark"
+            return self.orchestrator.get_config("theme", "light") or "light"
         except Exception:
             return "dark"
 

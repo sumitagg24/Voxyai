@@ -12,30 +12,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from PyQt5.QtWidgets import QLabel, QPushButton, QWidget, QFrame
 
-# ── palette (Control Room) ──────────────────────────────────────────────────────
-# Mirrors web/static/css/base.css tokens
-
-DARK = {
-    "bg": "#0e0f12",
-    "bg_elevated": "#16181d",
-    "bg_input": "#1d2027",
-    "border": "#2a2d35",
-    "border_strong": "#3a3a46",
-    "text": "#eaeaea",
-    "text_muted": "#8a8d93",
-    "text_dim": "#7d818c",
-    "accent": "#8474f2",
-    "accent_fill": "#6f5ded",  # fill behind white text (Primary button/icon)
-    "accent_hover": "#8d7ff5",
-    "accent_soft": "#2a2545",
-    "success": "#3ecf8e",
-    "warning": "#e8b93b",
-    "danger": "#e5484d",
-    "danger_hover": "#f2555a",
-    "recording": "#ff5c5c",  # ONLY for REC/live/destructive
-    "focus": "#ff5c5c",
-    "icon_on_accent": "#ffffff",  # glyph drawn on top of the accent surface
-}
+# ── palette (light — mirrors the website) ───────────────────────────────────────
+# Mirrors web/static/css/base.css tokens. Light is the only theme: the dark
+# palette was removed by owner decision so app and site read as one product.
 
 LIGHT = {
     "bg": "#fbfbfd",
@@ -64,12 +43,14 @@ UI_FONT = '"Segoe UI Variable", "Segoe UI", "Inter", system-ui, sans-serif'
 MONO_FONT = '"JetBrains Mono", "Cascadia Code", "Consolas", monospace'
 
 
-def palette(theme: str = "dark") -> dict:
-    return dict(LIGHT if (theme or "dark").lower() == "light" else DARK)
+def palette(theme: str = "light") -> dict:
+    """The light palette. ``theme`` is accepted for call compatibility and
+    intentionally ignored — light is the only shipped look."""
+    return dict(LIGHT)
 
 
-def stylesheet(theme: str = "dark") -> str:
-    """Return the application-wide Qt stylesheet (Control Room)."""
+def stylesheet(theme: str = "light") -> str:
+    """Return the application-wide Qt stylesheet (light, mirrors the website)."""
     c = palette(theme)
     return f"""
     QWidget {{
