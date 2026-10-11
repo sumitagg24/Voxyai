@@ -81,8 +81,3 @@
 .section-top { border-top: 1px solid var(--border-hair); }
 
 .section-center { text-align: center; border-top: 1px solid var(--border-hair); }
-
-/* Product composition figure: explicit dimensions in markup (no layout
-   shift); hairline frame to match the cards below it. */
-.hero-figure { margin: var(--sp-8) auto 0; max-width: 880px; }
-.hero-figure img { border: 1px solid var(--border-hair); border-radius: var(--radius-md); }
