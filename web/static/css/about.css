@@ -1,4 +1,4 @@
-/* about.html — page styles (Control Room) */
+/* about.html — page styles */
 
 .about-prose { max-width: 640px; }
 .about-prose p + p { margin-top: var(--sp-4); }

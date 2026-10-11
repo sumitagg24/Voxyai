@@ -307,27 +307,16 @@ function initializeCharts() {
 // ============================================
 
 function initializeSettings() {
-    const themeSelect = document.getElementById('themeSelect');
     const languageSelect = document.getElementById('languageSelect');
     const notificationsToggle = document.getElementById('notificationsToggle');
     const soundToggle = document.getElementById('soundToggle');
     const autoStartToggle = document.getElementById('autoStartToggle');
 
     // Load saved settings
-    const savedTheme = localStorage.getItem('voxylis_theme') || 'light';
     const savedLanguage = localStorage.getItem('voxylis_language') || 'en';
     const savedNotifications = localStorage.getItem('voxylis_notifications') !== 'false';
     const savedSound = localStorage.getItem('voxylis_sound') !== 'false';
     const savedAutoStart = localStorage.getItem('voxylis_autostart') === 'true';
-
-    if (themeSelect) {
-        themeSelect.value = savedTheme;
-        applyTheme(savedTheme);
-        themeSelect.addEventListener('change', (e) => {
-            localStorage.setItem('voxylis_theme', e.target.value);
-            applyTheme(e.target.value);
-        });
-    }
 
     if (languageSelect) {
         languageSelect.value = savedLanguage;
@@ -364,10 +353,6 @@ function initializeSettings() {
             Voxylis.Notification.show('Settings saved successfully!', 'success');
         });
     }
-}
-
-function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
 }
 
 // ============================================
@@ -542,7 +527,6 @@ function initializeSubscription() {
 // Auto-save functionality
 function autoSaveSettings() {
     const settings = {
-        theme: document.getElementById('themeSelect')?.value,
         language: document.getElementById('languageSelect')?.value,
         notifications: document.getElementById('notificationsToggle')?.checked,
         sound: document.getElementById('soundToggle')?.checked,
@@ -637,7 +621,6 @@ async function initializeDashboard() {
     if (hasStoredSession()) {
     try {
         const { settings } = await getJSON("/api/settings");
-        if (document.getElementById("themeSelect")) document.getElementById("themeSelect").value = settings.theme;
         if (document.getElementById("languageSelect")) document.getElementById("languageSelect").value = settings.language;
         if (document.getElementById("notificationsToggle")) document.getElementById("notificationsToggle").checked = settings.notifications !== false;
         if (document.getElementById("soundToggle")) document.getElementById("soundToggle").checked = settings.sound !== false;
@@ -660,7 +643,6 @@ async function initializeDashboard() {
     document.getElementById("settingsSaveBtn").addEventListener("click", async (e) => {
         e.stopImmediatePropagation();
         const payload = {
-            theme: document.getElementById("themeSelect").value,
             language: document.getElementById("languageSelect").value,
             notifications: document.getElementById("notificationsToggle").checked,
             sound: document.getElementById("soundToggle").checked,
@@ -673,8 +655,6 @@ async function initializeDashboard() {
                 body: JSON.stringify(payload),
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            try { localStorage.setItem('voxylis_theme', payload.theme); } catch (err) {}
-            if (window.applyTheme) window.applyTheme(payload.theme);
             notify.show("Settings saved successfully!", "success");
         } catch (err) { notify.show("Failed to save settings", "error"); }
     });

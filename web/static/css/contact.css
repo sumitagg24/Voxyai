@@ -1,4 +1,4 @@
-/* contact.html — page styles (Control Room) */
+/* contact.html — page styles */
 
 .contact-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--sp-16); align-items: start; }
 @media (max-width: 900px) { .contact-grid { grid-template-columns: 1fr; gap: var(--sp-8); } }
