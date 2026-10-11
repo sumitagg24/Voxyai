@@ -10,7 +10,6 @@ transcripts in the report — redacted samples are enough.
 
 ## Trust boundaries
 
-```
 untrusted ───────────────────────────────────────────────────────────► trusted
 browser JS   desktop client   network        backend
    │              │              │              │
@@ -19,7 +18,6 @@ browser JS   desktop client   network        backend
    │              │              └─ TLS; provider responses are untrusted input
    │              └─ no authority: it reads state, never grants it
    └─ no authority: Origin/Referer are never used for authorization
-```
 
 **The desktop client and the website can never grant themselves anything.**
 Tier, role and feature flags are read-only projections of server state.
@@ -70,6 +68,16 @@ file are migrated into the vault and stripped from the JSON.
   `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`,
   `Cross-Origin-Resource-Policy`.
+* `Content-Security-Policy` is fully strict: `default-src 'self';
+  script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:;
+  connect-src 'self' ...sentry.io...; frame-ancestors 'self'` (see `web/app.py`).
+  There are no inline `<script>` blocks and no inline `style=` attributes
+  anywhere in `web/static`; `scripts/site_audit.py` enforces this on every
+  page in CI. When adding a page: zero inline scripts/handlers, and any new
+  external origin must be explicitly allow-listed in the CSP in `web/app.py`
+  (and in `CORS_ORIGINS` for API calls). The full header set on every response
+  also includes `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy` and `Cross-Origin-Resource-Policy`.
 * `MAX_CONTENT_LENGTH` caps request bodies at 1 MB.
 * Rate limits are applied per route (auth endpoints are the tightest) with a
   per-user key when a session is present.
