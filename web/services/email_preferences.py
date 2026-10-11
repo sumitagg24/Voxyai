@@ -94,14 +94,16 @@ def read_unsubscribe_token(token: str) -> Optional[Tuple[int, str]]:
 
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS email_preferences (
             user_id           INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             marketing_opt_in  INTEGER NOT NULL DEFAULT 0,
             source            TEXT    NOT NULL DEFAULT '',
             updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
         )
-        """)
+        """
+    )
 
 
 def set_marketing_opt_in(

@@ -174,7 +174,8 @@ def _init_db() -> None:
     conn = _get_db()
     cur = conn.cursor()
 
-    cur.executescript("""
+    cur.executescript(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             name          TEXT    NOT NULL,
@@ -284,7 +285,8 @@ def _init_db() -> None:
         CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
         CREATE INDEX IF NOT EXISTS idx_usage_records_user_id_feature ON usage_records(user_id, feature, created_at);
         CREATE INDEX IF NOT EXISTS idx_users_email ON users(email_or_phone);
-        """)
+        """
+    )
     conn.commit()
 
     # Numbered, recorded schema steps (column adds, email normalization,
@@ -305,7 +307,8 @@ def _init_db() -> None:
 
     # Blog content is seeded/updated on every start so corrections to copy are
     # actually published (the upsert in _seed_blog also prunes withdrawn posts).
-    cur.executescript("""
+    cur.executescript(
+        """
         CREATE TABLE IF NOT EXISTS blog_posts (
             id        INTEGER PRIMARY KEY AUTOINCREMENT,
             slug      TEXT NOT NULL UNIQUE,
@@ -316,7 +319,8 @@ def _init_db() -> None:
             content   TEXT NOT NULL DEFAULT '',
             read_time TEXT NOT NULL DEFAULT '5 min read'
         );
-        """)
+        """
+    )
     _seed_blog(conn)
     conn.close()
 

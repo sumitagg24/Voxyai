@@ -34,7 +34,8 @@ def test_fresh_database_records_every_migration(app_client):
 def test_legacy_database_is_upgraded_and_steps_run_only_once(tmp_path, monkeypatch):
     legacy = tmp_path / "legacy.db"
     con = sqlite3.connect(str(legacy))
-    con.executescript("""
+    con.executescript(
+        """
         CREATE TABLE users (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             name         TEXT NOT NULL,
@@ -47,7 +48,8 @@ def test_legacy_database_is_upgraded_and_steps_run_only_once(tmp_path, monkeypat
             email TEXT NOT NULL UNIQUE,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
-        """)
+        """
+    )
     con.execute("INSERT INTO users (name, email_or_phone, password_hash) VALUES ('Legacy', 'Legacy@Gmail.com', 'x')")
     con.commit()
     con.close()
