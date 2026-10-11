@@ -8,3 +8,6 @@
 # CI lint job can never pass. Keep the two aligned.
 line-length = 120
 target-version = ["py310"]
+
+[tool.vercel]
+entrypoint = "web.app:app"
