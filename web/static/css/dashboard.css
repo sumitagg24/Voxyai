@@ -158,8 +158,8 @@ body {
   padding: 6px 14px;
   border-radius: 999px;
   border: 1px solid var(--panel-border);
-  background: rgba(0,0,0,.02);
-  color: var(--muted);
+  background: transparent;
+  color: var(--ink2);
   margin-bottom: 16px;
 }
 
@@ -171,7 +171,7 @@ body {
 }
 
 .status-pill.listening { 
-  color: var(--teal); 
+  color: var(--teal-d); 
   border-color: var(--teal); 
 }
 .status-pill.listening .dot { 
