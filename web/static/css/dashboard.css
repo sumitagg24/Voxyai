@@ -100,7 +100,7 @@ body {
 
 .nav-item.active {
   background: var(--pink);
-  color: var(--ink);
+  color: var(--panel);
   border-color: var(--pink);
 }
 
@@ -178,7 +178,7 @@ body {
   background: var(--teal); 
 }
 .status-pill.processing { 
-  color: var(--pink); 
+  color: var(--pink-d); 
   border-color: var(--pink); 
 }
 .status-pill.processing .dot { 
@@ -282,7 +282,7 @@ body {
   border-color: var(--pink); 
 }
 .chip.active {
-  color: var(--ink);
+  color: var(--panel);
   background: var(--pink);
   border-color: var(--pink);
 }
@@ -327,7 +327,7 @@ body {
 .bubble.agent {
   align-self: flex-start;
   background: var(--pink);
-  color: var(--ink);
+  color: var(--panel);
   border-color: var(--pink);
 }
 
@@ -500,7 +500,7 @@ body {
 .btn.primary, .btn-primary {
   background: var(--pink);
   border-color: var(--pink);
-  color: var(--ink);
+  color: var(--panel);
 }
 
 .btn.primary:hover, .btn-primary:hover {

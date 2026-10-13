@@ -7,8 +7,8 @@
 .voxy-cc.open{display:block}
 .voxy-cc h2{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0 0 10px;color:#171512}
 .voxy-cc p{font-size:14px;line-height:1.6;color:#3a362e;margin:0 0 18px}
-.voxy-cc p a{color:#1a73e8;text-decoration:underline;text-underline-offset:2px}
-.voxy-cc a{color:#1a73e8;text-decoration:none}
+.voxy-cc p a{color:#0b57d0;text-decoration:underline;text-underline-offset:2px}
+.voxy-cc a{color:#0b57d0;text-decoration:none}
 .voxy-cc a:hover{text-decoration:underline}
 .voxy-cc button{font-family:inherit;cursor:pointer}
 .voxy-cc-btn{display:block;width:100%;padding:12px;border:1px solid #e0e0e0;background:#fcfbf7;color:#171512;border-radius:999px;font-size:15px;font-weight:600;margin-bottom:10px;transition:background .15s,border-color .15s}
