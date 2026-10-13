@@ -19,17 +19,6 @@
   text-align: center;
   margin-bottom: var(--sp-6);
 }
-.auth-brand {
-  display: inline-grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  margin-bottom: var(--sp-4);
-  border-radius: 14px;
-  background: var(--fg-primary);
-  color: var(--bg-deep);
-}
-.auth-brand svg { display: block; }
 .auth-title { font-size: var(--text-2xl); letter-spacing: -0.03em; }
 .auth-head .muted { font-size: var(--text-sm); }
 

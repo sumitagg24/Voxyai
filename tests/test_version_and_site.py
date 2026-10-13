@@ -226,9 +226,10 @@ def test_auth_page_is_a_compact_centred_card():
     assert "auth-shell" not in css and "auth-side" not in css, "dead split layout removed"
 
     html = (STATIC / "auth.html").read_text(encoding="utf-8")
-    head_at = html.index('class="auth-head"')
-    assert html.index("auth-brand", head_at) < html.index('class="auth-title"')
-    assert html.index("auth-brand") < head_at + 400
+    # heading block is just title + subtitle: no eyebrow label, no extra
+    # logo tile (the nav carries the brand; a theme-variable tile ghosted)
+    assert "VX.0S4" not in html and "auth-brand" not in html
+    assert html.index('class="auth-title"') < html.index("</header>")
     for label in ("<span>Google</span>", "<span>GitHub</span>"):
         assert label in html
     # auth.js swaps these per mode — they must exist
