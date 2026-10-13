@@ -1,27 +1,27 @@
 /* ============================================
    VOXYLIS — Voice Agent Dashboard (light editorial — synced with the
    landing page's design system in base.css, which this page also loads:
-   paper #fafafa, white panels, ink #1e1e1e, hairline #e5e5e5, muted
-   #5f636e; red stays reserved for REC/live/destructive only).
+   paper #f4f1ea, white panels, ink #171512, hairline #d9d3c4, muted
+   #6b6558; red stays reserved for REC/live/destructive only).
    Contract with dashboard.js — do NOT rename classes.
    ============================================ */
 
 :root {
   /* Base palette — same values as base.css */
-  --bg: #fafafa;
-  --bg-soft: #f1f1ef;
-  --panel: #fff;
-  --panel-border: #e5e5e5;
-  --ink: #1e1e1e;
-  --ink2: #3a3a3a;
-  --muted: #5f636e;
+  --bg: #f4f1ea;
+  --bg-soft: #ebe6d9;
+  --panel: #fcfbf7;
+  --panel-border: #d9d3c4;
+  --ink: #171512;
+  --ink2: #3a362e;
+  --muted: #6b6558;
   /* Accent tokens kept for variable-name compatibility: primary accent is
      the landing page's ink (hover black), secondary the muted grey. */
-  --pink: #1e1e1e;
-  --pink-d: #000000;
-  --teal: #5f636e;
-  --teal-d: #3a3a3a;
-  --radius: 8px;
+  --pink: #c73e1d;
+  --pink-d: #a53217;
+  --teal: #6b6558;
+  --teal-d: #3a362e;
+  --radius: 2px;
 
   /* Fonts — the same vendored families the marketing pages use
      (@font-face comes from base.css, loaded before this file). */
@@ -474,7 +474,7 @@ body {
   cursor: pointer;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: #fcfbf7;
   transition: all 0.15s;
   text-decoration: none;
   display: inline-flex;
@@ -748,7 +748,7 @@ body {
   border-radius: 12px;
   margin-left: 8px;
   background: var(--muted);
-  color: #fff;
+  color: #fcfbf7;
 }
 
 /* Tier-locked upgrade prompt (built by dashboard.js with DOM, no inline CSS) */
@@ -788,7 +788,7 @@ body {
   top: 20px;
   right: 20px;
   padding: 15px 20px;
-  color: #fff;
+  color: #fcfbf7;
   border-radius: 8px;
   z-index: 10000;
   max-width: min(420px, calc(100vw - 40px));
