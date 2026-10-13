@@ -40,7 +40,7 @@ def _github_latest_assets():
 
     now = _time.time()
     cached = _DOWNLOAD_CACHE.get("payload")
-    if cached is not None and now - float(_DOWNLOAD_CACHE.get("at", 0)) < 3600:
+    if cached and now - float(_DOWNLOAD_CACHE.get("at", 0)) < 600:
         return cached
     assets: dict = {}
     try:
@@ -65,8 +65,16 @@ def _github_latest_assets():
                     assets[name] = url
     except Exception as exc:
         logger.warning("GitHub latest-release lookup failed: %s", exc)
+    if not assets:
+        # Never cache a failed lookup: one transient failure (network blip,
+        # GitHub 5xx, API rate limit on shared egress IPs) must not bounce
+        # downloaders for an hour. Serve last-known-good, retry sooner.
+        stale = _DOWNLOAD_CACHE.get("last_good") or {}
+        _DOWNLOAD_CACHE["at"] = 0.0
+        return dict(stale)
     _DOWNLOAD_CACHE["at"] = now
     _DOWNLOAD_CACHE["payload"] = assets
+    _DOWNLOAD_CACHE["last_good"] = dict(assets)
     return assets
 
 
@@ -97,8 +105,8 @@ def _resolve_download_urls() -> dict:
                     break
     return {
         "windows": windows or RELEASES_PAGE_URL,
-        "macos": macos or f"{REPOSITORY_URL}#macos-installation",
-        "linux": linux or f"{REPOSITORY_URL}#linux-installation",
+        "macos": macos or f"{REPOSITORY_URL}/archive/refs/heads/main.zip",
+        "linux": linux or f"{REPOSITORY_URL}/archive/refs/heads/main.tar.gz",
         "available": {
             "windows": bool(windows),
             "macos": bool(macos),
@@ -130,6 +138,12 @@ def download_go(platform: str):
     resolved = _resolve_download_urls()
     if resolved["available"].get(platform) and resolved.get(platform):
         return redirect(resolved[platform], code=302)
+    # No packaged asset for this platform: hand off the source archive the
+    # download card promises ("latest source") instead of a loop back.
+    if platform == "macos":
+        return redirect(f"{REPOSITORY_URL}/archive/refs/heads/main.zip", code=302)
+    if platform == "linux":
+        return redirect(f"{REPOSITORY_URL}/archive/refs/heads/main.tar.gz", code=302)
     return redirect("/download", code=302)
 
 

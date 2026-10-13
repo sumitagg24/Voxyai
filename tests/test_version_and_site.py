@@ -118,13 +118,59 @@ def test_download_routes_redirect_to_the_published_asset(app_client, monkeypatch
     assert r.headers["Location"] == "https://assets.example.com/Voxylis-Setup-9.9.9.exe"
 
     monkeypatch.setattr(content_routes, "_github_latest_assets", lambda: {})
+    # No packaged macOS/Linux build: the route hands off the source archive
+    # the card promises ("latest source") instead of looping.
     r = client.get("/download/macos")
+    assert r.status_code == 302
+    assert r.headers["Location"].endswith("/archive/refs/heads/main.zip")
+
+    r = client.get("/download/linux")
+    assert r.status_code == 302
+    assert r.headers["Location"].endswith("/archive/refs/heads/main.tar.gz")
+
+    # Windows without a published installer keeps the honest loop-back.
+    r = client.get("/download/windows")
     assert r.status_code == 302
     assert r.headers["Location"].endswith("/download")
 
     r = client.get("/download/bogus")
     assert r.status_code == 302
     assert r.headers["Location"].endswith("/download")
+
+
+def test_resolver_never_caches_a_failed_lookup(monkeypatch):
+    """A transient GitHub failure (network blip, 5xx, API rate limit on shared
+    egress IPs) used to be cached for a full hour, bouncing downloaders even
+    after GitHub recovered. Failures must not poison the cache, and a
+    last-known-good mapping must be served while degraded."""
+    import web.routes.content as content_routes
+
+    fresh = {"at": 0.0, "payload": None, "last_good": None}
+    monkeypatch.setattr(content_routes, "_DOWNLOAD_CACHE", fresh)
+
+    def boom(*a, **k):
+        raise ConnectionError("github unreachable")
+
+    monkeypatch.setattr(content_routes.http_requests, "get", boom)
+    first = content_routes._github_latest_assets()
+    assert first == {}
+    assert not fresh["payload"], "empty result must not be cached"
+    assert fresh["at"] == 0.0, "failed lookup must retry immediately"
+
+    # While degraded, serve last-known-good rather than nothing.
+    good = {"Voxylis-Setup-3.1.0.exe": "https://assets.example.com/x.exe"}
+    fresh["last_good"] = good
+    assert content_routes._github_latest_assets() == good
+
+
+def test_readme_source_links_match_the_released_version():
+    """The README's macOS/Linux source archives must point at the CURRENT
+    release tag — they silently rotted to v3.0.0 after v3.1.0 shipped."""
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    tag = "v" + version.__version__
+    assert f"archive/refs/tags/{tag}.zip" in readme
+    assert f"archive/refs/tags/{tag}.tar.gz" in readme
+    assert "v3.0.0.zip" not in readme and "v3.0.0.tar.gz" not in readme
 
 
 def test_resolver_queries_the_json_api_not_the_html_page():

@@ -70,9 +70,9 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 
 - **Windows:** [⬇ Download Voxylis-Setup-3.0.0.exe](https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe)
   — clicking starts the download immediately.
-- **macOS:** [⬇ Download source .zip](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.zip)
+- **macOS:** [⬇ Download source .zip](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.1.0.zip)
   (Python 3.10+, one-command `run.sh` setup).
-- **Linux:** [⬇ Download source .tar.gz](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.0.0.tar.gz)
+- **Linux:** [⬇ Download source .tar.gz](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.1.0.tar.gz)
   (X11 + Wayland).
 
 Prefer to browse? The [releases page](https://github.com/sumitagg24/Voxyai/releases)
@@ -107,6 +107,13 @@ python web/app.py                # local website + API on http://localhost:5000
 
 Requirements: Windows 10/11, Python 3.10+ (64-bit), a microphone, and one
 provider key (Groq is free at <https://console.groq.com/keys>).
+
+> **Linux only:** `pynput` (global hotkeys) pulls in `evdev`, which compiles
+> from source and needs the Python dev headers and a C compiler *before*
+> `pip install` runs — `run.sh` checks this for you.
+> Debian/Ubuntu: `sudo apt-get install python3-dev build-essential` ·
+> Fedora: `sudo dnf install python3-devel gcc` · Arch:
+> `sudo pacman -S python gcc`.
 
 ## Where your data lives
 

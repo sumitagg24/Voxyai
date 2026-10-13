@@ -39,10 +39,10 @@
       'No packaged installer yet — build from source (see releases)');
     setNote('dl-macos-note', avail.macos,
       'Packaged download — clicking starts the file',
-      'No packaged build yet — clone the repo and run run.sh');
+      'Source archive (.zip) — unzip and run run.sh');
     setNote('dl-linux-note', avail.linux,
       'Packaged download — clicking starts the file',
-      'No packaged build yet — clone the repo and run run.sh');
+      'Source archive (.tar.gz) — extract and run run.sh');
   }
 
   fetch((window.VOXYLIS_API_BASE || '') + '/api/download/urls')
