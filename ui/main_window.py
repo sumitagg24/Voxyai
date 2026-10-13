@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush
+from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPixmap, QRectF
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from config import version
+from config import brand, version
 from core.event_manager import Events, event_manager
 from ui import theme
 from ui.pages import (
@@ -67,31 +67,27 @@ SECTION_TO_PAGE = {
 
 
 def app_icon(size: int = 64) -> QIcon:
-    """Draw the Voxylis mark in code so no binary asset is required.
+    """Draw the Voxylis brand mark so no binary asset is required.
 
-    A rounded square with a waveform: distinct from a stock microphone glyph,
-    and identical to the icon used by the installer/tray at their own sizes.
+    The mark comes from :mod:`config.brand` — the same 32-unit grid and
+    palette as the website's favicon — so the window/tray icon is pixel
+    identical to the site and to the installer at every size.
     """
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.Antialiasing)
-    painter.setBrush(QBrush(QColor(theme.palette()["accent_fill"])))
+    k = size / brand.GRID
     painter.setPen(Qt.NoPen)
-    radius = size * 0.28
-    painter.drawRoundedRect(0, 0, size, size, radius, radius)
-
-    painter.setBrush(QBrush(QColor(theme.palette()["icon_on_accent"])))
-    bar_width = max(2, int(size * 0.09))
-    gap = max(2, int(size * 0.06))
-    heights = [0.34, 0.62, 0.86, 0.5, 0.28]
-    total = len(heights) * bar_width + (len(heights) - 1) * gap
-    x = (size - total) / 2
-    for factor in heights:
-        bar_height = size * factor
-        y = (size - bar_height) / 2
-        painter.drawRoundedRect(int(x), int(y), bar_width, int(bar_height), bar_width / 2, bar_width / 2)
-        x += bar_width + gap
+    painter.setBrush(QBrush(QColor(brand.TILE)))
+    painter.drawRoundedRect(
+        QRectF(brand.TILE_X * k, brand.TILE_Y * k, brand.TILE_SIZE * k, brand.TILE_SIZE * k),
+        brand.TILE_RADIUS * k,
+        brand.TILE_RADIUS * k,
+    )
+    for index, (x, top, width, height) in enumerate(brand.BARS):
+        painter.setBrush(QBrush(QColor(brand.SIGNAL if index == brand.SIGNAL_BAR_INDEX else brand.BAR)))
+        painter.drawRoundedRect(QRectF(x * k, top * k, width * k, height * k), k, k)
     painter.end()
     return QIcon(pixmap)
 

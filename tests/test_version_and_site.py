@@ -214,6 +214,86 @@ def test_download_buttons_match_the_real_files():
     assert "py main.py" in guide and "pip install" in guide
 
 
+def test_app_brand_geometry_matches_the_website_nav_svg():
+    """The desktop app logo must stay identical to the website logo.
+
+    config.brand is the single source for the app icon (window, tray,
+    installer .ico). This test derives the mark straight from the site's
+    nav SVG so any design change to the website logo fails here until
+    config.brand is updated with it — the old purple-blue drift can
+    never happen again."""
+    brand = (REPO / "config" / "brand.py").read_text(encoding="utf-8")
+    index = (STATIC / "index.html").read_text(encoding="utf-8")
+    svg_start = index.index('<svg viewBox="0 0 32 32"')
+    svg = index[svg_start : index.index("</svg>", svg_start)]
+
+    # tile geometry
+    assert 'x="1" y="1" width="30" height="30" rx="5"' in svg
+    assert "TILE_X = 1.0" in brand and "TILE_SIZE = 30.0" in brand and "TILE_RADIUS = 5.0" in brand
+
+    # bar geometry: (x, top, width, height) for all five bars
+    import re
+
+    rects = re.findall(
+        r'<rect class="lg-(?:bar|sig)" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"', svg
+    )
+    assert len(rects) == 5
+    expected = [tuple(float(v) for v in r) for r in rects]
+    bars = re.findall(r"\((\d+\.\d), (\d+\.0), (\d+\.\d), (\d+\.0)\),", brand)
+    assert [tuple(float(v) for v in b) for b in bars] == expected
+
+    # palette: paper bars + signal centre on the ink tile
+    assert "#f4f1ea" in svg and "#e04b26" in svg
+    assert 'TILE = "#171512"' in brand
+    assert 'BAR = "#f4f1ea"' in brand and 'SIGNAL = "#e04b26"' in brand
+    assert "SIGNAL_BAR_INDEX = 2" in brand  # centre bar carries the signal
+
+
+def test_packaged_app_icon_uses_the_website_palette():
+    """The installer/EXE icon (packaging/voxylis.ico) must carry the new
+    brand — never the retired purple-blue gradient (#7c6cf0/#5a4bd1)."""
+    import struct
+
+    PIL = pytest.importorskip("PIL", reason="Pillow required to decode the ICO")
+    from PIL import Image
+
+    data = (REPO / "packaging" / "voxylis.ico").read_bytes()
+    _, _, count = struct.unpack("<HHH", data[:6])
+    assert count >= 6, "app icon should ship the full size set"
+
+    def frame_pixels(path, size):
+        img = Image.open(str(path))
+        img.size = (size, size)
+        im = img.convert("RGBA")
+        k = size / 32.0
+        return {
+            "tile": im.getpixel((int(16.0 * k), int(6.0 * k)))[:3],
+            "bar": im.getpixel((int(7.8 * k), int(20.0 * k)))[:3],
+            "signal": im.getpixel((int(17.7 * k), int(24.0 * k)))[:3],
+        }
+
+    # The 256 frame is large enough for exact brand colors deep in the fill.
+    big = frame_pixels(REPO / "packaging" / "voxylis.ico", 256)
+    assert big["tile"] == (0x17, 0x15, 0x12), "tile must be brand ink"
+    assert big["bar"] == (0xF4, 0xF1, 0xEA), "bars must be brand paper"
+    r, g, b = big["signal"]
+    assert r > 180 and g < 110 and b < 70, "centre bar must be signal orange"
+
+    # No purple-blue residue anywhere: sample the retired gradient anchors.
+    grad = Image.open(str(REPO / "packaging" / "voxylis.ico"))
+    grad.size = (256, 256)
+    grad = grad.convert("RGBA")
+    for x, y in ((16.0, 4.0), (16.0, 28.0)):
+        r, g, b = grad.getpixel((int(x * 8), int(y * 8)))[:3]
+        assert (r, g, b) == (0x17, 0x15, 0x12), f"old gradient still present at ({x},{y})"
+
+    # Same-frame parity with the website favicon (downscaled 48px, ±2/channel).
+    app48 = frame_pixels(REPO / "packaging" / "voxylis.ico", 48)
+    web48 = frame_pixels(STATIC / "favicon.ico", 48)
+    for key in app48:
+        assert all(abs(p - q) <= 2 for p, q in zip(app48[key], web48[key])), key
+
+
 def test_resolver_queries_the_json_api_not_the_html_page():
     """github.com/releases/latest serves HTML; the resolver must use
     api.github.com or it silently never resolves a published installer."""

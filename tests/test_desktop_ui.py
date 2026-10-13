@@ -233,3 +233,29 @@ def test_diagnostics_never_include_secrets(window):
     lowered = text.lower()
     for forbidden in ("gsk_", "sk-", "api_key", "password", "vault"):
         assert forbidden not in lowered, f"diagnostics leaked {forbidden!r}"
+
+
+def test_window_icon_is_the_website_brand_mark(qapp):
+    """The runtime window/tray icon must paint config.brand — the same ink
+    tile / paper bars / signal centre as the website favicon — not the
+    retired purple-blue gradient."""
+    import os
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PyQt5.QtGui import QColor, QImage
+
+    from ui.main_window import app_icon
+
+    pm = app_icon(64).pixmap(64, 64)
+    assert not pm.isNull()
+    img = QImage(pm)
+    k = img.width() / 32.0
+
+    def px(x, y):
+        c = img.pixel(int(x * k), int(y * k))
+        return (QColor(c).red(), QColor(c).green(), QColor(c).blue())
+
+    assert px(16.0, 6.0) == (0x17, 0x15, 0x12), "tile must be brand ink"
+    assert px(7.8, 20.0) == (0xF4, 0xF1, 0xEA), "bars must be brand paper"
+    r, g, b = px(17.7, 24.0)
+    assert r > 180 and g < 110 and b < 70, "centre bar must be signal orange"
