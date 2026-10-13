@@ -51,6 +51,7 @@
     if (b) {
       b.addEventListener('click', cycle);
       b.setAttribute('data-state', get());
+      b.setAttribute('aria-label', 'Colour theme: ' + get() + ' (click to change)');
     }
   }
   if (document.readyState === 'loading') {
