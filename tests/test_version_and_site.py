@@ -214,6 +214,27 @@ def test_download_buttons_match_the_real_files():
     assert "py main.py" in guide and "pip install" in guide
 
 
+def test_auth_page_is_a_compact_centred_card():
+    """The auth page must be a small, centred, platform-style card — not a
+    full-width container. The .auth-narrow clamp is the width contract, the
+    dead split-shell layout stays deleted, and the bindings auth.js depends
+    on (.auth-title, .auth-head .muted, form ids) remain present."""
+    css = (STATIC / "css" / "auth.css").read_text(encoding="utf-8")
+    m = re.search(r"\.auth-main \.container\.auth-narrow\s*\{[^}]*max-width:\s*(\d+)px", css)
+    assert m, "auth.css must clamp .auth-narrow to a card width"
+    assert int(m.group(1)) <= 520, "auth card must stay compact"
+    assert "auth-shell" not in css and "auth-side" not in css, "dead split layout removed"
+
+    html = (STATIC / "auth.html").read_text(encoding="utf-8")
+    head_at = html.index('class="auth-head"')
+    assert html.index("auth-brand", head_at) < html.index('class="auth-title"')
+    assert html.index("auth-brand") < head_at + 400
+    for label in ("<span>Google</span>", "<span>GitHub</span>"):
+        assert label in html
+    # auth.js swaps these per mode — they must exist
+    assert 'class="auth-title"' in html and 'class="auth-head' in html
+
+
 def test_app_brand_geometry_matches_the_website_nav_svg():
     """The desktop app logo must stay identical to the website logo.
 
