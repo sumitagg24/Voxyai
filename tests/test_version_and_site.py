@@ -254,7 +254,7 @@ def test_packaged_app_icon_uses_the_website_palette():
     brand — never the retired purple-blue gradient (#7c6cf0/#5a4bd1)."""
     import struct
 
-    PIL = pytest.importorskip("PIL", reason="Pillow required to decode the ICO")
+    pytest.importorskip("PIL", reason="Pillow required to decode the ICO")
     from PIL import Image
 
     data = (REPO / "packaging" / "voxylis.ico").read_bytes()
