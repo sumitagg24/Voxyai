@@ -138,6 +138,24 @@ def test_resolver_queries_the_json_api_not_the_html_page():
     assert "api.github.com/repos/" in src
 
 
+def test_social_login_flow_matches_backend_contract():
+    """The auth page must redirect to Auth0 /authorize and exchange the
+    returned id_token via the real POST /api/auth/auth0 endpoint. The old
+    wiring GET /api/auth/auth0?provider=... (405) and POST /approve (404)
+    were dead ends that made every social button a lie."""
+    js = (STATIC / "js" / "auth.js").read_text(encoding="utf-8")
+    assert "/authorize" in js
+    assert "response_type=id_token" in js
+    assert "fetch((window.VOXYLIS_API_BASE || '') + '/api/auth/auth0'" in js
+    # the two dead paths are gone
+    assert "/api/auth/auth0?provider=" not in js
+    assert "/api/auth/auth0/approve" not in js
+    # the backend contract itself is intact
+    auth_routes = (REPO / "web" / "routes" / "auth.py").read_text(encoding="utf-8")
+    assert '@auth_bp.route("/api/auth/auth0", methods=["POST"])' in auth_routes
+    assert '@auth_bp.route("/api/auth/auth0/config", methods=["GET"])' in auth_routes
+
+
 def test_download_page_checks_availability_before_relinking():
     text = (STATIC / "download.html").read_text(encoding="utf-8")
     assert "dl-win-note" in text
