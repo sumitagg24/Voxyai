@@ -171,13 +171,15 @@ def _audit_page(page, url: str, local_base: str, verbose: bool) -> list:
     axe_result = page.evaluate(
         "async () => {"
         "  const r = await axe.run(document, {resultTypes: ['violations']});"
-        "  return r.violations.map(v => ({id: v.id, impact: v.impact, help: v.help, count: v.nodes.length}));"
+        "  return r.violations.map(v => ({id: v.id, impact: v.impact, help: v.help, count: v.nodes.length,"
+        "    nodes: v.nodes.slice(0, 3).map(n => (n.target || []).join(' '))}));"
         "}"
     )
     blocking = [v for v in axe_result if v.get("impact") in BLOCKING_IMPACTS]
     for violation in blocking:
+        where = " | ".join(violation.get("nodes") or [])
         findings.append(
-            f"a11y[{violation['impact']}] {violation['id']} ({violation['count']} nodes): {violation['help']}"
+            f"a11y[{violation['impact']}] {violation['id']} ({violation['count']} nodes): {violation['help']} -> {where}"
         )
 
     # 2) console errors ------------------------------------------------------
