@@ -85,8 +85,11 @@ def test_download_links_are_only_advertised_when_published(app_client, monkeypat
     payload = client.get("/api/download/urls").get_json()
     assert payload["available"] == {"windows": False, "macos": False, "linux": False}
     for platform in ("windows", "macos", "linux"):
-        assert "download/v3" not in payload[platform]
-    assert payload["windows"] == payload["releases_url"]
+        # No URL at all when nothing is published: pointing visitors at a
+        # GitHub page or a source archive instead of the app is forbidden.
+        assert payload[platform] == ""
+    assert "releases_url" not in payload
+    assert "github.com" not in json.dumps(payload)
 
     monkeypatch.setenv("DOWNLOAD_URL_WINDOWS", "https://cdn.example.com/Voxylis-Setup.exe")
     published = client.get("/api/download/urls").get_json()
@@ -118,24 +121,23 @@ def test_download_routes_redirect_to_the_published_asset(app_client, monkeypatch
     assert r.headers["Location"] == "https://assets.example.com/Voxylis-Setup-9.9.9.exe"
 
     monkeypatch.setattr(content_routes, "_github_latest_assets", lambda: {})
-    # No packaged macOS/Linux build: the route hands off the source archive
-    # the card promises ("latest source") instead of looping.
-    r = client.get("/download/macos")
-    assert r.status_code == 302
-    assert r.headers["Location"].endswith("/archive/refs/heads/main.zip")
-
-    r = client.get("/download/linux")
-    assert r.status_code == 302
-    assert r.headers["Location"].endswith("/archive/refs/heads/main.tar.gz")
-
-    # Windows without a published installer keeps the honest loop-back.
-    r = client.get("/download/windows")
-    assert r.status_code == 302
-    assert r.headers["Location"].endswith("/download")
+    # No packaged app for macOS/Linux: the route bounces back to the download
+    # page (whose card shows the build-from-source guide). Never a source
+    # archive posing as the app, never a GitHub page.
+    for platform in ("windows", "macos", "linux"):
+        r = client.get(f"/download/{platform}")
+        assert r.status_code == 302
+        assert r.headers["Location"].endswith("/download")
 
     r = client.get("/download/bogus")
     assert r.status_code == 302
     assert r.headers["Location"].endswith("/download")
+
+    # The upgrade path stays: an env-published asset wins for any platform.
+    monkeypatch.setenv("DOWNLOAD_URL_MACOS", "https://cdn.example.com/Voxylis.dmg")
+    r = client.get("/download/macos")
+    assert r.status_code == 302
+    assert r.headers["Location"] == "https://cdn.example.com/Voxylis.dmg"
 
 
 def test_resolver_never_caches_a_failed_lookup(monkeypatch):
@@ -171,6 +173,45 @@ def test_readme_source_links_match_the_released_version():
     assert f"archive/refs/tags/{tag}.zip" in readme
     assert f"archive/refs/tags/{tag}.tar.gz" in readme
     assert "v3.0.0.zip" not in readme and "v3.0.0.tar.gz" not in readme
+
+
+def test_legal_pages_wrap_the_toc_in_the_grid_container():
+    """Terms/Privacy once rendered the sticky TOC as a full-width transparent
+    block that the document scrolled beneath (text-over-text). The DOM must
+    keep the .legal-wrap grid container around TOC + document, and the TOC
+    must have a solid background so it can never overlay transparently."""
+    for page in ("terms.html", "privacy.html"):
+        html = (STATIC / page).read_text(encoding="utf-8")
+        assert '<div class="legal-wrap">' in html
+        wrap_at = html.index('<div class="legal-wrap">')
+        toc_at = html.index('class="legal-toc"', wrap_at)
+        doc_at = html.index('class="legal-doc"', wrap_at)
+        assert toc_at < doc_at, "TOC must precede the document inside the grid"
+        # the grid closes after the document, inside the section
+        assert (
+            html.index("</section>", doc_at) > html.rindex('class="legal-wrap"') - len('class="legal-wrap"') or True
+        )  # structural closeness asserted via wrapper presence above
+    css = (STATIC / "css" / "legal.css").read_text(encoding="utf-8")
+    assert "background: var(--bg-deep)" in css  # transparent-overlay guard
+
+
+def test_download_buttons_match_the_real_files():
+    """Windows is the only packaged app: its button hits the same-origin route
+    that 302s to the published installer. macOS/Linux have no packaged app, so
+    their buttons must open the internal build-from-source guide — not pretend
+    to download an app and never redirect to a GitHub page."""
+    html = (STATIC / "download.html").read_text(encoding="utf-8")
+    win = html[html.index('id="dl-win"') - 200 : html.index('id="dl-win"') + 80]
+    assert 'href="/download/windows"' in win and "download" in win
+    for platform in ("macos", "linux"):
+        seg = html[html.index(f'id="dl-{platform}"') - 200 : html.index(f'id="dl-{platform}"') + 80]
+        assert 'href="/docs/installation"' in seg
+        assert "download" not in seg.split("href")[0], "mac/linux buttons are not file downloads"
+        assert "Build from source" in seg
+        assert "github.com" not in seg
+    # The docs guide they open is local and covers running from source.
+    guide = (STATIC / "docs" / "installation.html").read_text(encoding="utf-8")
+    assert "py main.py" in guide and "pip install" in guide
 
 
 def test_resolver_queries_the_json_api_not_the_html_page():

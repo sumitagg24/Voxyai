@@ -294,6 +294,11 @@ h4 { font-size: var(--text-xl); }
   transition: opacity var(--motion-slow) ease-out, transform var(--motion-slow) ease-out;
 }
 
+/* Very narrow phones: let button labels wrap instead of overflowing. */
+@media (max-width: 360px) {
+  .btn { white-space: normal; }
+}
+
 .nav-links { display: flex; align-items: center; gap: var(--sp-6); }
 .nav-links a {
   font-family: var(--font-mono);

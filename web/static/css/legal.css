@@ -24,9 +24,16 @@
   display: grid;
   gap: var(--sp-2);
   font-size: var(--text-sm);
+  /* Hardening: the rail is never transparent and never taller than the
+   * viewport, so document text can never scroll behind unreadable
+   * overlay text — even if a future/older stylesheet loses the grid. */
+  background: var(--bg-deep);
+  z-index: 1;
+  max-height: calc(100vh - var(--nav-height) - 48px);
+  overflow: auto;
 }
 @media (max-width: 900px) {
-  .legal-toc { position: static; }
+  .legal-toc { position: static; max-height: none; overflow: visible; background: none; }
 }
 
 .legal-tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-2); }

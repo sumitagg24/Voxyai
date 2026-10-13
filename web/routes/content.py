@@ -104,15 +104,18 @@ def _resolve_download_urls() -> dict:
                     linux = url
                     break
     return {
-        "windows": windows or RELEASES_PAGE_URL,
-        "macos": macos or f"{REPOSITORY_URL}/archive/refs/heads/main.zip",
-        "linux": linux or f"{REPOSITORY_URL}/archive/refs/heads/main.tar.gz",
+        # Only a real, published asset resolves to a URL. There is no
+        # secondary fallback: sending a visitor to a GitHub page (or to a
+        # source archive as if it were the app) is worse than saying
+        # "not available right now".
+        "windows": windows or "",
+        "macos": macos or "",
+        "linux": linux or "",
         "available": {
             "windows": bool(windows),
             "macos": bool(macos),
             "linux": bool(linux),
         },
-        "releases_url": RELEASES_PAGE_URL,
     }
 
 
@@ -138,12 +141,8 @@ def download_go(platform: str):
     resolved = _resolve_download_urls()
     if resolved["available"].get(platform) and resolved.get(platform):
         return redirect(resolved[platform], code=302)
-    # No packaged asset for this platform: hand off the source archive the
-    # download card promises ("latest source") instead of a loop back.
-    if platform == "macos":
-        return redirect(f"{REPOSITORY_URL}/archive/refs/heads/main.zip", code=302)
-    if platform == "linux":
-        return redirect(f"{REPOSITORY_URL}/archive/refs/heads/main.tar.gz", code=302)
+    # No packaged app for this platform: bounce back to the download page,
+    # whose card shows the honest build-from-source path. Never a GitHub page.
     return redirect("/download", code=302)
 
 

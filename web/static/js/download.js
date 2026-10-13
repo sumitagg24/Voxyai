@@ -30,19 +30,43 @@
   // download from the site and never land on a GitHub page.
   function applyDownloadUrls(d) {
     var avail = d.available || {};
-    function setNote(id, ok, okNote, fallbackNote) {
-      var note = document.getElementById(id);
-      if (note) note.textContent = ok ? okNote : fallbackNote;
+
+    // Windows is the only packaged app: embed the real published filename.
+    var winNote = document.getElementById('dl-win-note');
+    var winBtn = document.getElementById('dl-win');
+    if (avail.windows && d.windows) {
+      var file = '';
+      try { file = String(d.windows).split('/').pop() || ''; } catch (e) {}
+      if (winNote && file) winNote.textContent = file + ' \u2014 clicking starts the download';
+      if (winBtn && file) winBtn.title = file;
+    } else {
+      if (winNote) winNote.textContent = 'No packaged installer right now \u2014 check back shortly.';
+      if (winBtn) {
+        winBtn.setAttribute('aria-disabled', 'true');
+        winBtn.classList.add('is-disabled');
+      }
     }
-    setNote('dl-win-note', avail.windows,
-      'Installer (.exe) — clicking starts the download',
-      'No packaged installer yet — build from source (see releases)');
-    setNote('dl-macos-note', avail.macos,
-      'Packaged download — clicking starts the file',
-      'Source archive (.zip) — unzip and run run.sh');
-    setNote('dl-linux-note', avail.linux,
-      'Packaged download — clicking starts the file',
-      'Source archive (.tar.gz) — extract and run run.sh');
+
+    // macOS/Linux have no packaged app: the button opens our build-from-source
+    // guide (internal page, never a GitHub redirect). If a real packaged asset
+    // ever publishes, upgrade the button to a true download.
+    [['dl-macos', 'dl-macos-note', 'macos', '\u2b07 Download for macOS'],
+     ['dl-linux', 'dl-linux-note', 'linux', '\u2b07 Download for Linux']].forEach(function (spec) {
+      var btn = document.getElementById(spec[0]);
+      var note = document.getElementById(spec[1]);
+      var url = d[spec[2]];
+      if (avail[spec[2]] && url) {
+        if (btn) {
+          btn.setAttribute('href', '/download/' + spec[2]);
+          btn.setAttribute('download', '');
+          btn.textContent = spec[3];
+          try { btn.title = String(url).split('/').pop() || ''; } catch (e) {}
+        }
+        if (note) note.textContent = 'Packaged app \u2014 clicking starts the download';
+      } else if (note) {
+        note.textContent = 'No packaged app yet \u2014 the button opens the build-from-source guide.';
+      }
+    });
   }
 
   fetch((window.VOXYLIS_API_BASE || '') + '/api/download/urls')
@@ -66,7 +90,10 @@
   var trackers = document.querySelectorAll('[data-track-download]');
   for (var t = 0; t < trackers.length; t++) {
     (function (el) {
-      el.addEventListener('click', function () { trackDownload(el.getAttribute('data-track-download')); });
+      el.addEventListener('click', function (ev) {
+        if (el.getAttribute('aria-disabled') === 'true') { ev.preventDefault(); return; }
+        trackDownload(el.getAttribute('data-track-download'));
+      });
     })(trackers[t]);
   }
 

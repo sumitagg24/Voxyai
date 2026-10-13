@@ -14,6 +14,8 @@
   flex-shrink: 0;
   position: sticky;
   top: calc(var(--nav-height) + var(--sp-4));
+  /* Hardening: opaque rail — main-column text can never show through. */
+  background: var(--bg-deep);
 }
 
 .docs-side h3 {

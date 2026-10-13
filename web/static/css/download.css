@@ -87,3 +87,6 @@
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
 }
+
+/* Unavailable installer: visually suppressed, still focusable, click-guarded. */
+.btn[aria-disabled="true"], .btn.is-disabled { opacity: 0.45; cursor: not-allowed; }
