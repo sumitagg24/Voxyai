@@ -796,3 +796,57 @@ body {
 .voxy-toast-success { background: #0b7a55; }
 .voxy-toast-error { background: #d13b40; }
 .voxy-toast-info { background: #1a56c4; }
+
+/* Sidebar brand links home (like every major product). */
+.sidebar-header h3.sidebar-brand a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 150ms ease-out;
+}
+.sidebar-header h3.sidebar-brand a:hover { color: var(--pink); }
+
+/* Signed-in identity chip above the logout item. */
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+}
+.sidebar-user-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 15px;
+}
+.sidebar-user-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-user-email {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

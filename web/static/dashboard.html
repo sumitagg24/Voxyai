@@ -24,7 +24,7 @@
     <div class="dashboard-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h3>🎙️ Voxylis</h3>
+                <h3 class="sidebar-brand"><a href="/" title="Back to homepage">🎙️ Voxylis</a></h3>
             </div>
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item active" data-section="overview"><span class="icon">📊</span> Overview</a>
@@ -34,6 +34,13 @@
                 <a href="#" class="nav-item" data-section="hotkeys"><span class="icon">⌨️</span> Hotkeys</a>
                 <a href="#" class="nav-item" data-section="subscription"><span class="icon">💳</span> Plan</a>
                 <a href="docs/installation" class="nav-link"><span class="icon">📖</span> Docs</a>
+                <div class="sidebar-user" id="sidebarUser" hidden>
+                    <span class="sidebar-user-avatar" id="userAvatar" aria-hidden="true">V</span>
+                    <span class="sidebar-user-meta">
+                        <span class="sidebar-user-name" id="userName"></span>
+                        <span class="sidebar-user-email" id="userEmail"></span>
+                    </span>
+                </div>
                 <a href="#" class="nav-link mt-auto" id="logoutBtn"><span class="icon">🚪</span> Log out</a>
             </nav>
         </aside>

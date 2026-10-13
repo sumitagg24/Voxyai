@@ -561,3 +561,24 @@ h4 { font-size: var(--text-xl); }
   0%, 100% { transform: scaleY(0.72); }
   50% { transform: scaleY(1); }
 }
+
+/* Signed-in visitor chip in the marketing nav (injected by site.js). */
+.nav-user {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-primary);
+  padding: var(--sp-1) 0;
+  border-bottom: 1px solid var(--border-hair);
+  transition: border-color var(--motion-fast);
+  max-width: 200px;
+}
+.nav-user:hover { border-bottom-color: var(--signal); }
+.nav-user .lamp { --lamp-size: 8px; }
+.nav-user .nav-user-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

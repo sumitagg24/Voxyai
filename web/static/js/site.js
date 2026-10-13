@@ -38,9 +38,41 @@
     }
   }
 
+  /* Signed-in nav state: after login the marketing pages must show WHO is
+     signed in (name + live lamp, linking to the dashboard) instead of
+     pretending the visitor is anonymous. Silent no-op when logged out. */
+  function initSignedInNav() {
+    var right = document.querySelector('.nav-right');
+    if (!right || right.querySelector('.nav-user')) return;
+    var sid = '';
+    try { sid = localStorage.getItem('session_id') || ''; } catch (e) {}
+    if (!sid || typeof window.voxyFetch !== 'function') return;
+    window.voxyFetch('/api/me').then(function (resp) {
+      if (!resp || !resp.ok) return;
+      return resp.json().then(function (data) {
+        var u = data && data.user;
+        if (!u) return;
+        var chip = document.createElement('a');
+        chip.className = 'nav-user';
+        chip.href = '/dashboard';
+        chip.title = u.email_or_phone || ('User #' + u.id);
+        var lamp = document.createElement('span');
+        lamp.className = 'lamp lamp--live';
+        lamp.setAttribute('aria-hidden', 'true');
+        var label = document.createElement('span');
+        label.className = 'nav-user-name';
+        label.textContent = u.name || u.email_or_phone || 'Dashboard';
+        chip.appendChild(lamp);
+        chip.appendChild(label);
+        right.insertBefore(chip, right.firstChild);
+      });
+    }).catch(function () { /* navigation must never depend on this */ });
+  }
+
   function boot() {
     initNavToggle();
     initCookieChoices();
+    initSignedInNav();
   }
 
   if (document.readyState === 'loading') {

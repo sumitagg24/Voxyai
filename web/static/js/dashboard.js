@@ -1304,3 +1304,30 @@ async function loadHotkeys() {
         list.appendChild(item);
     });
 }
+
+// ============================================
+// SIDEBAR USER IDENTITY
+// Shows who is signed in: avatar initial, name, email (and user id in the
+// tooltip). Purely a view over /api/me — no new backend surface.
+// ============================================
+(function () {
+    function initSidebarUser() {
+        var wrap = document.getElementById('sidebarUser');
+        if (!wrap || !hasStoredSession()) return;
+        voxyFetch('/api/me').then(function (resp) {
+            if (!resp || !resp.ok) return;
+            return resp.json().then(function (data) {
+                var u = data && data.user;
+                if (!u) return;
+                var name = u.name || '';
+                var email = u.email_or_phone || '';
+                document.getElementById('userName').textContent = name || email || 'Account';
+                document.getElementById('userEmail').textContent = email;
+                document.getElementById('userAvatar').textContent = (name || email || 'V').charAt(0).toUpperCase();
+                wrap.title = 'User #' + u.id + (email ? ' \u00b7 ' + email : '');
+                wrap.hidden = false;
+            });
+        }).catch(function () { /* identity display is non-critical */ });
+    }
+    document.addEventListener('DOMContentLoaded', initSidebarUser);
+})();
