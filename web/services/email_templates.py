@@ -310,7 +310,7 @@ def _subscription_changed(c: Dict) -> Tuple[str, str, str]:
             f"Your plan is now {plan}. {detail}Monthly transcription allowance: {limit}.",
             "You can review usage and plan state on your dashboard at any time.",
         ],
-        _button_from(c, "dashboard_url", "Open dashboard"),
+        _button_from(c, "dashboard_url", "Open Voxylis"),
         c.get("note") or "",
     )
     return subject, text, html
@@ -343,7 +343,7 @@ def _usage_warning(c: Dict) -> Tuple[str, str, str]:
             "When the allowance runs out, transcription stops until the next month "
             "starts. Nothing is charged automatically.",
         ],
-        _button_from(c, "dashboard_url", "View usage"),
+        _button_from(c, "dashboard_url", "Open Voxylis"),
         "You received this because it affects your account, not because you subscribed to news.",
     )
     return subject, text, html
@@ -375,7 +375,7 @@ def _usage_limit_reached(c: Dict) -> Tuple[str, str, str]:
             "next month.",
             "Existing history stays available in the desktop app, and nothing has " "been charged.",
         ],
-        _button_from(c, "dashboard_url", "View usage"),
+        _button_from(c, "dashboard_url", "Open Voxylis"),
         "Paid plans are not purchasable yet, so there is nothing to buy right now.",
     )
     return subject, text, html

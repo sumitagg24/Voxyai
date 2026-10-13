@@ -9,9 +9,9 @@
 
 **[Download the app →](https://voxylis-web.vercel.app/download)** ·
 [Website](https://voxylis-web.vercel.app) ·
-[Pricing](https://voxylis-web.vercel.app/pricing) ·
 [Docs](https://voxylis-web.vercel.app/docs/installation) ·
-[Releases](https://github.com/sumitagg24/Voxyai/releases)
+[Releases](https://github.com/sumitagg24/Voxyai/releases) ·
+[License: MIT](LICENSE)
 
 ## Documentation
 
@@ -30,7 +30,7 @@
 Voxylis is a voice-first desktop assistant for Windows. Press a hotkey, speak
 naturally, and AI-enhanced text lands at the cursor in whatever application has
 focus — a browser, an editor, a chat window, a terminal. A companion website and
-Flask API provide the account, dashboard, pricing and download surfaces.
+Flask API provide the account, docs and download surfaces. Dictation lives in the desktop app.
 
 The product name is **Voxylis**; the first-party engine is called **Voxy**.
 
@@ -148,7 +148,7 @@ All preferences are in the app: **Settings** in the sidebar (or the tray menu).
 | AI Providers | Groq / OpenAI keys (stored in the credential vault), enhancement on/off, default mode, custom modes |
 | Shortcuts | Record shortcuts (default + per-mode), hold/toggle mode, reserved-key and duplicate validation, disable global shortcuts, reset |
 | Privacy | Retention, crash-report opt-in, diagnostics export, local data deletion |
-| Account | Optional sign-in for the web dashboard |
+| Account | Optional sign-in for quotas, licences and email verification |
 | Diagnostics | Pipeline state, paths, recent errors, redacted support bundle |
 | About | Version, licences, links |
 
@@ -198,7 +198,7 @@ voxyai/
 │   ├── tier.py                Tier → features/quotas table
 │   ├── verify_routes.py       Route inventory guard
 │   ├── services/              subscription policy
-│   └── static/                Website (pages, docs, blog, dashboard)
+│   └── static/                Website (pages, docs, blog)
 ├── packaging/                 version_info (generated), icon generator, .ico
 ├── installer/voxylis.iss      Inno Setup definition
 ├── tests/                     Backend, desktop and site tests

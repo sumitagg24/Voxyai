@@ -696,7 +696,7 @@ def upgrade_tier(user_id):
                         if result.tier == TIER_OWNER
                         else f"{TIER_QUOTAS.get(result.tier, FREE_MONTHLY_TRANSCRIPTIONS)}/month"
                     ),
-                    "dashboard_url": f"{email_service.site_base_url()}/dashboard",
+                    "dashboard_url": f"{email_service.site_base_url()}/",
                     "note": f"Changed by {result.source}.",
                 },
             )

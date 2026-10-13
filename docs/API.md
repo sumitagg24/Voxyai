@@ -405,7 +405,7 @@ Get or add transcription history (requires auth for POST).
 }
 ```
 
-Rows are ordered newest-first (`created_at DESC, id DESC`). The dashboard
+Rows are ordered newest-first (`created_at DESC, id DESC`). The desktop app
 loads the first page and appends older pages via a "Load older" button.
 
 **POST Request:**

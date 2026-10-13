@@ -10,12 +10,13 @@
 <link rel="preload" href="/static/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/static/css/base.css">
+<script src="/static/js/theme.js"></script>
 <link rel="stylesheet" href="/static/css/auth.css">
 <link rel="stylesheet" href="/static/css/cookie-consent.css">
 </head>
 <body>
 <nav class="nav">
-  <a href="/" class="nav-brand"><span class="glyph">V</span><span>Voxylis</span></a>
+  <a href="/" class="nav-brand"><span class="glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="28" height="28" focusable="false"><rect class="lg-tile" x="1" y="1" width="30" height="30" rx="5" fill="currentColor"/><rect class="lg-bar" x="6.2" y="13" width="3.4" height="13" rx="1" fill="#f4f1ea"/><rect class="lg-bar" x="11.1" y="18" width="3.4" height="8" rx="1" fill="#f4f1ea"/><rect class="lg-sig" x="16" y="22" width="3.4" height="4" rx="1" fill="#e04b26"/><rect class="lg-bar" x="20.9" y="18" width="3.4" height="8" rx="1" fill="#f4f1ea"/><rect class="lg-bar" x="25.8" y="13" width="3.4" height="13" rx="1" fill="#f4f1ea"/></svg></span><span>Voxylis</span></a>
   <button class="nav-toggle" aria-label="Toggle menu" type="button"><span></span><span></span><span></span></button>
   <div class="nav-links">
     <a href="/#features">Features</a>
@@ -25,6 +26,7 @@
     <a href="/blog">Blog</a>
   </div>
   <div class="nav-right">
+    <button class="theme-toggle" type="button"><svg class="t-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.8 4.8l1.6 1.6M17.6 17.6l1.6 1.6M19.2 4.8l-1.6 1.6M6.4 17.6l-1.6 1.6"/></svg><svg class="t-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.6 13.6A8.4 8.4 0 0 1 10.4 3.4a8.4 8.4 0 1 0 10.2 10.2z"/></svg><svg class="t-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="1.5"/><path d="M9 20.5h6M12 17v3.5"/></svg></button>
     <a href="/download" class="btn">Download App</a>
   </div>
 </nav>
@@ -37,27 +39,67 @@
       <p class="muted">Sign in to access your dashboard, history, and subscription.</p>
     </header>
 
-    <article class="card">
-      <form id="signinForm" novalidate>
+    <article class="card auth-card">
+      <div id="formError" class="form-error" role="alert" hidden></div>
+      <p id="formNote" class="form-note" hidden></p>
+
+      <!-- SIGN IN -->
+      <form id="signinForm" class="auth-form" novalidate>
         <div class="form-group">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" class="input" autocomplete="email" required placeholder="you@example.com">
         </div>
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" name="password" class="input" autocomplete="current-password" required placeholder="••••••••">
+          <input type="password" id="password" name="password" class="input" autocomplete="current-password" required placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
         </div>
         <div class="form-group form-row-split">
-          <label class="toggle auth-toggle">
-            <input type="checkbox" name="remember" id="remember" aria-label="Remember me">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            Remember me
+          <label class="check-line">
+            <input type="checkbox" id="remember" name="remember">
+            <span class="box" aria-hidden="true"></span>
+            <span>Remember me</span>
           </label>
-          <a href="/auth?mode=forgot" class="btn-ghost auth-forgot">Forgot password?</a>
+          <a href="/auth?mode=forgot" class="auth-forgot" data-mode-link="forgot">Forgot password?</a>
         </div>
-<button type="submit" class="btn btn-full btn-lg auth-submit">Sign In</button>
+        <button type="submit" class="btn btn-full btn-lg auth-submit">Sign In</button>
       </form>
-      <p class="auth-alt">Don't have an account? <a href="/auth?mode=signup" class="auth-link">Sign up</a></p>
+
+      <!-- SIGN UP -->
+      <form id="signupForm" class="auth-form hidden" novalidate>
+        <div class="form-group">
+          <label for="signupName">Name</label>
+          <input type="text" id="signupName" name="name" class="input" autocomplete="name" required placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" name="email" class="input" autocomplete="email" required placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" name="password" class="input" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="8&ndash;128 characters">
+        </div>
+        <button type="submit" class="btn btn-full btn-lg auth-submit">Create Account</button>
+      </form>
+
+      <!-- FORGOT PASSWORD -->
+      <form id="forgotForm" class="auth-form hidden" novalidate>
+        <div class="form-group">
+          <label for="forgotEmail">Email</label>
+          <input type="email" id="forgotEmail" name="email" class="input" autocomplete="email" required placeholder="you@example.com">
+        </div>
+        <button type="submit" class="btn btn-full btn-lg auth-submit">Send reset link</button>
+      </form>
+
+      <!-- RESET (arrives from the emailed link: /auth?reset_token=...) -->
+      <form id="resetForm" class="auth-form hidden" novalidate>
+        <div class="form-group">
+          <label for="resetPassword">New password</label>
+          <input type="password" id="resetPassword" name="password" class="input" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="8&ndash;128 characters">
+        </div>
+        <button type="submit" class="btn btn-full btn-lg auth-submit">Choose new password</button>
+      </form>
+
+      <p class="auth-alt" id="modeSwapLine">Don't have an account? <a href="/auth?mode=signup" class="auth-link" data-mode-link="signup">Sign up</a></p>
       <p class="auth-alt">Or continue with</p>
       <div class="auth-social">
         <button type="button" class="btn btn-ghost" id="googleBtn" aria-label="Sign in with Google">
@@ -96,7 +138,7 @@
 <footer class="footer">
   <div class="container">
     <div class="footer-top">
-      <div class="footer-brand">Voxylis</div>
+      <div class="footer-brand"><span class="footer-glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="26" height="26" focusable="false"><rect class="lg-tile" x="1" y="1" width="30" height="30" rx="5" fill="currentColor"/><rect class="lg-bar" x="6.2" y="13" width="3.4" height="13" rx="1" fill="#171512"/><rect class="lg-bar" x="11.1" y="18" width="3.4" height="8" rx="1" fill="#171512"/><rect class="lg-sig" x="16" y="22" width="3.4" height="4" rx="1" fill="#e04b26"/><rect class="lg-bar" x="20.9" y="18" width="3.4" height="8" rx="1" fill="#171512"/><rect class="lg-bar" x="25.8" y="13" width="3.4" height="13" rx="1" fill="#171512"/></svg></span>Voxylis</div>
       <nav class="footer-nav">
         <div class="footer-col"><h5>Product</h5><a href="/#features">Features</a><a href="https://github.com/sumitagg24/Voxyai">GitHub</a><a href="/download">Download</a></div>
         <div class="footer-col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>

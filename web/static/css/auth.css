@@ -1,82 +1,198 @@
-/* auth.html — page styles */
+/* Voxylis — Auth page ("SIGNAL SHEET"): split panel, one column of brand,
+ * one column of forms. Sign in / Sign up / Forgot / Reset share this shell;
+ * auth.js swaps modes. All ids are load-bearing (auth.js) — do NOT rename.
+ */
 
-#consent-overlay.hidden { display: none; }
+.auth-main { padding: var(--sp-12) 0 var(--sp-16); }
 
-.consent-list {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 var(--sp-6);
+.auth-shell {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+}
+
+/* ---- brand side -------------------------------------------------- */
+.auth-side {
+  position: relative;
+  background: var(--fg-primary);
+  color: var(--bg-deep);
+  padding: var(--sp-8);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-3);
-  text-align: center;
+  overflow: hidden;
 }
-
-.consent-list li {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.auth-side .label { color: rgba(244, 241, 234, 0.6); }
+.auth-side-brand {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--sp-2);
+}
+.auth-side-pitch {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: rgba(244, 241, 234, 0.78);
+  max-width: 26ch;
+}
+.auth-side-facts {
+  margin-top: auto;
+  padding-top: var(--sp-6);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(244, 241, 234, 0.6);
+  display: grid;
   gap: var(--sp-2);
 }
-
-.consent-list .check { color: var(--success); font-weight: 700; }
-
-.auth-alt { margin-top: var(--sp-6); text-align: center; color: var(--fg-muted); font-size: var(--text-sm); }
-
-.auth-social { display: flex; gap: var(--sp-3); justify-content: center; margin-top: var(--sp-3); }
-
-.auth-social .btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  padding: 0;
+.auth-side-facts span::before {
+  content: "";
+  display: inline-block;
+  width: 8px; height: 8px;
+  margin-right: var(--sp-2);
+  background: var(--signal);
 }
-
-.auth-main {
-  min-height: calc(100vh - var(--nav-height));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-8) var(--sp-4);
+/* decorative waveform bars on the ink panel */
+.auth-side-bars { display: flex; align-items: flex-end; gap: 6px; height: 56px; margin: var(--sp-6) 0; }
+.auth-side-bars i { width: 6px; background: rgba(244, 241, 234, 0.85); }
+.auth-side-bars i.sig { background: var(--signal); }
+@media (prefers-reduced-motion: no-preference) {
+  .auth-side-bars i { animation: auth-bar 1.8s ease-in-out infinite; transform-origin: bottom; }
+  .auth-side-bars i:nth-child(2n) { animation-delay: 0.25s; }
+  .auth-side-bars i:nth-child(3n) { animation-delay: 0.5s; }
 }
+@keyframes auth-bar { 0%, 100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
 
-.auth-narrow { max-width: 440px; width: 100%; }
+/* ---- form side --------------------------------------------------- */
+.auth-form-col { padding: var(--sp-8); }
+.auth-head { margin-bottom: var(--sp-6); }
+.auth-title { font-size: var(--text-2xl); letter-spacing: -0.03em; }
+.auth-head .muted { font-size: var(--text-sm); }
 
-.auth-head { text-align: center; margin-bottom: var(--sp-8); }
-
-.auth-title { font-size: var(--text-3xl); font-weight: 700; letter-spacing: -0.02em; }
-
-.form-row-split { display: flex; justify-content: space-between; align-items: center; }
-
-.auth-toggle { margin: 0; font-size: var(--text-sm); font-weight: 400; }
-
-.auth-forgot { padding: 0; font-size: var(--text-sm); }
+.auth-form.hidden { display: none; }
+.auth-form .form-group label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-muted);
+}
+.auth-form .input { padding: var(--sp-3); font-size: var(--text-base); }
+.auth-form .input:focus { box-shadow: 3px 3px 0 0 var(--bg-elevated); }
 
 .auth-submit { margin-top: var(--sp-2); }
+.auth-submit:disabled { opacity: 0.55; }
 
-.auth-link { color: var(--fg-primary); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+/* Remember me — a real checkbox with a visible state (fixes the old
+   toggle whose track overprinted the label text). */
+.form-row-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.check-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--text-sm);
+  color: var(--fg-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.check-line input {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+}
+.check-line .box {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-hair);
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  display: inline-grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--bg-deep);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+.check-line .box::after { content: ""; }
+.check-line input:checked + .box { background: var(--fg-primary); border-color: var(--fg-primary); }
+.check-line input:checked + .box::after { content: "\2713"; }
+.check-line input:focus-visible + .box { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.auth-forgot { font-size: var(--text-sm); color: var(--fg-muted); }
+.auth-forgot:hover { color: var(--fg-primary); }
 
-/* Consent overlay: hidden until auth.js adds .open (never visible by default). */
+/* inline messages (no more alert()) */
+.form-error {
+  border: 1px solid var(--rec-strong);
+  border-left-width: 4px;
+  color: var(--rec-strong);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--text-sm);
+  margin-bottom: var(--sp-4);
+}
+.form-note {
+  border: 1px solid var(--success);
+  border-left-width: 4px;
+  color: var(--success);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--text-sm);
+  margin-bottom: var(--sp-4);
+}
+
+.auth-alt { font-size: var(--text-sm); color: var(--fg-muted); margin: var(--sp-4) 0 0; }
+.auth-link { color: var(--fg-primary); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.auth-link:hover { color: var(--signal-deep); }
+
+/* social buttons: full-width, icon + label */
+.auth-social { display: grid; gap: var(--sp-2); margin-top: var(--sp-2); }
+.auth-social .btn { justify-content: flex-start; padding: var(--sp-3); }
+.auth-social .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ---- consent overlay --------------------------------------------- */
 .consent-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(30, 30, 30, 0.45);
-  z-index: 100;
+  background: rgba(23, 21, 18, 0.6);
   display: none;
   align-items: center;
   justify-content: center;
   padding: var(--sp-4);
+  z-index: 100;
 }
 .consent-overlay.open { display: flex; }
+.consent-card {
+  position: relative;
+  max-width: 460px;
+  width: 100%;
+  overflow: hidden;
+}
+.consent-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--signal);
+}
+.consent-title { font-size: var(--text-xl); letter-spacing: -0.02em; }
+.consent-sub { font-size: var(--text-sm); }
+.consent-list { list-style: none; margin: 0 0 var(--sp-4); padding: 0; display: grid; gap: var(--sp-2); }
+.consent-list li { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--text-sm); }
+.consent-list .check { color: var(--success); font-weight: 700; }
+.consent-note { font-size: var(--text-sm); }
+.consent-actions { display: flex; gap: var(--sp-3); margin-top: var(--sp-4); }
+.consent-actions .btn { flex: 1; }
 
-.consent-card { max-width: 480px; width: 100%; margin: auto; }
-
-.consent-head { text-align: center; margin-bottom: var(--sp-6); }
-
-.consent-title { font-size: var(--text-2xl); font-weight: 700; }
-
-.consent-sub { text-align: center; margin-bottom: var(--sp-6); }
-
-.consent-note { font-size: var(--text-sm); text-align: center; margin-bottom: var(--sp-6); }
-
-.consent-actions { display: flex; gap: var(--sp-3); justify-content: center; }
+/* ---- responsive --------------------------------------------------- */
+@media (max-width: 860px) {
+  .auth-shell { grid-template-columns: 1fr; }
+  .auth-side { display: none; }
+  .auth-form-col { padding: var(--sp-6) var(--sp-4); }
+}

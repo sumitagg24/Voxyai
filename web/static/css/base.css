@@ -22,6 +22,8 @@
   --border-ink:    #171512;    /* hard rule */
   --signal:        #e04b26;    /* THE accent — lamp/REC/hover/decor */
   --signal-deep:   #b23617;    /* accent for body-size text (AA) */
+  --signal-btn:    #c73e1d;    /* button hover fill (AA with button text) */
+  --signal-btn-text: #f8f6f0;  /* text on signal fills */
   --rec-lamp:      #ff4b26;    /* live lamp glow (decorative) */
   --rec-strong:    #c22e12;    /* destructive / REC text (AA on light) */
   --success:       #1f9d63;    /* ONLY: success/online (AA on light) */
@@ -63,6 +65,48 @@
   --motion-fast: 150ms ease-out;
   --motion-base: 200ms ease-out;
   --motion-slow: 250ms ease-out;
+}
+
+/* ============================================================
+   DARK THEME — warm night paper. Same roles, inverted values.
+   ============================================================ */
+[data-theme="dark"] {
+  --bg-deep:       #151310;
+  --bg-surface:    #1d1a15;
+  --bg-elevated:   #282319;
+  --fg-primary:    #ece7da;
+  --fg-muted:      #a89f8d;
+  --fg-inverse:    #151310;
+  --border-hair:   #39332a;
+  --border-ink:    #ece7da;
+  --signal:        #ff6a42;
+  --signal-deep:   #ff8a66;
+  --signal-btn:    #ff6a42;
+  --signal-btn-text: #171512;
+  --rec-lamp:      #ff4b26;
+  --rec-strong:    #ff6b4a;
+  --success:       #3ecf8e;
+  --focus-ring:    #ece7da;
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    --bg-deep:       #151310;
+    --bg-surface:    #1d1a15;
+    --bg-elevated:   #282319;
+    --fg-primary:    #ece7da;
+    --fg-muted:      #a89f8d;
+    --fg-inverse:    #151310;
+    --border-hair:   #39332a;
+    --border-ink:    #ece7da;
+    --signal:        #ff6a42;
+    --signal-deep:   #ff8a66;
+    --signal-btn:    #ff6a42;
+    --signal-btn-text: #171512;
+    --rec-lamp:      #ff4b26;
+    --rec-strong:    #ff6b4a;
+    --success:       #3ecf8e;
+    --focus-ring:    #ece7da;
+  }
 }
 
 /* ============================================================
@@ -126,6 +170,14 @@ img { max-width: 100%; height: auto; display: block; }
 /* Anchored sections land below the sticky nav, never underneath it. */
 [id] { scroll-margin-top: calc(var(--nav-height) + 16px); }
 
+/* Colour crossfade when the theme flips (reduced-motion users: killed by
+   the global reducer above). */
+body, .nav, .card, .footer, .input, .select, .textarea, .toggle .toggle-track {
+  transition: background-color var(--motion-base) ease-out,
+              color var(--motion-base) ease-out,
+              border-color var(--motion-base) ease-out;
+}
+
 /* ============================================================
    LAYOUT UTILITIES
    ============================================================ */
@@ -155,7 +207,9 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.05;
   color: var(--fg-primary);
+  text-wrap: balance;
 }
+p, li { text-wrap: pretty; }
 h1 { font-size: var(--text-4xl); letter-spacing: -0.045em; }
 h2 { font-size: var(--text-3xl); letter-spacing: -0.03em; }
 h3 { font-size: var(--text-2xl); letter-spacing: -0.02em; }
@@ -198,14 +252,47 @@ h4 { font-size: var(--text-xl); }
 }
 .nav-brand .glyph {
   width: 28px; height: 28px;
-  background: var(--fg-primary);
-  color: var(--fg-inverse);
-  border-radius: var(--radius-sm);
   display: grid; place-items: center;
-  font-size: 14px; font-weight: 700;
-  transition: background var(--motion-fast), transform var(--motion-fast);
+  transition: transform var(--motion-fast);
 }
-.nav-brand:hover .glyph { background: var(--signal); transform: rotate(-4deg); }
+.nav-brand .glyph svg { display: block; width: 28px; height: 28px; }
+.nav-brand:hover .glyph { transform: rotate(-4deg); }
+.nav-brand:hover .glyph .lg-sig { fill: var(--signal); }
+/* Logo palette follows the theme: ink tile, paper bars, signal channel.
+   (The SVGs also carry baked-in fills so they render even with stale CSS.) */
+.lg-tile { fill: var(--fg-primary); }
+.lg-bar { fill: var(--bg-deep); }
+.lg-sig { fill: var(--signal); }
+.footer-glyph { display: inline-flex; margin-right: var(--sp-2); vertical-align: -3px; }
+.footer-glyph svg { width: 26px; height: 26px; }
+.footer-glyph .lg-tile { fill: var(--fg-inverse); }
+.footer-glyph .lg-bar { fill: var(--fg-primary); }
+
+/* Theme toggle (in every nav) — one icon per state; sun visible by default
+   so the control never renders empty before JS assigns a state. */
+.theme-toggle {
+  display: inline-grid; place-items: center;
+  width: 34px; height: 34px;
+  background: transparent;
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-sm);
+  color: var(--fg-primary);
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.theme-toggle:hover { border-color: var(--signal); }
+.theme-toggle svg { display: none; width: 16px; height: 16px; }
+.theme-toggle .t-sun { display: block; }
+.theme-toggle[data-state="dark"] .t-sun { display: none; }
+.theme-toggle[data-state="dark"] .t-moon { display: block; }
+.theme-toggle[data-state="system"] .t-sun { display: none; }
+.theme-toggle[data-state="system"] .t-auto { display: block; }
+
+/* Reveal-on-scroll (added by site.js; motion-reduced users: global killer). */
+.reveal { opacity: 0; transform: translateY(14px); }
+.reveal.in {
+  opacity: 1; transform: none;
+  transition: opacity var(--motion-slow) ease-out, transform var(--motion-slow) ease-out;
+}
 
 .nav-links { display: flex; align-items: center; gap: var(--sp-6); }
 .nav-links a {
@@ -262,9 +349,9 @@ h4 { font-size: var(--text-xl); }
   white-space: nowrap;
 }
 .btn:hover {
-  background: var(--signal);
-  border-color: var(--signal);
-  color: var(--fg-inverse);
+  background: var(--signal-btn);
+  border-color: var(--signal-btn);
+  color: var(--signal-btn-text);
   transform: translate(-2px, -2px);
   box-shadow: var(--lift-signal);
 }
@@ -438,6 +525,24 @@ h4 { font-size: var(--text-xl); }
   margin: 0 auto var(--sp-4);
 }
 .hero-solid { color: var(--fg-primary); }
+@media (prefers-reduced-motion: no-preference) {
+  .hero-solid { animation: hero-rise 0.7s ease-out both; }
+  .hero p, .hero-actions, .hero .waveform-svg {
+    animation: hero-rise 0.7s ease-out 0.25s both;
+  }
+  .hero-outline-svg text {
+    stroke-dasharray: 1400;
+    stroke-dashoffset: 1400;
+    animation: hero-draw 1.6s ease-out 0.35s forwards;
+  }
+}
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hero-draw {
+  to { stroke-dashoffset: 0; }
+}
 /* Hollow display line: stroked SVG text. (Outlining via transparent CSS
    color + text-stroke reads as a color-contrast violation to axe-core,
    which cannot see the stroke; SVG text gets the same look and is

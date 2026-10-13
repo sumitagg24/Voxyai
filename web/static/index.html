@@ -10,6 +10,7 @@
 <link rel="preload" href="/static/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/static/css/base.css">
+<script src="/static/js/theme.js"></script>
 <link rel="stylesheet" href="/static/css/index.css">
 <link rel="stylesheet" href="/static/css/cookie-consent.css">
 </head>
@@ -17,7 +18,7 @@
 <!-- NAVIGATION -->
 <nav class="nav">
   <a href="/" class="nav-brand">
-    <span class="glyph">V</span>
+    <span class="glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="28" height="28" focusable="false"><rect class="lg-tile" x="1" y="1" width="30" height="30" rx="5" fill="currentColor"/><rect class="lg-bar" x="6.2" y="13" width="3.4" height="13" rx="1" fill="#f4f1ea"/><rect class="lg-bar" x="11.1" y="18" width="3.4" height="8" rx="1" fill="#f4f1ea"/><rect class="lg-sig" x="16" y="22" width="3.4" height="4" rx="1" fill="#e04b26"/><rect class="lg-bar" x="20.9" y="18" width="3.4" height="8" rx="1" fill="#f4f1ea"/><rect class="lg-bar" x="25.8" y="13" width="3.4" height="13" rx="1" fill="#f4f1ea"/></svg></span>
     <span>Voxylis</span>
   </a>
   <button class="nav-toggle" aria-label="Toggle menu" type="button"><span></span><span></span><span></span></button>
@@ -29,6 +30,7 @@
     <a href="/blog">Blog</a>
   </div>
   <div class="nav-right">
+    <button class="theme-toggle" type="button"><svg class="t-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.8 4.8l1.6 1.6M17.6 17.6l1.6 1.6M19.2 4.8l-1.6 1.6M6.4 17.6l-1.6 1.6"/></svg><svg class="t-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.6 13.6A8.4 8.4 0 0 1 10.4 3.4a8.4 8.4 0 1 0 10.2 10.2z"/></svg><svg class="t-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="1.5"/><path d="M9 20.5h6M12 17v3.5"/></svg></button>
     <a href="/auth" class="signin">Sign In</a>
     <a href="/download" class="btn">Download App</a>
   </div>
@@ -172,20 +174,11 @@
   </div>
 </section>
 
-<!-- FOOTER CTA -->
-<section class="section section-center">
-  <div class="container">
-    <h2 class="section-title">Prefer the web?</h2>
-    <p class="section-subtitle">Try the dashboard directly in your browser — no download needed.</p>
-    <a href="/dashboard" class="btn btn-lg">Open Dashboard →</a>
-  </div>
-</section>
-
 <!-- FOOTER -->
 <footer class="footer">
   <div class="container">
     <div class="footer-top">
-      <div class="footer-brand">Voxylis</div>
+      <div class="footer-brand"><span class="footer-glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="26" height="26" focusable="false"><rect class="lg-tile" x="1" y="1" width="30" height="30" rx="5" fill="currentColor"/><rect class="lg-bar" x="6.2" y="13" width="3.4" height="13" rx="1" fill="#171512"/><rect class="lg-bar" x="11.1" y="18" width="3.4" height="8" rx="1" fill="#171512"/><rect class="lg-sig" x="16" y="22" width="3.4" height="4" rx="1" fill="#e04b26"/><rect class="lg-bar" x="20.9" y="18" width="3.4" height="8" rx="1" fill="#171512"/><rect class="lg-bar" x="25.8" y="13" width="3.4" height="13" rx="1" fill="#171512"/></svg></span>Voxylis</div>
       <nav class="footer-nav">
         <div class="footer-col"><h5>Product</h5><a href="/#features">Features</a><a href="https://github.com/sumitagg24/Voxyai">GitHub</a><a href="/download">Download</a></div>
         <div class="footer-col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>

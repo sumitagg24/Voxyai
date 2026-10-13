@@ -59,7 +59,9 @@ def download_page():
 
 @pages_bp.route("/dashboard")
 def dashboard():
-    return current_app.send_static_file("dashboard.html")
+    """The browser dashboard was removed — Voxylis lives in the desktop app.
+    Old links and bookmarks land on the homepage instead of 404ing."""
+    return redirect("/", code=302)
 
 
 @pages_bp.route("/favicon.ico")

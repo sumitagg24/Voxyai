@@ -15,13 +15,14 @@
 <link rel="preload" href="/static/fonts/SpaceGrotesk-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="preload" href="/static/fonts/JetBrainsMono-Variable.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="/static/css/base.css">
-<link rel="stylesheet" href="/static/css/privacy.css">
+<script src="/static/js/theme.js"></script>
+<link rel="stylesheet" href="/static/css/legal.css">
 <link rel="stylesheet" href="/static/css/cookie-consent.css">
 </head>
 <body>
 <nav class="nav">
   <a href="/" class="nav-brand">
-    <span class="glyph">V</span>
+    <span class="glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="28" height="28" focusable="false"><rect class="lg-tile" x="1" y="1" width="30" height="30" rx="5" fill="currentColor"/><rect class="lg-bar" x="6.2" y="13" width="3.4" height="13" rx="1" fill="#f4f1ea"/><rect class="lg-bar" x="11.1" y="18" width="3.4" height="8" rx="1" fill="#f4f1ea"/><rect class="lg-sig" x="16" y="22" width="3.4" height="4" rx="1" fill="#e04b26"/><rect class="lg-bar" x="20.9" y="18" width="3.4" height="8" rx="1" fill="#f4f1ea"/><rect class="lg-bar" x="25.8" y="13" width="3.4" height="13" rx="1" fill="#f4f1ea"/></svg></span>
     <span>Voxylis</span>
   </a>
   <button class="nav-toggle" aria-label="Toggle menu"><span></span><span></span><span></span></button>
@@ -33,6 +34,7 @@
     <a href="/blog">Blog</a>
   </div>
   <div class="nav-right">
+    <button class="theme-toggle" type="button"><svg class="t-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M4.8 4.8l1.6 1.6M17.6 17.6l1.6 1.6M19.2 4.8l-1.6 1.6M6.4 17.6l-1.6 1.6"/></svg><svg class="t-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.6 13.6A8.4 8.4 0 0 1 10.4 3.4a8.4 8.4 0 1 0 10.2 10.2z"/></svg><svg class="t-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12.5" rx="1.5"/><path d="M9 20.5h6M12 17v3.5"/></svg></button>
     <a href="/auth" class="signin">Sign In</a>
     <a href="/download" class="btn">Download App</a>
   </div>
@@ -48,13 +50,26 @@
 
 <section class="legal">
   <div class="container">
-    <div class="legal-doc">
-      <p class="updated">Effective: 26 September 2026 · Contact: see the <a class="inline-link" href="/contact">contact page</a></p>
+    
+      <aside class="legal-toc" id="legalToc"></aside>
+      <div class="legal-doc">
+      <div class="legal-choices">
+        <p><strong>Your choices, your control.</strong> Cookie preferences and data requests live here &mdash; no dark patterns, no hidden toggles.</p>
+        <a href="#" class="btn btn-ghost" data-cookie-choices>Manage cookie choices</a>
+        <a href="/contact" class="btn">Data request</a>
+      </div>
 
-      <h2>1. The short version</h2>
+<p class="updated">Effective: 26 September 2026 · Contact: see the <a class="inline-link" href="/contact">contact page</a></p>
+
+
+
+      <section class="legal-sec"><h2>1. The short version</h2>
       <p>Voxylis is a voice-dictation app. Audio goes only to the speech provider <b>you</b> configure. Transcripts stay in a local database you control. An account is optional. When you sign in with Google or GitHub, we receive your name, email address and profile photo — the photo is shown once for confirmation and never stored.</p>
+      </section>
 
-      <h2>2. Social sign-in (Google / GitHub)</h2>
+
+
+      <section class="legal-sec"><h2>2. Social sign-in (Google / GitHub)</h2>
       <p>Sign-in runs through Auth0 using the standard <b>openid, profile and email</b> scopes — the same set shown on Google's own consent screen. After the provider verifies you, Voxylis shows its own consent dialog listing exactly what it receives. Nothing is created or stored unless you press Continue.</p>
       <ul>
         <li><b>Received:</b> your name, email address and profile photo.</li>
@@ -62,33 +77,51 @@
         <li><b>Never requested:</b> your password, contacts, repositories, files, or anything else on your Google or GitHub account.</li>
         <li>Sign-in is refused when the provider reports your email as unverified.</li>
       </ul>
+      </section>
 
-      <h2>3. What the desktop app collects</h2>
+
+
+      <section class="legal-sec"><h2>3. What the desktop app collects</h2>
       <ul>
         <li><b>Audio:</b> recorded to a temporary file, sent once to your configured provider (Groq or OpenAI), then deleted. Never archived or logged.</li>
         <li><b>Transcripts:</b> stored in a local SQLite database only while history is enabled. Retention and entry limits are enforced; you can delete one entry, everything, or switch history off entirely.</li>
         <li><b>API keys:</b> kept in your operating system's credential store (Windows DPAPI / Keychain / Secret Service). Never written to a settings file, never logged.</li>
         <li><b>Error reports:</b> only when you enable <i>Settings → Privacy → Send crash reports</i>. Reports contain the error type, stack trace without frame locals, app version and OS — never keys, tokens, transcripts, audio or your email.</li>
       </ul>
+      </section>
 
-      <h2>4. What the website and account collect</h2>
+
+
+      <section class="legal-sec"><h2>4. What the website and account collect</h2>
       <ul>
         <li>Account name, email address and subscription tier.</li>
         <li>Contact-form messages and newsletter subscriptions (email only).</li>
         <li>Dashboard history and usage only for features you use while signed in.</li>
         <li>A session id in your browser's local storage; no advertising cookies, no cross-site tracking.</li>
       </ul>
+      </section>
 
-      <h2>5. What we never do</h2>
+
+
+      <section class="legal-sec"><h2>5. What we never do</h2>
       <p>No analytics SDK, no usage tracking, no sale of personal data, no advertising profiles. Verification and password-reset emails are sent only to operate your account.</p>
+      </section>
 
-      <h2>6. Deletion and your rights</h2>
+
+
+      <section class="legal-sec"><h2>6. Deletion and your rights</h2>
       <p>Delete your account any time (Settings → Privacy in the app, or contact us) and the server-side rows and uploaded history are removed. On your machine: turn history off, delete history, clear stored keys, uninstall — the uninstaller asks separately about the local data folder. To request a copy or deletion of anything we hold, email /contact.</p>
+      </section>
 
-      <h2>7. Third parties</h2>
+
+
+      <section class="legal-sec"><h2>7. Third parties</h2>
       <p>We cannot promise what upstream providers do with data you send them: Groq and OpenAI (speech/AI), Google and GitHub (sign-in), Auth0 (identity), Resend/Gmail (email delivery) and Sentry (error reports, only with consent) each have their own policies. The desktop app supports whichever speech provider you configure; there is no Voxylis-hosted transcription service. The website itself loads no third-party fonts, scripts or CDNs — its fonts, styles and Chart.js are served from this site.</p>
+      </section>
 
-      <h2 id="cookies">8. Cookie Policy</h2>
+
+
+      <section class="legal-sec"><h2 id="cookies">8. Cookie Policy</h2>
       <p>Voxylis uses a minimum of browser storage. <b>Necessary storage is always active</b> — without it you cannot stay signed in:</p>
       <ul>
         <li><b>Sign-in session</b> (local storage) — keeps you logged in. Deleted on sign-out.</li>
@@ -97,9 +130,14 @@
       </ul>
       <p><b>Preferences, analytics and marketing are off by default.</b> We run no analytics SDK and no advertising trackers today; those categories exist in the consent dialog so that if we ever add one, it stays off until you allow it. Third parties you interact with during login (Auth0, Google, GitHub) apply their own policies while in use.</p>
       <p>Change your mind any time: click <b>Cookie choices</b> in the footer to re-open the banner.</p>
+      </section>
 
-      <h2>9. Changes</h2>
+
+
+      <section class="legal-sec"><h2>9. Changes</h2>
       <p>If this policy changes materially, the effective date above moves and the new version is linked from the website footer before it takes effect.</p>
+      </section>
+
     </div>
   </div>
 </section>
@@ -107,7 +145,7 @@
 <footer class="footer">
   <div class="container">
     <div class="footer-top">
-      <div class="footer-brand">Voxylis</div>
+      <div class="footer-brand"><span class="footer-glyph" aria-hidden="true"><svg viewBox="0 0 32 32" width="26" height="26" focusable="false"><rect class="lg-tile" x="1" y="1" width="30" height="30" rx="5" fill="currentColor"/><rect class="lg-bar" x="6.2" y="13" width="3.4" height="13" rx="1" fill="#171512"/><rect class="lg-bar" x="11.1" y="18" width="3.4" height="8" rx="1" fill="#171512"/><rect class="lg-sig" x="16" y="22" width="3.4" height="4" rx="1" fill="#e04b26"/><rect class="lg-bar" x="20.9" y="18" width="3.4" height="8" rx="1" fill="#171512"/><rect class="lg-bar" x="25.8" y="13" width="3.4" height="13" rx="1" fill="#171512"/></svg></span>Voxylis</div>
       <nav class="footer-nav">
         <div class="footer-col"><h5>Product</h5><a href="/#features">Features</a><a href="https://github.com/sumitagg24/Voxyai">GitHub</a><a href="/download">Download</a></div>
         <div class="footer-col"><h5>Company</h5><a href="/about">About</a><a href="/blog">Blog</a><a href="/contact">Contact</a></div>
@@ -124,6 +162,8 @@
 </footer>
 
 <script src="/static/js/api.js" defer></script>
+<script src="/static/js/api.js" defer></script>
+<script src="/static/js/legal.js" defer></script>
 <script src="/static/js/site.js" defer></script>
 <script src="/static/js/sentry-init.js" defer></script>
 <script src="/static/js/cookie-consent.js" defer></script>

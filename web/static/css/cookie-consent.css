@@ -3,33 +3,33 @@
  * forbids the <style> injection the banner used to do at runtime).
  * Colours meet WCAG AA on their surfaces; the modal row hint passes 4.5:1.
  */
-.voxy-cc{position:fixed;left:20px;bottom:20px;z-index:2000;max-width:380px;background:#fcfbf7;color:#171512;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.22);padding:24px;font-family:'Space Grotesk',Inter,system-ui,sans-serif;display:none}
+.voxy-cc{position:fixed;right:20px;bottom:20px;z-index:2000;max-width:380px;background:var(--bg-surface);color:var(--fg-primary);border-radius:2px;box-shadow:6px 6px 0 0 var(--fg-primary);padding:24px;font-family:'Space Grotesk',Inter,system-ui,sans-serif;display:none}
 .voxy-cc.open{display:block}
-.voxy-cc h2{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0 0 10px;color:#171512}
-.voxy-cc p{font-size:14px;line-height:1.6;color:#3a362e;margin:0 0 18px}
-.voxy-cc p a{color:#0b57d0;text-decoration:underline;text-underline-offset:2px}
-.voxy-cc a{color:#0b57d0;text-decoration:none}
+.voxy-cc h2{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0 0 10px;color:var(--fg-primary)}
+.voxy-cc p{font-size:14px;line-height:1.6;color:var(--fg-primary);margin:0 0 18px}
+.voxy-cc p a{color:var(--signal-deep);text-decoration:underline;text-underline-offset:2px}
+.voxy-cc a{color:var(--signal-deep);text-decoration:none}
 .voxy-cc a:hover{text-decoration:underline}
 .voxy-cc button{font-family:inherit;cursor:pointer}
-.voxy-cc-btn{display:block;width:100%;padding:12px;border:1px solid #e0e0e0;background:#fcfbf7;color:#171512;border-radius:999px;font-size:15px;font-weight:600;margin-bottom:10px;transition:background .15s,border-color .15s}
-.voxy-cc-btn:hover{background:#f5f5f5;border-color:#171512}
-.voxy-cc-btn.primary{background:#171512;color:#fcfbf7;border-color:#171512}
+.voxy-cc-btn{display:block;width:100%;padding:12px;border:1px solid var(--border-hair);background:var(--bg-surface);color:var(--fg-primary);border-radius:2px;font-size:15px;font-weight:600;margin-bottom:10px;transition:background .15s,border-color .15s}
+.voxy-cc-btn:hover{background:var(--bg-elevated);border-color:var(--fg-primary)}
+.voxy-cc-btn.primary{background:var(--fg-primary);color:var(--bg-surface);border-color:var(--fg-primary)}
 .voxy-cc-btn.primary:hover{background:#000}
-.voxy-cc-custom{display:block;width:100%;background:none;border:none;color:#171512;font-size:15px;font-weight:500;padding:6px;text-decoration:none}
+.voxy-cc-custom{display:block;width:100%;background:none;border:none;color:var(--fg-primary);font-size:15px;font-weight:500;padding:6px;text-decoration:none}
 .voxy-cc-custom:hover{text-decoration:underline}
 .voxy-cm{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2001;display:none;align-items:center;justify-content:center;padding:20px}
 .voxy-cm.open{display:flex}
-.voxy-cm-box{background:#fcfbf7;color:#171512;border-radius:16px;max-width:440px;width:100%;padding:28px;font-family:'Space Grotesk',Inter,system-ui,sans-serif}
-.voxy-cm-box h3{font-size:20px;font-weight:700;margin:0 0 6px;color:#171512}
-.voxy-cm-box>p{font-size:14px;color:#3a362e;margin:0 0 16px;line-height:1.6}
-.voxy-cm-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid #eee}
+.voxy-cm-box{background:var(--bg-surface);color:var(--fg-primary);border-radius:2px;max-width:440px;width:100%;padding:28px;font-family:'Space Grotesk',Inter,system-ui,sans-serif}
+.voxy-cm-box h3{font-size:20px;font-weight:700;margin:0 0 6px;color:var(--fg-primary)}
+.voxy-cm-box>p{font-size:14px;color:var(--fg-primary);margin:0 0 16px;line-height:1.6}
+.voxy-cm-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--border-hair)}
 .voxy-cm-row b{display:block;font-size:15px}
-.voxy-cm-row span{display:block;font-size:13px;color:#6b6558;margin-top:2px;line-height:1.5}
-.voxy-cm-row input{width:44px;height:24px;accent-color:#171512;flex-shrink:0;margin-top:2px;cursor:pointer}
+.voxy-cm-row span{display:block;font-size:13px;color:var(--fg-muted);margin-top:2px;line-height:1.5}
+.voxy-cm-row input{width:44px;height:24px;accent-color:var(--fg-primary);flex-shrink:0;margin-top:2px;cursor:pointer}
 .voxy-cm-row input:disabled{cursor:not-allowed}
 .voxy-cm-actions{display:flex;gap:12px;margin-top:20px}
-.voxy-cm-actions button{flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
-.voxy-cm-save{background:#171512;color:#fcfbf7;border:1px solid #171512}
-.voxy-cm-cancel{background:#fcfbf7;color:#171512;border:1px solid #e0e0e0}
+.voxy-cm-actions button{flex:1;padding:12px;border-radius:2px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+.voxy-cm-save{background:var(--fg-primary);color:var(--bg-surface);border:1px solid var(--fg-primary)}
+.voxy-cm-cancel{background:var(--bg-surface);color:var(--fg-primary);border:1px solid var(--border-hair)}
 @media(max-width:480px){.voxy-cc{left:12px;right:12px;bottom:12px;max-width:none}}
 @media(prefers-reduced-motion:reduce){.voxy-cc-btn,.voxy-cm-actions button{transition:none}}

@@ -229,7 +229,7 @@ remove the env var so real users decide for themselves.
 | SPA client | `AUTH0_CLIENT_ID` | client id (public) | Required | Google/GitHub buttons complete a login |
 | Desktop client | `AUTH0_DESKTOP_CLIENT_ID` | client id (public) | Optional | Device flow on a desktop build |
 
-Register these callback URLs in Auth0: `https://your-site/dashboard`,
+Register these callback URLs in Auth0: `https://your-site/auth`,
 `https://your-site/auth`, and a native app entry for the desktop device flow.
 Password signup is separate and is restricted by `PASSWORD_LOGIN_DOMAINS`; it
 does not use Auth0 at all.

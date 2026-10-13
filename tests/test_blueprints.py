@@ -34,7 +34,6 @@ def test_blueprints_registered_and_routes_present(app_client):
         "/terms",
         "/auth",
         "/download",
-        "/dashboard",
         "/favicon.ico",
         "/og-image.png",
         "/apple-touch-icon.png",

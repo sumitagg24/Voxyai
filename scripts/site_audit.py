@@ -45,7 +45,6 @@ ROUTES = [
     "/download",
     "/privacy",
     "/terms",
-    "/dashboard",
     "/blog",
     "/docs/installation",
     "/docs/configuration",

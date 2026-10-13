@@ -248,7 +248,6 @@ def test_cookie_banner_is_honest_and_wired_everywhere():
         "blog",
         "contact",
         "auth",
-        "dashboard",
         "privacy",
         "terms",
     ]
@@ -279,7 +278,6 @@ def test_version_json_is_served_by_the_backend_too(app_client):
         "/contact",
         "/auth",
         "/download",
-        "/dashboard",
         "/privacy",
         "/terms",
         "/docs/installation",
@@ -384,12 +382,13 @@ def test_pricing_is_retired_from_the_frontend(app_client):
     index = (STATIC / "index.html").read_text(encoding="utf-8")
     assert 'id="open-source"' in index
     assert "https://github.com/sumitagg24/Voxyai" in index
-    dashboard = (STATIC / "dashboard.html").read_text(encoding="utf-8")
-    assert "Upgrade Plan" not in dashboard and "/pricing" not in dashboard
+    assert not (STATIC / "dashboard.html").exists(), "browser dashboard must stay removed"
 
 
 def test_wake_word_is_fully_removed():
     for relative in ("dashboard.html", "js/dashboard.js", "css/dashboard.css"):
+        assert not (STATIC / relative).exists(), f"{relative} must stay deleted"
+    for relative in ("index.html", "about.html", "js/site.js"):
         text = (STATIC / relative).read_text(encoding="utf-8", errors="ignore")
         assert "wakeword" not in text.lower(), f"wake word remnant in {relative}"
         assert "voxylis_wakeword" not in text
@@ -400,8 +399,8 @@ def test_wake_word_is_fully_removed():
 
 
 def test_account_deletion_and_upgrade_claims_match_the_implementation():
-    """The dashboard must not offer a self-service upgrade that cannot work."""
-    for relative in ("dashboard.html", "js/dashboard.js"):
+    """No page may offer a self-service upgrade that cannot work."""
+    for relative in ("index.html", "download.html", "auth.html"):
         text = (STATIC / relative).read_text(encoding="utf-8")
         assert "subscription/upgrade" not in text
 

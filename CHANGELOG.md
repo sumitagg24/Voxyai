@@ -3,6 +3,20 @@
 All notable changes to Voxylis. The canonical version lives in
 `config/version.py`; see `docs/RELEASE.md` for the release procedure.
 
+## Unreleased
+
+### Web experience ("SIGNAL SHEET")
+
+* **New identity**: warm-paper precision-hardware design system (bone paper, warm ink, one signal orange reserved for REC/live/hover); flat print language — hairline rules, 2px edges, hard-offset hover lift, zero shadows/glass/gradients. Documented in `docs/DESIGN.md`.
+* **Dark / Light / System themes**: head-load theme engine (`theme.js`, localStorage `voxy_theme`), OS-follow with live changes, crossfade transitions, toggle in every nav. Strict CSP kept (no inline styles/scripts).
+* **New logo**: "voice-print V" mark — ink tile, five voice bars, signal centre channel. Consistent inline SVG in every nav/footer (theme-aware), plus regenerated `favicon.ico`, `apple-touch-icon.png` and `og-image.png`.
+* **Browser dashboard removed** (owner decision: the product lives in the desktop app): `/dashboard` now redirects home; dashboard assets and Chart.js vendor deleted; docs/emails/nav updated; route tests updated. Backend account/usage/pricing APIs are untouched.
+* **Auth page rebuilt**: four working modes in one shell — sign in, **sign up (was a dead link)**, **forgot password (was a dead link)**, **reset via emailed token (the emailed link previously landed on a page that ignored it)**, plus auto email-verification from `?verify_token=`. Inline error/success messages with loading states replace `alert()`; fixed the "Remember me" control that overprinted its label; social buttons keep the explicit-consent overlay (contract unchanged).
+* **Legal pages to documentation standard**: sticky table of contents with scroll-spy, section filter, text-size preference (A−/A/A+/A++), print/PDF stylesheet, privacy choices callout; sections wrapped for anchor deep links; stale pricing references corrected.
+* **Cookie consent banner moved right** and restyled to the system; messaging unchanged (no optional cookies exist today).
+* **Support page**: tier-based priority-support line removed; the Email contact is now a real `mailto:`; social links point to the owner's X (`@sumitagg2004`) and GitHub (`sumitagg24`) — dead Discord removed.
+* **Accessibility**: axe-driven fixes until the CI site audit passes — AA-safe accent pairings on signal fills, cookie-link contrast 6.2:1, status-pill text 9.6:1; audit findings now surface as GitHub check annotations; reveal-on-scroll is reduced-motion aware.
+
 ## 3.1.0 — 2026-10-11
 
 ### Foundation & Cleanup (P0)

@@ -54,7 +54,7 @@
         if (!u) return;
         var chip = document.createElement('a');
         chip.className = 'nav-user';
-        chip.href = '/dashboard';
+        chip.href = '/download';
         chip.title = u.email_or_phone || ('User #' + u.id);
         var lamp = document.createElement('span');
         lamp.className = 'lamp lamp--live';
@@ -69,10 +69,25 @@
     }).catch(function () { /* navigation must never depend on this */ });
   }
 
+  /* Reveal-on-scroll: quiet entrance for section headers and cards.
+     No-JS and reduced-motion users see everything immediately. */
+  function initReveal() {
+    if (!('IntersectionObserver' in window)) return;
+    var els = document.querySelectorAll('.section-header, .card, .legal-sec');
+    for (var i = 0; i < els.length; i++) els[i].classList.add('reveal');
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  }
+
   function boot() {
     initNavToggle();
     initCookieChoices();
     initSignedInNav();
+    initReveal();
   }
 
   if (document.readyState === 'loading') {
