@@ -438,13 +438,27 @@ h4 { font-size: var(--text-xl); }
   margin: 0 auto var(--sp-4);
 }
 .hero-solid { color: var(--fg-primary); }
-.hero-outline {
-  color: transparent;
-  -webkit-text-stroke: 2px var(--fg-primary);
-  paint-order: stroke fill;
+/* Hollow display line: stroked SVG text. (Outlining via transparent CSS
+   color + text-stroke reads as a color-contrast violation to axe-core,
+   which cannot see the stroke; SVG text gets the same look and is
+   announced once through role="img" + aria-label.) */
+.hero-outline { display: block; line-height: 0; }
+.hero-outline-svg {
+  display: block;
+  height: clamp(3.2rem, 8vw, 7.5rem);
+  width: auto;
+  max-width: 100%;
+  margin: 0.08em auto 0;
 }
-@supports not (-webkit-text-stroke: 2px black) {
-  .hero-outline { color: var(--fg-primary); }
+.hero-outline-svg text {
+  font-family: var(--font-grotesk);
+  font-size: 112px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  fill: none;
+  stroke: var(--fg-primary);
+  stroke-width: 1.75px;
+  paint-order: stroke fill;
 }
 .hero p { font-size: var(--text-xl); color: var(--fg-muted); max-width: 580px; margin: 0 auto; line-height: 1.6; }
 
