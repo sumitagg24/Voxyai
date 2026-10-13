@@ -94,17 +94,12 @@ class TierManager {
                 lock.className = 'tier-locked-icon';
                 lock.textContent = '🔒';
                 const heading = document.createElement('h3');
-                heading.textContent = 'Q&A requires a Pro plan';
+                heading.textContent = 'Q&A is locked';
                 const sub = document.createElement('p');
-                sub.textContent = 'Upgrade to ask questions about your transcriptions.';
-                const link = document.createElement('a');
-                link.href = '/pricing';
-                link.className = 'btn btn-primary';
-                link.textContent = 'View Plans';
+                sub.textContent = "This feature isn't enabled for your account.";
                 wrap.appendChild(lock);
                 wrap.appendChild(heading);
                 wrap.appendChild(sub);
-                wrap.appendChild(link);
                 form.appendChild(wrap);
             }
         }
@@ -511,13 +506,8 @@ function filterHistory(searchTerm, language) {
 // ============================================
 
 function initializeSubscription() {
-    const upgradeBtn = document.querySelector('.current-plan .btn-secondary');
-    
-    if (upgradeBtn) {
-        upgradeBtn.addEventListener('click', () => {
-            window.location.href = '/pricing';
-        });
-    }
+    // Pricing is retired from the UI (open-source product). The subscription
+    // section stays as a read-only view of the backend tier; no upsell view.
 }
 
 // ============================================

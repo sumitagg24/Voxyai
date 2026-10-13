@@ -17,7 +17,9 @@ def index():
 
 @pages_bp.route("/pricing")
 def pricing_page():
-    return current_app.send_static_file("pricing.html")
+    """Pricing was retired from the UI (open-source presentation). The URL
+    stays alive for old links and routes home; backend tier logic is untouched."""
+    return redirect("/#open-source", code=302)
 
 
 @pages_bp.route("/blog")

@@ -220,7 +220,7 @@ def test_legal_pages_exist_for_oauth_consent_screen():
         assert needle in privacy, f"privacy.html missing: {needle}"
     assert "voxylis.com" not in privacy.lower(), "privacy.html must not claim an unowned domain"
     assert "as is" in terms
-    for page in ("index", "download", "pricing", "about", "blog", "contact"):
+    for page in ("index", "download", "about", "blog", "contact"):
         footer = (STATIC / f"{page}.html").read_text(encoding="utf-8")
         assert 'href="/privacy"' in footer, f"{page}.html footer missing Privacy"
         assert 'href="/terms"' in footer, f"{page}.html footer missing Terms"
@@ -244,7 +244,6 @@ def test_cookie_banner_is_honest_and_wired_everywhere():
     pages = [
         "index",
         "download",
-        "pricing",
         "about",
         "blog",
         "contact",
@@ -275,7 +274,6 @@ def test_version_json_is_served_by_the_backend_too(app_client):
     "path",
     [
         "/",
-        "/pricing",
         "/blog",
         "/about",
         "/contact",
@@ -363,11 +361,31 @@ def test_no_fabricated_marketing_claims(pattern):
     assert not offenders, f"{pattern} reappeared in {offenders}"
 
 
-def test_pricing_page_is_honest_about_payments():
-    text = (STATIC / "pricing.html").read_text(encoding="utf-8")
-    assert "not purchasable yet" in text
-    for claim in ("PayPal", "credit cards", "14-day free trial", "annual plans"):
-        assert claim.lower() not in text.lower(), claim
+def test_pricing_is_retired_from_the_frontend(app_client):
+    """Pricing was removed from the UI in favour of an open-source
+    presentation: the view files are gone, no static page links to /pricing,
+    the URL itself redirects home, and the GitHub open-source section exists.
+    The backend contract (/api/pricing, tiers, quotas, webhooks) is untouched."""
+    client, _ = app_client
+    for rel in ("pricing.html", "js/pricing.js", "css/pricing.css"):
+        assert not (STATIC / rel).exists(), f"{rel} must be deleted"
+    offenders = [
+        f.name
+        for f in STATIC.rglob("*")
+        if f.is_file()
+        and f.suffix in (".html", ".js", ".css")
+        and 'href="/pricing"' in f.read_text(encoding="utf-8", errors="ignore")
+    ]
+    assert not offenders, f"stale pricing links: {offenders}"
+    resp = client.get("/pricing")
+    assert resp.status_code == 302
+    assert resp.headers["Location"].endswith("/#open-source")
+    assert client.get("/api/pricing").status_code == 200  # backend logic intact
+    index = (STATIC / "index.html").read_text(encoding="utf-8")
+    assert 'id="open-source"' in index
+    assert "https://github.com/sumitagg24/Voxyai" in index
+    dashboard = (STATIC / "dashboard.html").read_text(encoding="utf-8")
+    assert "Upgrade Plan" not in dashboard and "/pricing" not in dashboard
 
 
 def test_wake_word_is_fully_removed():
