@@ -4,6 +4,10 @@
 # VOXYLIS - MACOS/LINUX STARTUP SCRIPT
 # ============================================
 
+# Works from any cwd (double-click or terminal): resolve the repo root from
+# this script's location before touching repo-relative paths.
+cd "$(dirname "$0")/.." || exit 1
+
 echo ""
 echo "╔════════════════════════════════════════╗"
 echo "║     VOXYLIS - AI Voice Assistant       ║"

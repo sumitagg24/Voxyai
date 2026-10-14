@@ -71,7 +71,7 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 - **Windows:** [⬇ Download Voxylis-Setup-3.1.0.exe](https://github.com/sumitagg24/Voxyai/releases/download/v3.1.0/Voxylis-Setup-3.1.0.exe)
   — clicking starts the download immediately.
 - **macOS:** [⬇ Download source .zip](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.1.0.zip)
-  (Python 3.10+, one-command `run.sh` setup).
+  (Python 3.10+, one-command `scripts/run.sh` setup).
 - **Linux:** [⬇ Download source .tar.gz](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.1.0.tar.gz)
   (X11 + Wayland).
 
@@ -110,7 +110,7 @@ provider key (Groq is free at <https://console.groq.com/keys>).
 
 > **Linux only:** `pynput` (global hotkeys) pulls in `evdev`, which compiles
 > from source and needs the Python dev headers and a C compiler *before*
-> `pip install` runs — `run.sh` checks this for you.
+> `pip install` runs — `scripts/run.sh` checks this for you.
 > Debian/Ubuntu: `sudo apt-get install python3-dev build-essential` ·
 > Fedora: `sudo dnf install python3-devel gcc` · Arch:
 > `sudo pacman -S python gcc`.
@@ -203,11 +203,11 @@ voxyai/
 ├── web/
 │   ├── app.py                 Flask app + API routes
 │   ├── tier.py                Tier → features/quotas table
-│   ├── verify_routes.py       Route inventory guard
 │   ├── services/              subscription policy
 │   └── static/                Website (pages, docs, blog)
 ├── packaging/                 version_info (generated), icon generator, .ico
 ├── installer/voxylis.iss      Inno Setup definition
+├── scripts/                 build + run launchers, verify_routes smoke check, DR drill, site audit
 ├── tests/                     Backend, desktop and site tests
 └── docs/                      ARCHITECTURE, PRIVACY, SECURITY, RELEASE, API
 ```

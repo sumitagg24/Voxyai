@@ -1,4 +1,4 @@
-"""One-shot route verification. Run from repo root: py web/verify_routes.py.
+"""One-shot route verification. Run from repo root: py scripts/verify_routes.py.
 
 This script writes a fixture user (``verify_routes@voxylis.com``) into whatever
 database it is pointed at, so it must never touch a real deployment database.

@@ -3,6 +3,10 @@ REM ============================================
 REM VOXYLIS - WINDOWS STARTUP SCRIPT
 REM ============================================
 
+REM Works from any cwd (double-click or terminal): resolve the repo root
+REM from this script's location before touching repo-relative paths.
+cd /d "%~dp0.."
+
 echo.
 echo ╔════════════════════════════════════════╗
 echo ║     VOXYLIS - AI Voice Assistant       ║

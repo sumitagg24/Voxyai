@@ -153,7 +153,6 @@ web/
 ├── db.py                      DB_PATH (re-reads VOXYLIS_DB_PATH), _get_db, _init_db
 ├── extensions.py              limiter + cache (created without app, init via init_app)
 ├── tier.py                    tier → features/modes/quotas table
-├── verify_routes.py           route inventory guard used by tests
 ├── content/
 │   └── blog_posts.py          BLOG_POSTS seed data + LEGACY_BLOG_SLUGS
 └── routes/
@@ -211,7 +210,11 @@ a hard failure rather than a silent install.
 ## 10. CI/CD
 
 `.github/workflows/ci.yml` — lint (flake8, `.flake8` policy), the pytest
-suite, version-mirror consistency check, and a packaging smoke build.
+suite, the site audit (axe-core accessibility, internal links, console
+errors — `scripts/site_audit.py`), version-mirror consistency check, and
+a packaging smoke build. Operational scripts live in `scripts/`: the
+build launchers (`build_*`), dev launchers (`run.*`), the one-shot route
+smoke check (`verify_routes.py`), and the DR drill (`drill_restore.sh`).
 `.github/workflows/release.yml` — on a `v*` tag: build the EXE and installer,
 sign when the certificate secrets are present, publish the artifacts, and update
 `update-manifest.json` with the checksums the updater requires.
