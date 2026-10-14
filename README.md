@@ -68,7 +68,7 @@ The product name is **Voxylis**; the first-party engine is called **Voxy**.
 
 ## Install
 
-- **Windows:** [⬇ Download Voxylis-Setup-3.0.0.exe](https://github.com/sumitagg24/Voxyai/releases/download/v3.0.0/Voxylis-Setup-3.0.0.exe)
+- **Windows:** [⬇ Download Voxylis-Setup-3.1.0.exe](https://github.com/sumitagg24/Voxyai/releases/download/v3.1.0/Voxylis-Setup-3.1.0.exe)
   — clicking starts the download immediately.
 - **macOS:** [⬇ Download source .zip](https://github.com/sumitagg24/Voxyai/archive/refs/tags/v3.1.0.zip)
   (Python 3.10+, one-command `run.sh` setup).
