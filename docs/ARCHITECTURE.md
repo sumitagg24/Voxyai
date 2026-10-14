@@ -210,7 +210,7 @@ a hard failure rather than a silent install.
 
 ## 10. CI/CD
 
-`.github/workflows/ci.yml` — lint (flake8, `setup.cfg` policy), the pytest
+`.github/workflows/ci.yml` — lint (flake8, `.flake8` policy), the pytest
 suite, version-mirror consistency check, and a packaging smoke build.
 `.github/workflows/release.yml` — on a `v*` tag: build the EXE and installer,
 sign when the certificate secrets are present, publish the artifacts, and update

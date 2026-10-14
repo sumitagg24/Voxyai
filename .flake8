@@ -1,0 +1,19 @@
+# flake8 policy. flake8 cannot read pyproject.toml, so the lint policy lives
+# here; keep max-line-length in lockstep with [tool.black] in pyproject.toml.
+[flake8]
+max-line-length = 120
+# E501 (line too long) is not enforced: black owns line wrapping for code, and
+# the remaining long lines are prose, embedded HTML/JS and long literal
+# strings, where reflowing hurts readability more than a long line does.
+extend-ignore = E203, W503, E501
+per-file-ignores =
+    core/app_orchestrator.py: E402
+    web/app.py: E402
+exclude =
+    venv,
+    .venv,
+    env,
+    .git,
+    __pycache__,
+    build,
+    dist

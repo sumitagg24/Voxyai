@@ -3,7 +3,7 @@
 # tree (no packaged distribution), so there is no [project] table.
 
 [tool.black]
-# flake8 runs with max-line-length = 120 (see setup.cfg). Without this line
+# flake8 runs with max-line-length = 120 (see .flake8). Without this line
 # black defaults to 88, so `black --check .` fails on nearly every file and the
 # CI lint job can never pass. Keep the two aligned.
 line-length = 120

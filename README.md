@@ -308,7 +308,7 @@ Local dev is `pip install -r requirements.txt && python web/app.py`
 
 ```bash
 py -m pytest tests -q           # backend, desktop units, version/site checks
-py -m flake8 .                  # policy in setup.cfg
+py -m flake8 .                  # policy in .flake8
 ```
 
 CI runs lint, the suite, a version-mirror check and a packaging smoke build on

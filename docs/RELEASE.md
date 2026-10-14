@@ -24,7 +24,7 @@ test fails, and a second `version.json` anywhere in the tree fails it too.
 ## 2. Verify before building
 
 ```bash
-python -m flake8 .                                  # lint policy: setup.cfg
+python -m flake8 .                                  # lint policy: .flake8
 python -m pytest tests -q                           # unit + API + site tests
 python -m pip-audit -r requirements.txt             # dependency scan
 ```
