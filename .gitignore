@@ -1,4 +1,6 @@
-# Virtual Environment
+# Voxylis — ignore rules (deduplicated; every entry is unique)
+
+# Virtual environment
 venv/
 env/
 ENV/
@@ -13,9 +15,6 @@ __pycache__/
 build/
 develop-eggs/
 dist/
-# NOTE: only the *root* downloads/ directory is build output. web/downloads/ is
-# an intentional part of the website and must stay tracked.
-/downloads/
 eggs/
 .eggs/
 lib/
@@ -25,8 +24,12 @@ sdist/
 var/
 wheels/
 *.egg-info/
-.installed.cfg
 *.egg
+# voxylis.spec is tracked on purpose -- CI builds the EXE from it.
+
+# Root-local build output (anchored; web/downloads/, if it ever returns,
+# is website content and stays tracked)
+/downloads/
 
 # IDE
 .vscode/
@@ -34,14 +37,17 @@ wheels/
 *.swp
 *.swo
 *~
-.DS_Store
 *.sublime-project
 *.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
 
 # Logs
 logs/
 *.log
-voxylis.log
 
 # Temporary files
 temp/
@@ -50,11 +56,11 @@ tmp/
 *.bak
 
 # ---------------------------------------------------------------------------
-# Secrets — must never be committed
+# Secrets -- must never be committed
 #
 # Real secrets live in environment variables (server) and the OS credential
-# store (desktop). .env.example is the only environment file in the repo and it
-# contains variable NAMES with no usable values.
+# store (desktop). .env.example is the only environment file in the repo and
+# it contains variable NAMES with no usable values.
 # ---------------------------------------------------------------------------
 .env
 .env.*
@@ -91,16 +97,6 @@ web/data/
 *.sqlite3
 *.vault
 
-# Build artifacts
-dist/
-build/
-# NOTE: voxylis.spec is tracked on purpose — CI builds the EXE from it.
-
-# OS
-.DS_Store
-Thumbs.db
-.directory
-
 # Testing
 .pytest_cache/
 .coverage
@@ -111,17 +107,11 @@ htmlcov/
 *.mp3
 *.flac
 
-# Compiled files
-*.pyc
-*.pyo
-
-# IDE specific
-.vscode/settings.json
-.idea/workspace.xml
+# Deployment / local-tooling artifacts
 .vercel
+.freebuff/
 .playwright-mcp/
-
-# One-off verification screenshots
+screenshots/
 landing-verify.png
 
 # Release bundles (hosted on the release page / B2, not in git)
@@ -130,12 +120,3 @@ landing-verify.png
 # Installer build output
 installer/output/
 installer/*.exe
-
-# Verification artefacts and tool metadata
-screenshots/
-landing-verify.png
-.freebuff/
-
-# Local tooling caches (never product code)
-.playwright-mcp/
-vercel/
